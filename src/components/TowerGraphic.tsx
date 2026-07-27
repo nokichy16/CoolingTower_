@@ -34,13 +34,16 @@ const LABELS: ZoneLabel[] = [
   { id: 'inlet', labelY: 312, anchor: [420, 320] },
 ]
 
-// Full-width clickable band for each stage, top→bottom down the tower.
-const HOTZONES: Record<StageId, { y: number; h: number }> = {
-  exhaust: { y: 8, h: 62 },
-  fan: { y: 70, h: 46 },
-  drift: { y: 116, h: 34 },
-  fill: { y: 150, h: 118 },
-  inlet: { y: 268, h: 96 },
+// Clickable band for each station. The five air-path stations are full-width
+// slices of the tower, top→bottom; recovery sits off to the side because it is
+// not in the air path — it hangs off the exhaust.
+const HOTZONES: Record<StageId, { x: number; y: number; w: number; h: number }> = {
+  exhaust: { x: 118, y: 8, w: 326, h: 62 },
+  fan: { x: 118, y: 70, w: 326, h: 46 },
+  drift: { x: 118, y: 116, w: 326, h: 34 },
+  fill: { x: 118, y: 150, w: 326, h: 118 },
+  inlet: { x: 118, y: 268, w: 326, h: 96 },
+  recovery: { x: 16, y: 4, w: 100, h: 104 },
 }
 
 export default function TowerGraphic({
@@ -55,7 +58,7 @@ export default function TowerGraphic({
   const stages = buildStages(r)
   const byId = Object.fromEntries(stages.map((s) => [s.id, s])) as Record<StageId, (typeof stages)[number]>
 
-  const airInt = clamp(r.exhaust.vDot / r.inputs.fanVmax, 0.12, 1)
+  const airInt = clamp(r.mDotAir / 400, 0.12, 1)
   const waterInt = clamp(r.inputs.waterFlow / 1500, 0.12, 1)
   // Flow animation speeds scale with throughput. The fan is intentionally
   // static, so no fan-speed here.
@@ -88,15 +91,15 @@ export default function TowerGraphic({
         {isSel && (
           <rect
             className="zone-highlight"
-            x={118}
+            x={hz.x}
             y={hz.y}
-            width={326}
+            width={hz.w}
             height={hz.h}
             rx={9}
             style={{ stroke: byId[id].accent, fill: `${byId[id].accent}14` }}
           />
         )}
-        <rect x={118} y={hz.y} width={326} height={hz.h} fill="transparent" />
+        <rect x={hz.x} y={hz.y} width={hz.w} height={hz.h} fill="transparent" />
       </g>
     )
   }
@@ -197,6 +200,27 @@ export default function TowerGraphic({
         {/* ── fan stack (venturi) ── */}
         <path className="tower-stack" d={`M205 112 C201 92 201 78 196 60 H364 C359 78 359 92 355 112`} />
         <ellipse className="stack-rim" cx="280" cy="60" rx="84" ry="10" />
+
+        {/* ── recovery unit (station 6) ──
+            Off the air path: a slipstream of the exhaust is cooled and drained.
+            Drawn to the side so it reads as a bolt-on, not a tower component. */}
+        <g className={`tg-recovery${r.condensed.feasible ? '' : ' is-idle'}`}>
+          <path className="rec-duct" d="M196 40 C168 40 140 38 122 44" />
+          <rect className="rec-shell" x="30" y="18" width="80" height="60" rx="9" />
+          <path className="rec-coil" d="M42 34 H98 M42 46 H98 M42 58 H98" />
+          <path
+            className="rec-drop"
+            d="M70 62 C62 74 63 82 70 85 C77 82 78 74 70 62Z"
+          />
+          <text className="rec-label" x="70" y="96" textAnchor="middle">
+            RECOVERY
+          </text>
+          <text className="rec-value" x="70" y="106" textAnchor="middle">
+            {r.condensed.feasible
+              ? `${fmt(r.condensed.mDotCond, 2)} kg/s`
+              : 'inactive'}
+          </text>
+        </g>
 
         {/* exhaust plume (rising) */}
         <g className="tower-plume" aria-hidden="true">
@@ -324,7 +348,9 @@ export default function TowerGraphic({
 
         {/* labels + click zones on top */}
         {LABELS.map(label)}
-        {(['exhaust', 'fan', 'drift', 'fill', 'inlet'] as StageId[]).map((id) => (
+        {(
+          ['exhaust', 'fan', 'drift', 'fill', 'inlet', 'recovery'] as StageId[]
+        ).map((id) => (
           <g key={id}>{zone(id)}</g>
         ))}
       </svg>

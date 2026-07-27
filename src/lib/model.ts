@@ -6,11 +6,9 @@
  * then a recovery calculation (condensed state) and a water balance hung off
  * the exhaust. Every stage carries the state set upstream of it.
  *
- * The one coupled unknown is the dry-air mass flow ṁ_a: system resistance
- * rises with flow while the fan delivers less, and the operating point is
- * where the two meet. We solve that with a bisection, recomputing the whole
- * air state each iteration because density depends on the temperatures the
- * flow itself produces.
+ * Dry-air mass flow ṁ_a is prescribed directly. This keeps the learning model
+ * focused on heat, moisture, pressure loss and recovery without pretending a
+ * generic two-parameter fan curve represents a selected fan.
  */
 
 import {
@@ -18,15 +16,40 @@ import {
   enthalpy,
   hSat,
   humidityRatio,
+  hWithinSatRange,
   omegaSat,
   P_ATM,
   relHumidity,
+  T_SAT_MAX,
   tSatFromH,
   wetBulb,
 } from './psychrometrics'
+import {
+  evaluateRuizEliminator,
+  type EliminatorId,
+  type RuizEliminatorResult,
+} from './eliminators'
 
 /** Specific heat of liquid water, kJ/(kg·K). */
 const CP_W = 4.186
+
+/**
+ * Something the solver found wrong with the scenario. An `error` means the
+ * numbers that come back do not describe a physical tower and must not be
+ * presented as an operating point; a `warning` means the result stands but a
+ * limit was applied.
+ */
+export interface SolveIssue {
+  code:
+    | 'inverted-water-temps'
+    | 'below-wet-bulb'
+    | 'heat-load-unattainable'
+    | 'ruiz-pressure-extrapolation'
+    | 'ruiz-collection-extrapolation'
+  severity: 'error' | 'warning'
+  title: string
+  message: string
+}
 
 export interface TowerInputs {
   // Ambient air
@@ -38,6 +61,7 @@ export interface TowerInputs {
   waterFlow: number // kg/s
   waterHot: number // °C, entering the fill (hot)
   waterCold: number // °C, leaving to basin (cold)
+  airMassFlow: number // kg/s dry air
 
   // Geometry — face areas, m²
   aLouver: number
@@ -45,22 +69,22 @@ export interface TowerInputs {
   aDrift: number
   aFan: number
 
-  // Loss coefficients, dimensionless
+  // Ruiz et al. drift eliminator
+  eliminatorId: EliminatorId
+  dropletDiameter: number // representative diameter, µm
+
+  // Other loss coefficients, dimensionless
   kLouver: number
   kFill: number
-  kDrift: number
   kPlenum: number
 
-  // Fan: static pressure curve Δp = dp0·(1 − (V̇/Vmax)²), plus efficiency
-  fanDp0: number // Pa, static pressure at zero flow
-  fanVmax: number // m³/s, free-delivery flow
+  // Fan
   fanEff: number // 0–1
 
   // Recovery
   tCondense: number // °C, temperature the exhaust is cooled to
 
   // Water balance
-  cycles: number // cycles of concentration
   driftPct: number // drift as % of circulating flow
 }
 
@@ -78,6 +102,15 @@ export interface TowerResults {
   mDotAir: number // kg/s dry air
   qReject: number // kW, heat rejected in the fill
 
+  /**
+   * False when no physical operating point exists. Every other field is still
+   * populated so the UI has a shape to render, but the values are meaningless
+   * and must not be shown as results.
+   */
+  valid: boolean
+  issues: SolveIssue[]
+  eliminator: RuizEliminatorResult
+
   inlet: AirState & { u: number; dp: number; wetBulb: number }
   fill: AirState & { u: number; dp: number }
   drift: AirState & { u: number; dp: number; mDotDrift: number }
@@ -85,7 +118,6 @@ export interface TowerResults {
     u: number
     dpPlenum: number
     dpTotal: number // Σ Δp
-    dpFanAvail: number
     power: number // kW
   }
   exhaust: AirState
@@ -97,8 +129,8 @@ export interface TowerResults {
     dOmega: number // kg water / kg dry air removed
     dH: number // kJ / kg dry air removed
     e: number // kJ / kg water — the headline
-    qLat: number // kJ / kg dry air
-    qSen: number // kJ / kg dry air
+    qLat: number // kJ / kg dry air — condensation share of Δh
+    qSen: number // kJ / kg dry air — gas-cooling share of Δh
     mDotCond: number // kg/s condensate
     qDuty: number // kW total cooling duty
     feasible: boolean
@@ -107,8 +139,7 @@ export interface TowerResults {
   water: {
     evap: number // kg/s
     drift: number // kg/s
-    blowdown: number // kg/s
-    makeup: number // kg/s
+    makeup: number // kg/s; evaporation + drift only, excludes blowdown
   }
 }
 
@@ -118,9 +149,7 @@ function velocityLoss(k: number, rho: number, u: number): number {
 }
 
 /**
- * Solve the whole air path for a trial dry-air mass flow, returning the
- * pressure residual (fan available − system demand). The bisection in
- * `solveTower` drives this to zero.
+ * Evaluate the whole air path at the prescribed dry-air mass flow.
  */
 function evaluate(inputs: TowerInputs, mDotAir: number, qReject: number) {
   const p = inputs.pressure
@@ -135,7 +164,12 @@ function evaluate(inputs: TowerInputs, mDotAir: number, qReject: number) {
 
   // State 2 — fill exit. Energy balance sets the enthalpy; the air leaves
   // saturated, which fixes its temperature and humidity ratio.
+  //
+  // If that enthalpy falls outside the saturation curve we can invert, there is
+  // no exit state — the air physically cannot carry this much heat at this flow.
+  // tSatFromH would silently return the bracket edge, so flag it instead.
   const h2 = h1 + qReject / mDotAir
+  const satSolvable = hWithinSatRange(h2, p)
   const t2 = tSatFromH(h2, p)
   const omega2 = omegaSat(t2, p)
   const rho2 = density(t2, omega2, p)
@@ -148,9 +182,21 @@ function evaluate(inputs: TowerInputs, mDotAir: number, qReject: number) {
   const uFill = vDotFill / inputs.aFill
   const dpFill = velocityLoss(inputs.kFill, rhoFill, uFill)
 
-  // Drift eliminator — composition unchanged, pure pressure loss.
+  // Drift eliminator — Kp is recalculated from the Ruiz correlation on every
+  // pressure-balance iteration because Re changes with the trial air flow.
   const uDrift = vDot2 / inputs.aDrift
-  const dpDrift = velocityLoss(inputs.kDrift, rho2, uDrift)
+  const eliminator = evaluateRuizEliminator(
+    inputs.eliminatorId,
+    rho2,
+    uDrift,
+    t2,
+    inputs.dropletDiameter,
+  )
+  const dpDrift = velocityLoss(
+    eliminator.pressureCoefficient,
+    rho2,
+    uDrift,
+  )
 
   // Plenum / fan approach.
   const uFan = vDot2 / inputs.aFan
@@ -158,40 +204,106 @@ function evaluate(inputs: TowerInputs, mDotAir: number, qReject: number) {
 
   const dpTotal = dp1 + dpFill + dpDrift + dpPlenum
 
-  // Fan static pressure available at this delivery.
-  const ratio = vDot2 / inputs.fanVmax
-  const dpFanAvail = inputs.fanDp0 * (1 - ratio * ratio)
-
   return {
-    residual: dpFanAvail - dpTotal,
+    satSolvable,
     omega1, h1, rho1, vDot1, u1, dp1,
     t2, omega2, h2, rho2, vDot2,
     uFill, dpFill,
-    uDrift, dpDrift,
+    uDrift, dpDrift, eliminator,
     uFan, dpPlenum,
-    dpTotal, dpFanAvail,
+    dpTotal,
   }
 }
 
 export function solveTower(inputs: TowerInputs): TowerResults {
   const p = inputs.pressure
-  const qReject = inputs.waterFlow * CP_W * (inputs.waterHot - inputs.waterCold)
+  const issues: SolveIssue[] = []
 
-  // Bisection on ṁ_a. Raising the flow raises system demand (∝ ṁ_a²) and
-  // lowers fan supply, so the residual falls monotonically — bracket it and
-  // squeeze. Upper bound derived so fan delivery can't exceed Vmax.
-  let lo = 1e-3
-  let hi = Math.max(2, (inputs.fanVmax * 1.4) )
-  for (let i = 0; i < 80; i++) {
-    const mid = (lo + hi) / 2
-    const r = evaluate(inputs, mid, qReject).residual
-    if (r > 0) lo = mid
-    else hi = mid
+  const omegaAmbient = humidityRatio(inputs.tAmbient, inputs.rhAmbient, p)
+  const tWetBulb = wetBulb(inputs.tAmbient, omegaAmbient, p)
+
+  // ── Guard: the water must actually be cooled ─────────────────────────────
+  // A non-positive range makes Q̇ negative, which then poisons h₂ and every
+  // state downstream of it.
+  const waterRange = inputs.waterHot - inputs.waterCold
+  if (waterRange <= 0) {
+    issues.push({
+      code: 'inverted-water-temps',
+      severity: 'error',
+      title: 'Cold water is not colder than the hot water',
+      message: `T_cold ${inputs.waterCold.toFixed(1)} °C must sit below T_hot ${inputs.waterHot.toFixed(
+        1,
+      )} °C. As set, the tower would be heating the water and the heat load is negative.`,
+    })
   }
-  const mDotAir = (lo + hi) / 2
+
+  // ── Guard: the approach cannot cross the ambient wet-bulb ────────────────
+  // Wet-bulb is the floor an evaporative tower approaches and never crosses.
+  if (waterRange > 0 && inputs.waterCold < tWetBulb) {
+    issues.push({
+      code: 'below-wet-bulb',
+      severity: 'error',
+      title: 'Cold water is below the ambient wet-bulb',
+      message: `T_cold ${inputs.waterCold.toFixed(
+        1,
+      )} °C is under the ${tWetBulb.toFixed(
+        1,
+      )} °C wet-bulb. No evaporative tower can cool below wet-bulb — raise T_cold or lower the ambient humidity.`,
+    })
+  }
+
+  // Deliberately prescribed rather than tower-rated: the simplified model
+  // asks the air path to carry this load and reports an error if it cannot.
+  // A real tower would instead deliver less duty as its air approached
+  // saturation.
+  const qReject = inputs.waterFlow * CP_W * waterRange
+
+  const mDotAir = inputs.airMassFlow
   const s = evaluate(inputs, mDotAir, qReject)
 
-  // Fan power from delivered volume against total resistance.
+  // ── Guard: the air cannot absorb this duty at the flow the fan can pull ──
+  // The pressure balance can close perfectly while the required fill-exit
+  // enthalpy sits off the top of the saturation curve. That converged ṁ_a is
+  // arithmetic, not an operating point.
+  if (!s.satSolvable) {
+    issues.push({
+      code: 'heat-load-unattainable',
+      severity: 'error',
+      title: 'Air flow cannot carry this heat load',
+      message: `Rejecting ${(qReject / 1000).toFixed(
+        1,
+      )} MW into ${mDotAir.toFixed(
+        1,
+      )} kg/s of air needs a fill-exit state above ${T_SAT_MAX} °C saturated, which is off the saturation curve. Cut the heat load or raise the prescribed air flow.`,
+    })
+  }
+
+  // ── Ruiz empirical support ranges ────────────────────────────────────────
+  // These are advisories rather than clamps: the extrapolated values remain
+  // visible, but must not look paper-validated outside the fitted window.
+  if (!s.eliminator.pressureSupported) {
+    issues.push({
+      code: 'ruiz-pressure-extrapolation',
+      severity: 'warning',
+      title: 'Ruiz pressure correlation is extrapolated',
+      message: `${s.eliminator.pressureRangeIssues.join(
+        '; ',
+      )}. Kp and Δp remain visible, but are not validated by the source paper here.`,
+    })
+  }
+  if (!s.eliminator.collectionSupported) {
+    issues.push({
+      code: 'ruiz-collection-extrapolation',
+      severity: 'warning',
+      title: 'Ruiz collection correlation is extrapolated',
+      message: `${s.eliminator.collectionRangeIssues.join(
+        '; ',
+      )}. The single-size collection efficiency remains visible, but is not validated by the source paper here.`,
+    })
+  }
+
+  // Fan power estimate from the prescribed air flow against total resistance.
+  // dpTotal is the static pressure the selected fan would need to supply.
   const power = (s.vDot2 * s.dpTotal) / inputs.fanEff / 1000 // kW
 
   // Exhaust (state 4) = fill exit carried through the eliminator and fan.
@@ -213,22 +325,30 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const dOmega = Math.max(0, s.omega2 - omega5)
   const dH = Math.max(0, s.h2 - h5)
   const e = dOmega > 1e-9 ? dH / dOmega : 0
-  // Sensible = cooling the gas mixture; latent = the remainder (condensation).
-  const qSen = (1.006 + omega5 * 1.86) * (s.t2 - tCond)
+
+  // Latent / sensible split. Sensible is taken first because it has a clean
+  // closed form — the uncondensed mixture cooled through the temperature drop,
+  // at the humidity that survives to state 5. Latent is the remainder, which
+  // avoids leaning on a single h_fg value while h_fg varies over that range.
+  const qSen = (1.006 + omega5 * 1.86) * Math.max(0, s.t2 - tCond)
   const qLat = Math.max(0, dH - qSen)
+
   const mDotCond = mDotAir * dOmega
   const qDuty = mDotAir * dH
 
-  // Water balance, hung off the exhaust — pure accounting.
+  // Simplified water balance, hung off the exhaust — pure accounting.
+  // Blowdown / water-treatment losses are deliberately excluded for now.
   const evap = mDotAir * (s.omega2 - s.omega1)
   const drift = (inputs.driftPct / 100) * inputs.waterFlow
-  const blowdown = Math.max(0, evap / (inputs.cycles - 1) - drift)
-  const makeup = evap + drift + blowdown
+  const makeup = evap + drift
 
   return {
     inputs,
     mDotAir,
     qReject,
+    valid: !issues.some((i) => i.severity === 'error'),
+    issues,
+    eliminator: s.eliminator,
     inlet: {
       t: inputs.tAmbient,
       omega: s.omega1,
@@ -265,7 +385,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       u: s.uFan,
       dpPlenum: s.dpPlenum,
       dpTotal: s.dpTotal,
-      dpFanAvail: s.dpFanAvail,
       power,
     },
     exhaust,
@@ -282,7 +401,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       qDuty,
       feasible,
     },
-    water: { evap, drift, blowdown, makeup },
+    water: { evap, drift, makeup },
   }
 }
 
@@ -295,23 +414,23 @@ export const DEFAULT_INPUTS: TowerInputs = {
   waterFlow: 500,
   waterHot: 40,
   waterCold: 32,
+  airMassFlow: 146.5,
 
   aLouver: 40,
   aFill: 36,
   aDrift: 36,
   aFan: 12,
 
+  eliminatorId: 'B',
+  dropletDiameter: 50,
+
   kLouver: 3.0,
   kFill: 12.0,
-  kDrift: 4.0,
   kPlenum: 1.5,
 
-  fanDp0: 300,
-  fanVmax: 900,
   fanEff: 0.65,
 
   tCondense: 20,
 
-  cycles: 4,
   driftPct: 0.002,
 }

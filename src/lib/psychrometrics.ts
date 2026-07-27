@@ -58,11 +58,6 @@ export function density(tC: number, omega: number, p: number): number {
   return ((1 + omega) * p) / (R_DA * tK * (1 + 1.6078 * omega));
 }
 
-/** Latent heat of vaporisation of water, kJ/kg, near temperature tC. */
-export function hfg(tC: number): number {
-  return 2501 - 2.36 * tC;
-}
-
 /** Relative humidity (%) from dry-bulb, humidity ratio and pressure. */
 export function relHumidity(tC: number, omega: number, p: number): number {
   const pv = (omega * p) / (RATIO + omega);
@@ -80,14 +75,34 @@ export function dewPoint(omega: number, p: number): number {
 }
 
 /**
+ * Bracket the saturation-enthalpy inversion searches over. Outside this range
+ * `tSatFromH` cannot represent the state and silently returns the bracket edge,
+ * so callers must test with `hWithinSatRange` before trusting the result.
+ */
+export const T_SAT_MIN = -20;
+export const T_SAT_MAX = 90;
+
+/**
+ * True when an enthalpy can actually be inverted onto the saturation curve.
+ * A fill-exit enthalpy above the top of the range means the air would have to
+ * leave hotter than any state this model represents — that is no solution,
+ * not a hot one.
+ */
+export function hWithinSatRange(h: number, p: number): boolean {
+  return h >= hSat(T_SAT_MIN, p) && h <= hSat(T_SAT_MAX, p);
+}
+
+/**
  * Temperature of saturated air with a given enthalpy — inverts hSat.
  * Used to find the fill-exit state: we know the exit enthalpy from the energy
  * balance and that the air leaves saturated, which fixes the temperature.
  * Monotone in T, so a bisection converges cleanly.
+ *
+ * Clamps to the bracket when `h` is out of range — guard with `hWithinSatRange`.
  */
 export function tSatFromH(h: number, p: number): number {
-  let lo = -20;
-  let hi = 90;
+  let lo = T_SAT_MIN;
+  let hi = T_SAT_MAX;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     if (hSat(mid, p) < h) lo = mid;

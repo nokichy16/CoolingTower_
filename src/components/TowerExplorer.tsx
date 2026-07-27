@@ -1,56 +1,97 @@
-import { useState } from 'react'
 import type { TowerResults } from '../lib/model'
-import { buildStages, type StageId } from '../lib/stages'
+import { buildStages, type Metric, type StageId } from '../lib/stages'
 import TowerGraphic from './TowerGraphic'
 
+function Tiles({ metrics }: { metrics: Metric[] }) {
+  return (
+    <div className="metrics">
+      {metrics.map((m) => (
+        <div className="metric" key={m.sym}>
+          <span className="metric-sym">{m.sym}</span>
+          <span className="metric-val">
+            {m.value}
+            <span className="metric-unit">{m.unit}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /**
- * The cooling-tower air path as an interactive cutaway. The illustrated tower
- * carries one key metric per stage; selecting a stage (on the tower or its
- * label) opens its full engineering readout beside it.
+ * The cooling-tower air path as an interactive cutaway plus a readout of every
+ * station at once.
+ *
+ * Every station's own outputs stay visible in a fixed layout. Selecting a tower
+ * region changes only the input panel; it does not highlight, expand or reorder
+ * these output cards. State and engineering values use their own disclosure so
+ * they are available without being tied to input selection.
  */
-export default function TowerExplorer({ r }: { r: TowerResults }) {
-  const [selected, setSelected] = useState<StageId>('fill')
+export default function TowerExplorer({
+  r,
+  selected,
+  onSelect,
+}: {
+  r: TowerResults
+  selected: StageId
+  onSelect: (id: StageId) => void
+}) {
   const stages = buildStages(r)
-  const stage = stages.find((s) => s.id === selected)!
 
   return (
     <div className="tower-explorer">
-      <TowerGraphic r={r} selected={selected} onSelect={setSelected} />
+      <TowerGraphic r={r} selected={selected} onSelect={onSelect} />
 
-      <div className="stage-detail" style={{ ['--accent' as string]: stage.accent }}>
-        <div className="stage-detail-head">
-          <span className="stage-detail-index">{stage.index}</span>
-          <div>
-            <h4>{stage.name}</h4>
-            <div className="stage-tabs">
-              {stages.map((s) => (
-                <button
-                  key={s.id}
-                  className={`stage-tab ${s.id === selected ? 'is-active' : ''}`}
-                  style={{ ['--accent' as string]: s.accent }}
-                  onClick={() => setSelected(s.id)}
-                  aria-label={`Show ${s.name}`}
-                >
-                  {s.index}
-                </button>
-              ))}
+      <div className="stations">
+        {stages.map((s) => (
+          <section
+            key={s.id}
+            className="station"
+            style={{ ['--accent' as string]: s.accent }}
+          >
+            <div className="station-head">
+              <span className="station-index">{s.index}</span>
+              <span className="station-name">{s.name}</span>
             </div>
-          </div>
-        </div>
 
-        <p className="stage-detail-blurb">{stage.blurb}</p>
+            {s.local.length > 0 && <Tiles metrics={s.local} />}
 
-        <div className="metrics">
-          {stage.metrics.map((m) => (
-            <div className="metric" key={m.sym}>
-              <span className="metric-sym">{m.sym}</span>
-              <span className="metric-val">
-                {m.value}
-                <span className="metric-unit">{m.unit}</span>
-              </span>
-            </div>
-          ))}
-        </div>
+            <details className="stage-details station-details">
+              <summary>State &amp; engineering</summary>
+              <div className="station-expand">
+                <p className="station-blurb">{s.blurb}</p>
+
+                <h5 className="station-sub">
+                  Air leaving
+                  {s.stateCarriedFrom && (
+                    <span className="carried-tag">
+                      unchanged from {s.stateCarriedFrom}
+                    </span>
+                  )}
+                </h5>
+                {s.stateCarriedFrom ? (
+                  <p className="carried-state">
+                    {s.state.map((m, i) => (
+                      <span key={m.sym}>
+                        {i > 0 && <i className="sep">·</i>}
+                        <b>{m.sym}</b> {m.value} <i className="u">{m.unit}</i>
+                      </span>
+                    ))}
+                  </p>
+                ) : (
+                  <Tiles metrics={s.state} />
+                )}
+
+                {s.details.length > 0 && (
+                  <section className="station-engineering">
+                    <h5 className="station-sub">Engineering details</h5>
+                    <Tiles metrics={s.details} />
+                  </section>
+                )}
+              </div>
+            </details>
+          </section>
+        ))}
       </div>
     </div>
   )

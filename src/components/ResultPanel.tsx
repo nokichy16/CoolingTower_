@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import type { TowerResults } from '../lib/model'
 import { hSat, omegaSat } from '../lib/psychrometrics'
-import { fmt, sig } from '../lib/format'
+import { fmt } from '../lib/format'
 
 /** e = Δh / Δω swept over condensing temperature, from the fixed exhaust state. */
 function sweep(r: TowerResults) {
@@ -36,7 +36,6 @@ function WaterBalanceFlow({ r }: { r: TowerResults }) {
   const losses = [
     { label: 'Evaporation', value: r.water.evap, className: 'flow-evap' },
     { label: 'Drift', value: r.water.drift, className: 'flow-drift' },
-    { label: 'Blowdown', value: r.water.blowdown, className: 'flow-blowdown' },
   ]
 
   return (
@@ -48,11 +47,12 @@ function WaterBalanceFlow({ r }: { r: TowerResults }) {
         </div>
         <div className="water-flow-kpis">
           <div>
-            <span>Gross makeup</span>
+            <span>Modeled makeup</span>
             <strong>{fmt(r.water.makeup, 2)} kg/s</strong>
+            <small>evaporation + drift</small>
           </div>
           <div>
-            <span>Potential net makeup</span>
+            <span>Potential net modeled makeup</span>
             <strong>{fmt(netMakeupIfReused, 2)} kg/s</strong>
             <small>if all condensate is reused</small>
           </div>
@@ -62,7 +62,7 @@ function WaterBalanceFlow({ r }: { r: TowerResults }) {
       <div
         className="water-flow-list"
         role="img"
-        aria-label={`Gross makeup ${fmt(r.water.makeup, 2)} kilograms per second splits into evaporation ${fmt(r.water.evap, 2)}, drift ${fmt(r.water.drift, 3)}, and blowdown ${fmt(r.water.blowdown, 2)} kilograms per second. Recovery captures ${fmt(recoveredFromEvaporation, 2)} kilograms per second from the evaporation stream.`}
+        aria-label={`Modeled makeup ${fmt(r.water.makeup, 2)} kilograms per second consists of evaporation ${fmt(r.water.evap, 2)} and drift ${fmt(r.water.drift, 3)} kilograms per second. Blowdown is not included. Recovery captures ${fmt(recoveredFromEvaporation, 2)} kilograms per second from the evaporation stream.`}
       >
         {losses.map((loss) => {
           const share = Math.max(0, Math.min(100, (loss.value / grossMakeup) * 100))
@@ -98,6 +98,7 @@ function WaterBalanceFlow({ r }: { r: TowerResults }) {
           <span>+ {fmt(ambientMoistureCaptured, 2)} kg/s ambient moisture captured</span>
         )}
       </div>
+      <p className="card-note">Blowdown and water-treatment losses are excluded for now.</p>
     </div>
   )
 }
@@ -106,87 +107,65 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
   const c = r.condensed
   const data = sweep(r)
   const latFrac = c.dH > 0 ? Math.max(0, Math.min(1, c.qLat / c.dH)) : 0
-  const warnings: { title: string; message: string }[] = []
 
-  if (!c.feasible) {
-    warnings.push({
+  // Solver issues first — an error there means nothing below describes a real
+  // tower. The recovery-target check is local to this panel.
+  type Alert = {
+    code: string
+    severity: 'error' | 'warning'
+    title: string
+    message: string
+  }
+  const alerts: Alert[] = [...r.issues]
+  if (r.valid && !c.feasible) {
+    alerts.push({
+      code: 'condensation-infeasible',
+      severity: 'warning',
       title: 'Condensation is not feasible',
       message: `Set the recovery target below the ${fmt(r.exhaust.t)} °C exhaust temperature.`,
     })
   }
 
-  if (r.water.blowdown <= 1e-9) {
-    warnings.push({
-      title: 'Blowdown is floored at zero',
-      message: 'The current cycles and drift inputs produce a negative calculated blowdown, so the model applies its physical zero limit.',
-    })
-  }
-
   return (
-    <div className="results">
-      <div className="headline">
-        <div className="headline-main">
-          <span className="headline-label">Energy per kg water recovered</span>
-          <div className="headline-value">
-            <span className="headline-sym">e</span>
-            {c.feasible ? (
-              <>
-                <strong>{fmt(c.e, 0)}</strong>
-                <span className="headline-unit">kJ/kg</span>
-              </>
-            ) : (
-              <span className="headline-na">
-                condense below {fmt(r.exhaust.t, 1)} °C to recover water
-              </span>
-            )}
-          </div>
-        </div>
-        <p className="headline-note">
-          Δh {fmt(c.dH)} kJ/kg ÷ Δω {sig(c.dOmega, 3)} kg/kg — the energy that must
-          leave to drop one kilogram of water out of the exhaust.
-        </p>
-      </div>
-
-      {warnings.length > 0 && (
+    <div className={`results${r.valid ? '' : ' is-invalid'}`}>
+      {alerts.length > 0 && (
         <div className="result-alerts" role="status">
-          {warnings.map((warning) => (
-            <div className="result-alert" key={warning.title}>
-              <strong>{warning.title}</strong>
-              <span>{warning.message}</span>
+          {alerts.map((a) => (
+            <div className={`result-alert is-${a.severity}`} key={a.code}>
+              <strong>{a.title}</strong>
+              <span>{a.message}</span>
             </div>
           ))}
         </div>
       )}
 
-      <div className="result-grid result-grid-primary">
+      {/* Where Δh actually goes. Latent dominates at shallow cooling and the
+          sensible share grows as you cool deeper — that shift is the reason e
+          moves. The condensed-state values themselves live on station 6. */}
+      {c.feasible && (
         <div className="card">
-          <h4>Condensed state · 5</h4>
-          <div className="kv"><span>T₅</span><b>{fmt(c.t)} °C</b></div>
-          <div className="kv"><span>ω₅</span><b>{sig(c.omega, 3)} kg/kg</b></div>
-          <div className="kv"><span>Δω</span><b>{sig(c.dOmega, 3)} kg/kg</b></div>
-          <div className="kv"><span>Δh</span><b>{fmt(c.dH)} kJ/kg</b></div>
-          <div className="kv"><span>ṁ_c</span><b>{fmt(c.mDotCond, 2)} kg/s</b></div>
-          <div className="kv"><span>Q̇_rec</span><b>{fmt(c.qDuty, 0)} kW</b></div>
-        </div>
-
-        <div className="card">
-          <h4>Latent / sensible split</h4>
-          <div className="split-bar">
-            <div className="split-lat" style={{ width: `${latFrac * 100}%` }}>
-              {latFrac > 0.12 && `${Math.round(latFrac * 100)}%`}
-            </div>
-            <div className="split-sen" style={{ width: `${(1 - latFrac) * 100}%` }}>
-              {1 - latFrac > 0.12 && `${Math.round((1 - latFrac) * 100)}%`}
-            </div>
+          <div className="split-head">
+            <span>Δh split · station 6</span>
+            <span className="split-nums">
+              q_lat {fmt(c.qLat)} · q_sen {fmt(c.qSen)} kJ/kg
+            </span>
           </div>
-          <div className="kv"><span>q_lat</span><b>{fmt(c.qLat)} kJ/kg</b></div>
-          <div className="kv"><span>q_sen</span><b>{fmt(c.qSen)} kJ/kg</b></div>
-          <p className="card-note">
-            Most of the duty is latent — the cost of condensing vapour is what
-            makes recovery expensive.
-          </p>
+          <div
+            className="split-bar"
+            role="img"
+            aria-label={`Latent ${Math.round(latFrac * 100)} percent, sensible ${Math.round(
+              (1 - latFrac) * 100,
+            )} percent of the energy released`}
+          >
+            <span className="split-lat" style={{ width: `${latFrac * 100}%` }}>
+              {latFrac > 0.18 && `${Math.round(latFrac * 100)}% latent`}
+            </span>
+            <span className="split-sen" style={{ width: `${(1 - latFrac) * 100}%` }}>
+              {1 - latFrac > 0.18 && `${Math.round((1 - latFrac) * 100)}% sensible`}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       <WaterBalanceFlow r={r} />
 
