@@ -8,57 +8,43 @@ import ResultPanel from './components/ResultPanel'
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
-  const [selectedStage, setSelectedStage] = useState<StageId>('fill')
+  const [selectedStage, setSelectedStage] = useState<StageId>('plume')
   const results = useMemo(() => solveTower(inputs), [inputs])
 
   const patch = (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p }))
   const reset = () => setInputs(DEFAULT_INPUTS)
-  const firstError = results.issues.find((issue) => issue.severity === 'error')
   const firstWarning = results.issues.find((issue) => issue.severity === 'warning')
-  const recoveryWarning = results.valid && !results.condensed.feasible
-  const statusLevel = firstError
-    ? 'error'
-    : firstWarning || recoveryWarning
-      ? 'warning'
-      : 'valid'
-  const statusTitle = firstError
-    ? firstError.title
-    : recoveryWarning
-      ? 'Recovery target needs attention'
-      : firstWarning
-        ? firstWarning.title
-        : 'Valid operating point'
-  const statusDetail = firstError
-    ? 'Derived panels are dimmed until this is corrected.'
-    : recoveryWarning
-      ? `Set T₅ below the ${fmt(results.exhaust.t)} °C exhaust temperature.`
-      : firstWarning
-        ? 'The result is visible, but one empirical range is extrapolated.'
-        : 'Physical guards and correlation ranges pass.'
+  const statusLevel = firstWarning ? 'warning' : 'valid'
+  const statusTitle = firstWarning
+    ? firstWarning.title
+    : 'Inputs within supported ranges'
+  const statusDetail = firstWarning
+    ? 'The result remains visible; review the warning below.'
+    : 'Plume state, condensation and Ruiz checks pass.'
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>Data Center Cooling</h1>
-          <span className="subtitle">Interactive heat-rejection and water-recovery explorer</span>
+          <h1>Plume Water Recovery</h1>
+          <span className="subtitle">
+            Adjustable exhaust, droplet reduction and condensation
+          </span>
         </div>
         <div className="status-summary" role="status" aria-live="polite">
           <div className="status-primary">
-            <span>Energy per kg recovered</span>
+            <span>Estimated recovered water</span>
             <strong>
-              {results.valid && results.condensed.feasible
-                ? `e = ${fmt(results.condensed.e, 0)} kJ/kg`
-                : 'e = —'}
+              {`${fmt(results.recovery.mDotRecovered, 2)} kg/s`}
             </strong>
           </div>
           <div className="status-stat">
-            <span>Recovered water</span>
-            <strong>{results.valid ? `${fmt(results.condensed.mDotCond, 2)} kg/s` : '—'}</strong>
+            <span>Droplets removed</span>
+            <strong>{fmt(results.droplets.reductionPct, 1)}%</strong>
           </div>
           <div className="status-stat">
-            <span>Required static pressure</span>
-            <strong>{results.valid ? `${fmt(results.fan.dpTotal, 0)} Pa` : '—'}</strong>
+            <span>Approx. cooling duty</span>
+            <strong>{fmt(results.recovery.qDuty, 0)} kW</strong>
           </div>
           <div className={`status-state is-${statusLevel}`}>
             <i aria-hidden="true" />
@@ -70,14 +56,14 @@ export default function App() {
         </div>
       </header>
 
-      <div className={`page${results.valid ? '' : ' is-invalid'}`}>
-        {/* When there is no physical solution the stage values are arithmetic,
-            not an operating point — dim them so they don't read as data. */}
+      <div className="page">
         <div className="workspace">
           <section className="panel visual-panel">
             <div className="panel-head">
-              <h2>Cooling-tower air path</h2>
-              <span className="panel-sub">select a tower stage for its full state</span>
+              <h2>Plume-to-water process</h2>
+              <span className="panel-sub">
+                select a section to change its inputs
+              </span>
             </div>
             <div className="panel-body">
               <TowerExplorer
@@ -89,6 +75,7 @@ export default function App() {
           </section>
           <Controls
             inputs={inputs}
+            results={results}
             selectedStage={selectedStage}
             onChange={patch}
             onReset={reset}
@@ -99,7 +86,9 @@ export default function App() {
           <section className="panel">
             <div className="panel-head">
               <h2>Engineering output</h2>
-              <span className="panel-sub">enthalpy, moisture and water balance</span>
+              <span className="panel-sub">
+                droplet reduction and vapour recovery
+              </span>
             </div>
             <div className="panel-body">
               <ResultPanel r={results} />

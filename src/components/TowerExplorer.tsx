@@ -18,15 +18,7 @@ function Tiles({ metrics }: { metrics: Metric[] }) {
   )
 }
 
-/**
- * The cooling-tower air path as an interactive cutaway plus a readout of every
- * station at once.
- *
- * Every station's own outputs stay visible in a fixed layout. Selecting a tower
- * region changes only the input panel; it does not highlight, expand or reorder
- * these output cards. State and engineering values use their own disclosure so
- * they are available without being tied to input selection.
- */
+/** Interactive plume process plus an always-visible summary of all three steps. */
 export default function TowerExplorer({
   r,
   selected,
@@ -61,26 +53,8 @@ export default function TowerExplorer({
               <div className="station-expand">
                 <p className="station-blurb">{s.blurb}</p>
 
-                <h5 className="station-sub">
-                  Air leaving
-                  {s.stateCarriedFrom && (
-                    <span className="carried-tag">
-                      unchanged from {s.stateCarriedFrom}
-                    </span>
-                  )}
-                </h5>
-                {s.stateCarriedFrom ? (
-                  <p className="carried-state">
-                    {s.state.map((m, i) => (
-                      <span key={m.sym}>
-                        {i > 0 && <i className="sep">·</i>}
-                        <b>{m.sym}</b> {m.value} <i className="u">{m.unit}</i>
-                      </span>
-                    ))}
-                  </p>
-                ) : (
-                  <Tiles metrics={s.state} />
-                )}
+                <h5 className="station-sub">State &amp; correlation values</h5>
+                <Tiles metrics={s.state} />
 
                 {s.details.length > 0 && (
                   <section className="station-engineering">

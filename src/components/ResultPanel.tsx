@@ -10,219 +10,250 @@ import {
 } from 'recharts'
 import type { TowerResults } from '../lib/model'
 import { hSat, omegaSat } from '../lib/psychrometrics'
-import { fmt } from '../lib/format'
+import { fmt, sig } from '../lib/format'
 
-/** e = Δh / Δω swept over condensing temperature, from the fixed exhaust state. */
-function sweep(r: TowerResults) {
-  const p = r.inputs.pressure
-  const { h: h4, omega: w4, t: t4 } = r.exhaust
-  const pts: { t: number; e: number }[] = []
-  for (let t = 2; t < t4 - 0.5; t += 0.5) {
-    const dW = w4 - omegaSat(t, p)
-    const dH = h4 - hSat(t, p)
-    if (dW > 1e-6) pts.push({ t, e: dH / dW })
-  }
-  return pts
-}
+function recoverySweep(r: TowerResults) {
+  const points: {
+    depth: number
+    recovered: number
+    duty: number
+  }[] = []
 
-function WaterBalanceFlow({ r }: { r: TowerResults }) {
-  const grossMakeup = Math.max(r.water.makeup, 1e-9)
-  const recoveredFromEvaporation = Math.min(r.condensed.mDotCond, r.water.evap)
-  const ambientMoistureCaptured = Math.max(0, r.condensed.mDotCond - r.water.evap)
-  const recoveryShare =
-    r.water.evap > 0 ? (recoveredFromEvaporation / r.water.evap) * 100 : 0
-  const netMakeupIfReused = Math.max(0, r.water.makeup - r.condensed.mDotCond)
-
-  const losses = [
-    { label: 'Evaporation', value: r.water.evap, className: 'flow-evap' },
-    { label: 'Drift', value: r.water.drift, className: 'flow-drift' },
-  ]
-
-  return (
-    <div className="card water-flow-card">
-      <div className="water-flow-head">
-        <div>
-          <h4>Water-balance flow</h4>
-          <p className="card-note">Every bar uses the same mass-flow scale.</p>
-        </div>
-        <div className="water-flow-kpis">
-          <div>
-            <span>Modeled makeup</span>
-            <strong>{fmt(r.water.makeup, 2)} kg/s</strong>
-            <small>evaporation + drift</small>
-          </div>
-          <div>
-            <span>Potential net modeled makeup</span>
-            <strong>{fmt(netMakeupIfReused, 2)} kg/s</strong>
-            <small>if all condensate is reused</small>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="water-flow-list"
-        role="img"
-        aria-label={`Modeled makeup ${fmt(r.water.makeup, 2)} kilograms per second consists of evaporation ${fmt(r.water.evap, 2)} and drift ${fmt(r.water.drift, 3)} kilograms per second. Blowdown is not included. Recovery captures ${fmt(recoveredFromEvaporation, 2)} kilograms per second from the evaporation stream.`}
-      >
-        {losses.map((loss) => {
-          const share = Math.max(0, Math.min(100, (loss.value / grossMakeup) * 100))
-          return (
-            <div className="water-flow-row" key={loss.label}>
-              <div className="water-flow-label">
-                <span>{loss.label}</span>
-                <strong>{fmt(loss.value, loss.label === 'Drift' ? 3 : 2)} kg/s</strong>
-              </div>
-              <div className="water-flow-track" aria-hidden="true">
-                <span
-                  className={`water-flow-bar ${loss.className}`}
-                  style={{ width: `${share}%` }}
-                >
-                  {loss.label === 'Evaporation' && (
-                    <span
-                      className="water-flow-recovered"
-                      style={{ width: `${recoveryShare}%` }}
-                    />
-                  )}
-                </span>
-              </div>
-              <span className="water-flow-share">{fmt(share, 1)}%</span>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="water-flow-legend">
-        <span><i className="legend-swatch legend-recovered" />Recovered from evaporation</span>
-        <span><i className="legend-swatch legend-vapour" />Unrecovered evaporation</span>
-        {ambientMoistureCaptured > 1e-6 && (
-          <span>+ {fmt(ambientMoistureCaptured, 2)} kg/s ambient moisture captured</span>
-        )}
-      </div>
-      <p className="card-note">Blowdown and water-treatment losses are excluded for now.</p>
-    </div>
-  )
-}
-
-export default function ResultPanel({ r }: { r: TowerResults }) {
-  const c = r.condensed
-  const data = sweep(r)
-  const latFrac = c.dH > 0 ? Math.max(0, Math.min(1, c.qLat / c.dH)) : 0
-
-  // Solver issues first — an error there means nothing below describes a real
-  // tower. The recovery-target check is local to this panel.
-  type Alert = {
-    code: string
-    severity: 'error' | 'warning'
-    title: string
-    message: string
-  }
-  const alerts: Alert[] = [...r.issues]
-  if (r.valid && !c.feasible) {
-    alerts.push({
-      code: 'condensation-infeasible',
-      severity: 'warning',
-      title: 'Condensation is not feasible',
-      message: `Set the recovery target below the ${fmt(r.exhaust.t)} °C exhaust temperature.`,
+  for (let depth = 0; depth <= 25; depth += 0.5) {
+    const t = r.plume.dewPoint - depth
+    const dOmega = Math.max(
+      0,
+      r.plume.omega - omegaSat(t, r.inputs.pressure),
+    )
+    const dH = Math.max(0, r.plume.h - hSat(t, r.inputs.pressure))
+    points.push({
+      depth,
+      recovered:
+        r.inputs.airMassFlow * dOmega * r.inputs.recoveryEfficiency,
+      duty: r.inputs.airMassFlow * dH,
     })
   }
 
+  return points
+}
+
+export default function ResultPanel({ r }: { r: TowerResults }) {
+  const data = recoverySweep(r)
+
   return (
-    <div className={`results${r.valid ? '' : ' is-invalid'}`}>
-      {alerts.length > 0 && (
+    <div className="results">
+      {r.issues.length > 0 && (
         <div className="result-alerts" role="status">
-          {alerts.map((a) => (
-            <div className={`result-alert is-${a.severity}`} key={a.code}>
-              <strong>{a.title}</strong>
-              <span>{a.message}</span>
+          {r.issues.map((issue) => (
+            <div
+              className={`result-alert is-${issue.severity}`}
+              key={issue.code}
+            >
+              <strong>{issue.title}</strong>
+              <span>{issue.message}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Where Δh actually goes. Latent dominates at shallow cooling and the
-          sensible share grows as you cool deeper — that shift is the reason e
-          moves. The condensed-state values themselves live on station 6. */}
-      {c.feasible && (
-        <div className="card">
-          <div className="split-head">
-            <span>Δh split · station 6</span>
-            <span className="split-nums">
-              q_lat {fmt(c.qLat)} · q_sen {fmt(c.qSen)} kJ/kg
-            </span>
+      <div className="result-grid">
+        <section className="card droplet-card">
+          <div className="result-card-head">
+            <div>
+              <span className="eyebrow">Liquid droplets</span>
+              <h4>Reduction after the eliminator</h4>
+            </div>
+            <strong className="result-hero droplet-hero">
+              {fmt(r.droplets.reductionPct, 1)}%
+            </strong>
           </div>
+
           <div
-            className="split-bar"
+            className="reduction-comparison"
             role="img"
-            aria-label={`Latent ${Math.round(latFrac * 100)} percent, sensible ${Math.round(
-              (1 - latFrac) * 100,
-            )} percent of the energy released`}
+            aria-label={`${fmt(
+              r.droplets.reductionPct,
+              1,
+            )} percent of selected droplets removed and ${fmt(
+              r.droplets.remainingPct,
+              1,
+            )} percent remaining`}
           >
-            <span className="split-lat" style={{ width: `${latFrac * 100}%` }}>
-              {latFrac > 0.18 && `${Math.round(latFrac * 100)}% latent`}
+            <span
+              className="removed"
+              style={{ width: `${r.droplets.reductionPct}%` }}
+            >
+              Removed
             </span>
-            <span className="split-sen" style={{ width: `${(1 - latFrac) * 100}%` }}>
-              {1 - latFrac > 0.18 && `${Math.round((1 - latFrac) * 100)}% sensible`}
+            <span
+              className="remaining"
+              style={{ width: `${r.droplets.remainingPct}%` }}
+            >
+              {r.droplets.remainingPct > 12 ? 'Remaining' : ''}
             </span>
           </div>
-        </div>
-      )}
 
-      <WaterBalanceFlow r={r} />
+          <div className="compact-kpis">
+            <div>
+              <span>Selected size</span>
+              <strong>{fmt(r.inputs.dropletDiameter, 0)} µm</strong>
+            </div>
+            <div>
+              <span>Remaining</span>
+              <strong>{fmt(r.droplets.remainingPct, 1)}%</strong>
+            </div>
+            <div>
+              <span>Stokes number</span>
+              <strong>{fmt(r.eliminator.stokes, 2)}</strong>
+            </div>
+            <div>
+              <span>Supported size now</span>
+              <strong>
+                {fmt(r.droplets.supportedDiameterMin, 0)}–
+                {fmt(r.droplets.supportedDiameterMax, 0)} µm
+              </strong>
+            </div>
+          </div>
+          <p className="card-note">
+            This is the Ruiz single-size collection result. It does not claim a
+            mass-flow reduction for an unknown real droplet-size distribution.
+          </p>
+        </section>
 
-      <div className="card chart-card">
-        <h4>e versus condensing temperature</h4>
+        <section className="card recovery-card">
+          <div className="result-card-head">
+            <div>
+              <span className="eyebrow">Water vapour</span>
+              <h4>Condensation recovery</h4>
+            </div>
+            <strong className="result-hero">
+              {fmt(r.recovery.mDotRecovered, 2)} kg/s
+            </strong>
+          </div>
+
+          <div className="compact-kpis">
+            <div>
+              <span>Theoretical condensate</span>
+              <strong>{fmt(r.recovery.mDotCond, 2)} kg/s</strong>
+            </div>
+            <div>
+              <span>Estimated daily recovery</span>
+              <strong>{fmt(r.recovery.volumePerDay, 0)} m³/day</strong>
+            </div>
+            <div>
+              <span>Approx. cooling duty</span>
+              <strong>{fmt(r.recovery.qDuty, 0)} kW</strong>
+            </div>
+            <div>
+              <span>Energy per kg condensed</span>
+              <strong>{fmt(r.recovery.e, 0)} kJ/kg</strong>
+            </div>
+          </div>
+
+          <div className="state-line">
+            <span>
+              Exhaust <b>{fmt(r.plume.t)} °C</b>
+            </span>
+            <i>→</i>
+            <span>
+              Dew point <b>{fmt(r.plume.dewPoint)} °C</b>
+            </span>
+            <i>→</i>
+            <span>
+              Outlet <b>{fmt(r.recovery.t)} °C</b>
+            </span>
+          </div>
+          <p className="card-note">
+            Δω {sig(r.recovery.dOmega, 3)} kg/kg · Δh{' '}
+            {fmt(r.recovery.dH)} kJ/kg dry air. Cooling duty is an approximate
+            air-side load, not equipment selection.
+          </p>
+        </section>
+      </div>
+
+      <section className="card chart-card">
+        <h4>Recovered water versus cooling below dew point</h4>
         <p className="card-note">
-          How far you cool the exhaust sets the recovery cost. The marker is your
-          current target.
+          The curve uses the selected plume, dry-air flow and recovery
+          efficiency. The marker is the current setting.
         </p>
         <div className="chart">
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={data} margin={{ top: 26, right: 28, bottom: 4, left: 4 }}>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart
+              data={data}
+              margin={{ top: 28, right: 28, bottom: 6, left: 4 }}
+            >
               <XAxis
-                dataKey="t"
+                dataKey="depth"
                 type="number"
-                domain={['dataMin', 'dataMax']}
+                domain={[0, 25]}
                 tick={{ fill: '#8a94a6', fontSize: 11 }}
-                tickFormatter={(v) => `${v}`}
                 stroke="#2c3444"
-                label={{ value: 'T₅  (°C)', position: 'insideBottom', offset: -2, fill: '#8a94a6', fontSize: 11 }}
+                label={{
+                  value: 'Cooling below dew point  (K)',
+                  position: 'insideBottom',
+                  offset: -2,
+                  fill: '#8a94a6',
+                  fontSize: 11,
+                }}
               />
               <YAxis
                 tick={{ fill: '#8a94a6', fontSize: 11 }}
                 stroke="#2c3444"
-                width={48}
-                label={{ value: 'e  kJ/kg', angle: -90, position: 'insideLeft', fill: '#8a94a6', fontSize: 11 }}
+                width={56}
+                label={{
+                  value: 'kg/s recovered',
+                  angle: -90,
+                  position: 'insideLeft',
+                  fill: '#8a94a6',
+                  fontSize: 11,
+                }}
               />
               <Tooltip
-                contentStyle={{ background: '#141a24', border: '1px solid #2c3444', borderRadius: 8, fontSize: 12 }}
+                contentStyle={{
+                  background: '#141a24',
+                  border: '1px solid #2c3444',
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
                 labelStyle={{ color: '#cdd6e4' }}
-                formatter={(v: number) => [`${fmt(v, 0)} kJ/kg`, 'e']}
-                labelFormatter={(v) => `T₅ = ${v} °C`}
+                formatter={(value: number, name: string) =>
+                  name === 'recovered'
+                    ? [`${fmt(value, 2)} kg/s`, 'Recovered water']
+                    : [`${fmt(value, 0)} kW`, 'Cooling duty']
+                }
+                labelFormatter={(value) => `${value} K below dew point`}
               />
-              {c.feasible && (
-                <>
-                  <ReferenceLine x={c.t} stroke="#ff9f45" strokeDasharray="4 3" />
-                  <ReferenceDot
-                    x={c.t}
-                    y={c.e}
-                    r={5}
-                    fill="#ff9f45"
-                    stroke="#0c0f14"
-                    strokeWidth={2}
-                    label={{
-                      value: `${fmt(c.e, 0)} kJ/kg`,
-                      position: 'top',
-                      fill: '#ff9f45',
-                      fontSize: 11,
-                    }}
-                  />
-                </>
-              )}
-              <Line type="monotone" dataKey="e" stroke="#34d1bf" strokeWidth={2} dot={false} />
+              <ReferenceLine
+                x={r.inputs.coolingBelowDewPoint}
+                stroke="#ff9f45"
+                strokeDasharray="4 3"
+              />
+              <ReferenceDot
+                x={r.inputs.coolingBelowDewPoint}
+                y={r.recovery.mDotRecovered}
+                r={5}
+                fill="#ff9f45"
+                stroke="#0c0f14"
+                strokeWidth={2}
+                label={{
+                  value: `${fmt(r.recovery.mDotRecovered, 2)} kg/s`,
+                  position: 'top',
+                  fill: '#ff9f45',
+                  fontSize: 11,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="recovered"
+                stroke="#34d1bf"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
