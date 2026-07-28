@@ -17,13 +17,6 @@ export default function App() {
     (issue) => !issue.code.startsWith('ruiz-'),
   )
   const firstWarning = visibleIssues.find((issue) => issue.severity === 'warning')
-  const statusLevel = firstWarning ? 'warning' : 'valid'
-  const statusTitle = firstWarning
-    ? firstWarning.title
-    : 'Calculation ready'
-  const statusDetail = firstWarning
-    ? 'The result remains visible; review the warning below.'
-    : 'Plume, droplet and recovery outputs are updated.'
 
   return (
     <div className="app">
@@ -36,27 +29,32 @@ export default function App() {
         </div>
         <div className="status-summary" role="status" aria-live="polite">
           <div className="status-primary">
-            <span>Estimated recovered water</span>
+            <span>Energy required per kilogram</span>
             <strong>
-              {`${fmt(results.recovery.mDotRecovered, 2)} kg/s`}
+              {results.recovery.feasible
+                ? `${fmt(results.recovery.e, 0)} kJ/kg`
+                : '—'}
             </strong>
+          </div>
+          <div className="status-stat">
+            <span>Theoretical recovery</span>
+            <strong>{fmt(results.recovery.mDotCond, 2)} kg/s</strong>
+          </div>
+          <div className="status-stat">
+            <span>Cooling duty</span>
+            <strong>{fmt(results.recovery.qDuty, 0)} kW</strong>
           </div>
           <div className="status-stat">
             <span>Droplets removed</span>
             <strong>{fmt(results.droplets.reductionPct, 1)}%</strong>
           </div>
-          <div className="status-stat">
-            <span>Approx. cooling duty</span>
-            <strong>{fmt(results.recovery.qDuty, 0)} kW</strong>
-          </div>
-          <div className={`status-state is-${statusLevel}`}>
-            <i aria-hidden="true" />
-            <div>
-              <strong>{statusTitle}</strong>
-              <small>{statusDetail}</small>
-            </div>
-          </div>
         </div>
+        {firstWarning && (
+          <div className="header-warning" role="alert">
+            <strong>{firstWarning.title}</strong>
+            <span>{firstWarning.message}</span>
+          </div>
+        )}
       </header>
 
       <div className="page">

@@ -30,9 +30,12 @@ The plume leaving the fill is prescribed directly:
 - exhaust relative humidity `RH₄`
 - atmospheric pressure `P`
 - dry-air mass flow `ṁ_a`
+- plume velocity `u₄`
 
 The app does not force the plume to saturation. It calculates humidity ratio,
-enthalpy, density, volumetric flow and dew point from the selected state.
+enthalpy, density, volumetric flow and dew point from the selected state. Plume
+velocity is used with volumetric flow to calculate the implied discharge area:
+`A_plume = V̇/u₄`. It is separate from the eliminator face velocity.
 
 Liquid-droplet performance is controlled separately:
 
@@ -43,11 +46,11 @@ Liquid-droplet performance is controlled separately:
 Vapour recovery uses:
 
 - cooling below the calculated dew point `ΔT_dew`
-- condensate capture efficiency `η_rec`
 
-The original cooling-tower cutaway remains the visual navigation. Its inlet,
-fill, fan and exhaust regions open the plume inputs; the drift eliminator opens
-the liquid-droplet inputs; the side recovery unit opens the condensation inputs.
+The original cooling-tower cutaway remains the visual navigation, with four
+modelled stations: plume, drift eliminator, fan and condensation recovery.
+The water-side hardware remains as subdued context because this version does
+not calculate the fill or tower water loop.
 
 ## Calculations
 
@@ -68,36 +71,41 @@ and cooling duty.
 St = ρ_water u_de d_d² / (18 μ Lc)
 droplets removed (%) = 100 ε(St)
 droplets remaining (%) = 100[1 − ε(St)]
+P_air = V̇ Δp_de
 ```
 
 `ε` is the Ruiz collection efficiency for the selected representative droplet
 size. It is not an overall mass-removal claim for an unknown real droplet-size
 distribution.
 
-The app shows the dynamically paper-supported diameter interval for the current
-velocity and eliminator. It is based on `0.2 ≤ St ≤ 2` and the paper's 25 µm
-measurement floor. Ruiz pressure support is checked with
-`2,000 ≤ Re ≤ 15,000` and `0.443 ≤ u_de ≤ 4.36 m/s`.
+The calculation retains the paper-supported diameter and operating-range checks
+internally. They are based on `0.2 ≤ St ≤ 2`, the paper's 25 µm measurement
+floor, `2,000 ≤ Re ≤ 15,000` and `0.443 ≤ u_de ≤ 4.36 m/s`.
+`P_air` is ideal air power for the eliminator pressure loss alone, not
+electrical motor power or whole-tower fan duty.
 
 ### Vapour recovery
 
 ```text
 T₅ = T_dew − ΔT_dew
+T₅ ≥ 0 °C
 ω₅ = ω_sat(T₅, P)
 
 Δω = ω₄ − ω₅
 ṁ_theory = ṁ_a Δω
-ṁ_recovered = η_rec ṁ_theory
-V_day = 86.4 ṁ_recovered
 
 Δh = h₄ − h₅
 Q̇_cooling ≈ ṁ_a Δh
 e = Δh / Δω
 ```
 
-`V_day` is in m³/day using 1000 kg/m³ for liquid water. Cooling duty is an
+The interface reports theoretical condensate only. Cooling duty is an
 approximate air-side load and should not be treated as recovery-equipment
-selection.
+selection. The interface labels `e` in plain language as energy required per
+kilogram.
+
+The 0 °C outlet limit keeps the recovery calculation inside the liquid-water
+saturation range used by the simplified psychrometric model.
 
 ## Source map
 

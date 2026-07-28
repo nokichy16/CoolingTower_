@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import type { TowerResults } from '../lib/model'
 import { hSat, omegaSat } from '../lib/psychrometrics'
-import { fmt, sig } from '../lib/format'
+import { fmt } from '../lib/format'
 
 function recoverySweep(r: TowerResults) {
   const points: {
@@ -20,7 +20,7 @@ function recoverySweep(r: TowerResults) {
   }[] = []
 
   for (let depth = 0; depth <= 25; depth += 0.5) {
-    const t = r.plume.dewPoint - depth
+    const t = Math.max(0, r.plume.dewPoint - depth)
     const dOmega = Math.max(
       0,
       r.plume.omega - omegaSat(t, r.inputs.pressure),
@@ -28,8 +28,7 @@ function recoverySweep(r: TowerResults) {
     const dH = Math.max(0, r.plume.h - hSat(t, r.inputs.pressure))
     points.push({
       depth,
-      recovered:
-        r.inputs.airMassFlow * dOmega * r.inputs.recoveryEfficiency,
+      recovered: r.inputs.airMassFlow * dOmega,
       duty: r.inputs.airMassFlow * dH,
     })
   }
@@ -63,8 +62,8 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
         <section className="card droplet-card">
           <div className="result-card-head">
             <div>
-              <span className="eyebrow">Liquid droplets</span>
-              <h4>Reduction after the eliminator</h4>
+              <span className="eyebrow">Drift eliminator</span>
+              <h4>Droplet reduction</h4>
             </div>
             <strong className="result-hero droplet-hero">
               {fmt(r.droplets.reductionPct, 1)}%
@@ -117,39 +116,31 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
               </strong>
             </div>
           </div>
-          <p className="card-note">
-            This is a single-size collection result. It does not claim a
-            mass-flow reduction for an unknown real droplet-size distribution.
-          </p>
         </section>
 
         <section className="card recovery-card">
           <div className="result-card-head">
             <div>
-              <span className="eyebrow">Water vapour</span>
-              <h4>Condensation recovery</h4>
+              <span className="eyebrow">Condensation recovery</span>
+              <h4>Energy required per kilogram</h4>
             </div>
             <strong className="result-hero">
-              {fmt(r.recovery.mDotRecovered, 2)} kg/s
+              {r.recovery.feasible ? `${fmt(r.recovery.e, 0)} kJ/kg` : '—'}
             </strong>
           </div>
 
           <div className="compact-kpis">
             <div>
-              <span>Theoretical condensate</span>
+              <span>Theoretical recovery</span>
               <strong>{fmt(r.recovery.mDotCond, 2)} kg/s</strong>
             </div>
             <div>
-              <span>Estimated daily recovery</span>
-              <strong>{fmt(r.recovery.volumePerDay, 0)} m³/day</strong>
-            </div>
-            <div>
-              <span>Approx. cooling duty</span>
+              <span>Cooling duty</span>
               <strong>{fmt(r.recovery.qDuty, 0)} kW</strong>
             </div>
             <div>
-              <span>Energy per kg condensed</span>
-              <strong>{fmt(r.recovery.e, 0)} kJ/kg</strong>
+              <span>Recovery outlet</span>
+              <strong>{fmt(r.recovery.t)} °C</strong>
             </div>
           </div>
 
@@ -166,19 +157,14 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
               Outlet <b>{fmt(r.recovery.t)} °C</b>
             </span>
           </div>
-          <p className="card-note">
-            Δω {sig(r.recovery.dOmega, 3)} kg/kg · Δh{' '}
-            {fmt(r.recovery.dH)} kJ/kg dry air. Cooling duty is an approximate
-            air-side load, not equipment selection.
-          </p>
         </section>
       </div>
 
       <section className="card chart-card">
         <h4>Recovered water versus cooling below dew point</h4>
         <p className="card-note">
-          The curve uses the selected plume, dry-air flow and recovery
-          efficiency. The marker is the current setting.
+          The curve shows theoretical condensation for the selected plume and
+          dry-air flow. The marker is the current setting.
         </p>
         <div className="chart">
           <ResponsiveContainer width="100%" height={250}>
@@ -205,7 +191,7 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
                 stroke="#2c3444"
                 width={56}
                 label={{
-                  value: 'kg/s recovered',
+                  value: 'kg/s theoretical',
                   angle: -90,
                   position: 'insideLeft',
                   fill: '#8a94a6',
@@ -222,7 +208,7 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
                 labelStyle={{ color: '#cdd6e4' }}
                 formatter={(value: number, name: string) =>
                   name === 'recovered'
-                    ? [`${fmt(value, 2)} kg/s`, 'Recovered water']
+                    ? [`${fmt(value, 2)} kg/s`, 'Theoretical recovery']
                     : [`${fmt(value, 0)} kW`, 'Cooling duty']
                 }
                 labelFormatter={(value) => `${value} K below dew point`}
@@ -234,13 +220,13 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
               />
               <ReferenceDot
                 x={r.inputs.coolingBelowDewPoint}
-                y={r.recovery.mDotRecovered}
+                y={r.recovery.mDotCond}
                 r={5}
                 fill="#ff9f45"
                 stroke="#0c0f14"
                 strokeWidth={2}
                 label={{
-                  value: `${fmt(r.recovery.mDotRecovered, 2)} kg/s`,
+                  value: `${fmt(r.recovery.mDotCond, 2)} kg/s`,
                   position: 'top',
                   fill: '#ff9f45',
                   fontSize: 11,

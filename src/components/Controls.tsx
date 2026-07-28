@@ -24,15 +24,19 @@ const STAGE_META: Record<
 > = {
   plume: {
     index: '1',
-    name: 'Plume conditions',
+    name: 'Plume',
   },
   droplets: {
     index: '2',
-    name: 'Liquid droplets',
+    name: 'Drift eliminator',
+  },
+  fan: {
+    index: '3',
+    name: 'Fan',
   },
   recovery: {
-    index: '3',
-    name: 'Vapour recovery',
+    index: '4',
+    name: 'Condensation recovery',
   },
 }
 
@@ -130,8 +134,18 @@ export default function Controls({
               step={0.5}
               onChange={set('airMassFlow')}
             />
+            <Field
+              label="Plume velocity"
+              sym="u₄"
+              unit="m/s"
+              value={inputs.plumeVelocity}
+              min={0.5}
+              max={20}
+              step={0.1}
+              onChange={set('plumeVelocity')}
+            />
 
-            <div className="derived-strip">
+            <div className="derived-strip plume-derived-strip">
               <DerivedValue
                 label="Humidity ratio"
                 value={`${sig(results.plume.omega, 3)} kg/kg`}
@@ -144,6 +158,14 @@ export default function Controls({
                 label="Enthalpy"
                 value={`${fmt(results.plume.h)} kJ/kg`}
               />
+              <DerivedValue
+                label="Implied flow area"
+                value={`${fmt(results.plume.flowArea)} m²`}
+              />
+            </div>
+            <div className="calculation-scope">
+              Plume velocity sets the implied discharge area from A = V̇ / u₄.
+              It is separate from the drift-eliminator face velocity.
             </div>
           </>
         )}
@@ -231,6 +253,35 @@ export default function Controls({
           </>
         )}
 
+        {selectedStage === 'fan' && (
+          <>
+            <p className="stage-context-note">
+              The fan requirement is calculated from the current plume flow and
+              the pressure drop across the selected drift eliminator.
+            </p>
+
+            <div className="derived-strip">
+              <DerivedValue
+                label="Required pressure"
+                value={`${fmt(results.droplets.pressureDrop)} Pa`}
+              />
+              <DerivedValue
+                label="Volumetric airflow"
+                value={`${fmt(results.plume.vDot)} m³/s`}
+              />
+              <DerivedValue
+                label="Ideal air power"
+                value={`${fmt(results.droplets.fanAirPower, 1)} kW`}
+              />
+            </div>
+
+            <div className="calculation-scope">
+              This is the ideal air power needed to overcome the eliminator
+              only. It is not whole-tower or electrical fan power.
+            </div>
+          </>
+        )}
+
         {selectedStage === 'recovery' && (
           <>
             <p className="stage-context-note">
@@ -265,33 +316,11 @@ export default function Controls({
               onChange={set('coolingBelowDewPoint')}
             />
 
-            <div className="stage-assumption">
-              <span>Capture assumption</span>
-              <Field
-                label="Recovery efficiency"
-                sym="η_rec"
-                unit="%"
-                value={inputs.recoveryEfficiency * 100}
-                min={50}
-                max={100}
-                step={1}
-                digits={0}
-                onChange={(value) =>
-                  onChange({ recoveryEfficiency: value / 100 })
-                }
-              />
-              <small>
-                Converts theoretical condensate into estimated captured water.
-              </small>
-            </div>
-
             <div className="recovery-preview">
-              <span>Estimated recovered water</span>
-              <strong>
-                {fmt(results.recovery.mDotRecovered, 2)} kg/s
-              </strong>
+              <span>Energy required per kilogram</span>
+              <strong>{fmt(results.recovery.e, 0)} kJ/kg</strong>
               <small>
-                {fmt(results.recovery.volumePerDay, 0)} m³/day · approximately{' '}
+                {fmt(results.recovery.mDotCond, 2)} kg/s theoretical recovery ·{' '}
                 {fmt(results.recovery.qDuty, 0)} kW cooling duty
               </small>
             </div>

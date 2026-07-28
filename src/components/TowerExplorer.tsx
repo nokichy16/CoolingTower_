@@ -2,12 +2,18 @@ import type { TowerResults } from '../lib/model'
 import { buildStages, type Metric, type StageId } from '../lib/stages'
 import TowerGraphic from './TowerGraphic'
 
-function Tiles({ metrics }: { metrics: Metric[] }) {
+function Tiles({
+  metrics,
+  className = '',
+}: {
+  metrics: Metric[]
+  className?: string
+}) {
   return (
-    <div className="metrics">
+    <div className={`metrics ${className}`.trim()}>
       {metrics.map((m) => (
-        <div className="metric" key={m.sym}>
-          <span className="metric-sym">{m.sym}</span>
+        <div className="metric" key={m.label}>
+          <span className="metric-label">{m.label}</span>
           <span className="metric-val">
             {m.value}
             <span className="metric-unit">{m.unit}</span>
@@ -18,7 +24,7 @@ function Tiles({ metrics }: { metrics: Metric[] }) {
   )
 }
 
-/** Interactive plume process plus an always-visible summary of all three steps. */
+/** Interactive plume process plus an always-visible summary of all four steps. */
 export default function TowerExplorer({
   r,
   selected,
@@ -46,24 +52,17 @@ export default function TowerExplorer({
               <span className="station-name">{s.name}</span>
             </div>
 
-            {s.local.length > 0 && <Tiles metrics={s.local} />}
+            <Tiles metrics={s.primary} className="station-primary" />
+            <Tiles metrics={s.supporting} className="station-supporting" />
 
-            <details className="stage-details station-details">
-              <summary>State &amp; engineering</summary>
-              <div className="station-expand">
-                <p className="station-blurb">{s.blurb}</p>
-
-                <h5 className="station-sub">State &amp; correlation values</h5>
-                <Tiles metrics={s.state} />
-
-                {s.details.length > 0 && (
-                  <section className="station-engineering">
-                    <h5 className="station-sub">Engineering details</h5>
-                    <Tiles metrics={s.details} />
-                  </section>
-                )}
-              </div>
-            </details>
+            {s.details.length > 0 && (
+              <details className="stage-details station-details">
+                <summary>Details</summary>
+                <div className="station-expand">
+                  <Tiles metrics={s.details} className="station-detail-metrics" />
+                </div>
+              </details>
+            )}
           </section>
         ))}
       </div>

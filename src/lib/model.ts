@@ -5,7 +5,8 @@
  * of asking this app to predict it from a simplified water-side model. Liquid
  * droplets and water vapour are then evaluated separately:
  *
- *   plume state → drift-eliminator droplet reduction → vapour condensation
+ *   plume state → drift-eliminator reduction → fan air requirement
+ *   → vapour condensation
  *
  * Dry-air mass flow is retained because a psychrometric state alone gives only
  * per-kilogram quantities; total water (kg/s) and cooling duty (kW) need flow.
@@ -30,6 +31,7 @@ export interface SolveIssue {
   code:
     | 'ruiz-pressure-extrapolation'
     | 'ruiz-collection-extrapolation'
+    | 'recovery-temperature-limited'
     | 'no-condensation-depth'
   severity: 'warning'
   title: string
@@ -42,16 +44,15 @@ export interface TowerInputs {
   plumeRh: number // %
   pressure: number // Pa
   airMassFlow: number // kg/s dry air
+  plumeVelocity: number // m/s bulk plume velocity
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
   dropletDiameter: number // representative diameter, µm
   eliminatorVelocity: number // m/s face velocity
-  fanEfficiency: number // 0–1, for the fan power this eliminator costs
 
   // Vapour recovery
   coolingBelowDewPoint: number // K below plume dew point
-  recoveryEfficiency: number // 0–1, fraction of theoretical condensate captured
 }
 
 export interface PlumeState {
@@ -62,6 +63,7 @@ export interface PlumeState {
   rho: number // kg moist air / m³
   dewPoint: number // °C
   vDot: number // m³/s moist air
+  flowArea: number // m² implied by vDot / plumeVelocity
 }
 
 export interface TowerResults {
@@ -75,11 +77,10 @@ export interface TowerResults {
     remainingPct: number
     pressureDrop: number // Pa
     /**
-     * Fan power attributable to this eliminator alone — the cost of pushing the
-     * plume through its own pressure drop. Not a whole-tower fan duty: nothing
-     * else in this model has a pressure loss to add.
+     * Ideal air power attributable to this eliminator alone. This is not
+     * electrical motor power and does not represent the rest of the tower.
      */
-    fanPower: number // kW
+    fanAirPower: number // kW
     equivalentArea: number // m² at the prescribed face velocity
     supportedDiameterMin: number // µm, from St ≥ 0.2 and the 25 µm floor
     supportedDiameterMax: number // µm, from St ≤ 2
@@ -90,10 +91,8 @@ export interface TowerResults {
     h: number // kJ/kg dry air at recovery outlet
     dOmega: number // kg water / kg dry air condensed
     dH: number // kJ / kg dry air removed
-    e: number // kJ / kg water condensed
+    e: number // kJ / kg water theoretically condensed
     mDotCond: number // kg/s theoretical condensate
-    mDotRecovered: number // kg/s realistically captured
-    volumePerDay: number // m³/day, using 1000 kg/m³
     qDuty: number // kW approximate air-side cooling duty
     feasible: boolean
   }
@@ -136,6 +135,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const rho4 = density(inputs.plumeTemperature, omega4, inputs.pressure)
   const tDew = dewPoint(omega4, inputs.pressure)
   const vDot = (inputs.airMassFlow * (1 + omega4)) / rho4
+  const flowArea = vDot / inputs.plumeVelocity
 
   const eliminator = evaluateRuizEliminator(
     inputs.eliminatorId,
@@ -151,9 +151,10 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4 *
     inputs.eliminatorVelocity ** 2
   const equivalentArea = vDot / inputs.eliminatorVelocity
-  // P = V̇·Δp/η. Pressure is not fed back into the psychrometrics: Δp_de is
-  // ~0.04 % of barometric, so the state is evaluated at constant pressure.
-  const fanPower = (vDot * pressureDrop) / inputs.fanEfficiency / 1000
+  // Ideal air power P_air = V̇·Δp. Pressure is not fed back into the
+  // psychrometrics because the eliminator loss is tiny relative to atmospheric
+  // pressure. Electrical or shaft power would require a fan efficiency.
+  const fanAirPower = (vDot * pressureDrop) / 1000
   const supportedDiameter = supportedDropletRange(
     eliminator,
     inputs.eliminatorVelocity,
@@ -162,7 +163,8 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   // Recovery temperature is expressed relative to dew point so the control
   // answers the useful question directly: how far into the condensing region
   // does the recovery device cool the plume?
-  const t5 = tDew - inputs.coolingBelowDewPoint
+  const requestedT5 = tDew - inputs.coolingBelowDewPoint
+  const t5 = Math.max(0, requestedT5)
   const omega5 = omegaSat(t5, inputs.pressure)
   const h5 = hSat(t5, inputs.pressure)
   const dOmega =
@@ -173,8 +175,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const feasible = inputs.coolingBelowDewPoint > 0 && dOmega > 1e-9
   const e = feasible ? dH / dOmega : 0
   const mDotCond = inputs.airMassFlow * dOmega
-  const mDotRecovered = mDotCond * inputs.recoveryEfficiency
-  const volumePerDay = (mDotRecovered * 86_400) / 1000
   const qDuty = inputs.airMassFlow * dH
 
   const issues: SolveIssue[] = []
@@ -196,6 +196,15 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       message: `${eliminator.collectionRangeIssues.join(
         '; ',
       )}. The percentage remains visible but is not paper-validated here.`,
+    })
+  }
+  if (requestedT5 < 0) {
+    issues.push({
+      code: 'recovery-temperature-limited',
+      severity: 'warning',
+      title: 'Recovery outlet limited to 0 °C',
+      message:
+        'The requested cooling would go below the liquid-water range used by this model. The recovery calculation is therefore held at 0 °C.',
     })
   }
   if (!feasible) {
@@ -220,13 +229,14 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       rho: rho4,
       dewPoint: tDew,
       vDot,
+      flowArea,
     },
     eliminator,
     droplets: {
       reductionPct: collection * 100,
       remainingPct: (1 - collection) * 100,
       pressureDrop,
-      fanPower,
+      fanAirPower,
       equivalentArea,
       supportedDiameterMin: supportedDiameter.min,
       supportedDiameterMax: supportedDiameter.max,
@@ -239,8 +249,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       dH,
       e,
       mDotCond,
-      mDotRecovered,
-      volumePerDay,
       qDuty,
       feasible,
     },
@@ -252,12 +260,11 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeRh: 95,
   pressure: 101_300,
   airMassFlow: 146.5,
+  plumeVelocity: 3,
 
   eliminatorId: 'B',
   dropletDiameter: 50,
   eliminatorVelocity: 3,
-  fanEfficiency: 0.65,
 
   coolingBelowDewPoint: 10,
-  recoveryEfficiency: 0.8,
 }

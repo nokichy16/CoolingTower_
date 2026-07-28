@@ -19,13 +19,7 @@ const lx = (y: number) =>
 const rx = (y: number) =>
   TOP_R + ((y - TOP_Y) / (BOT_Y - TOP_Y)) * (BOT_R - TOP_R)
 
-type GraphicZoneId =
-  | 'inlet'
-  | 'fill'
-  | 'droplets'
-  | 'fan'
-  | 'exhaust'
-  | 'recovery'
+type GraphicZoneId = 'plume' | 'droplets' | 'fan' | 'recovery'
 
 interface ZoneLabel {
   id: Exclude<GraphicZoneId, 'recovery'>
@@ -33,24 +27,27 @@ interface ZoneLabel {
   anchor: [number, number]
 }
 
+interface GraphicInfo {
+  name: string
+  metric: string
+  control: StageId
+  accent: string
+}
+
 const LABELS: ZoneLabel[] = [
-  { id: 'exhaust', labelY: 40, anchor: [312, 40] },
-  { id: 'fan', labelY: 96, anchor: [338, 90] },
+  { id: 'fan', labelY: 84, anchor: [320, 84] },
   { id: 'droplets', labelY: 142, anchor: [360, 134] },
-  { id: 'fill', labelY: 220, anchor: [396, 214] },
-  { id: 'inlet', labelY: 312, anchor: [420, 320] },
+  { id: 'plume', labelY: 224, anchor: [396, 214] },
 ]
 
 const HOTZONES: Record<
   GraphicZoneId,
   { x: number; y: number; width: number; height: number }
 > = {
-  exhaust: { x: 118, y: 8, width: 326, height: 62 },
-  fan: { x: 118, y: 70, width: 326, height: 46 },
+  fan: { x: 118, y: 58, width: 326, height: 58 },
   droplets: { x: 118, y: 116, width: 326, height: 38 },
-  fill: { x: 118, y: 154, width: 326, height: 114 },
-  inlet: { x: 118, y: 268, width: 326, height: 96 },
-  recovery: { x: 16, y: 4, width: 100, height: 108 },
+  plume: { x: 118, y: 154, width: 326, height: 210 },
+  recovery: { x: 10, y: 4, width: 118, height: 124 },
 }
 
 export default function TowerGraphic({
@@ -66,69 +63,44 @@ export default function TowerGraphic({
   const byId = Object.fromEntries(
     stages.map((stage) => [stage.id, stage]),
   ) as Record<StageId, (typeof stages)[number]>
-  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(
-    selected === 'droplets'
-      ? 'droplets'
-      : selected === 'recovery'
-        ? 'recovery'
-        : 'fill',
-  )
+  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
 
-  const graphicInfo = (id: GraphicZoneId) => {
-    if (id === 'droplets') {
-      return {
-        name: 'Drift eliminator',
-        metric: `${fmt(r.droplets.reductionPct, 1)}% removed`,
-        control: 'droplets' as StageId,
-        accent: byId.droplets.accent,
-      }
-    }
-    if (id === 'recovery') {
-      return {
-        name: 'Recovery',
-        metric: `${fmt(r.recovery.mDotRecovered, 2)} kg/s`,
-        control: 'recovery' as StageId,
-        accent: byId.recovery.accent,
-      }
-    }
-
-    const metrics: Record<
-      Exclude<GraphicZoneId, 'droplets' | 'recovery'>,
-      { name: string; metric: string }
-    > = {
-      inlet: {
-        name: 'Air inlet',
-        metric: `P ${fmt(r.inputs.pressure / 1000)} kPa`,
+  const graphicInfo = (id: GraphicZoneId): GraphicInfo => {
+    const info: Record<GraphicZoneId, GraphicInfo> = {
+      plume: {
+        name: 'Plume',
+        metric: `${fmt(r.plume.t)} °C · ${fmt(r.plume.rh, 0)}% RH`,
+        control: 'plume',
+        accent: byId.plume.accent,
       },
-      fill: {
-        name: 'Fill · plume state',
-        metric: `T₄ ${fmt(r.plume.t)} °C · RH ${fmt(r.plume.rh, 0)}%`,
+      droplets: {
+        name: 'Drift eliminator',
+        metric: `${fmt(r.droplets.reductionPct, 1)}% removed · ${fmt(
+          r.droplets.pressureDrop,
+        )} Pa`,
+        control: 'droplets',
+        accent: byId.droplets.accent,
       },
       fan: {
         name: 'Fan',
-        metric: `ṁ_a ${fmt(r.inputs.airMassFlow)} kg/s`,
+        metric: `${fmt(r.droplets.fanAirPower, 1)} kW ideal air power`,
+        control: 'fan',
+        accent: byId.fan.accent,
       },
-      exhaust: {
-        name: 'Exhaust',
-        metric: `T_dew ${fmt(r.plume.dewPoint)} °C`,
+      recovery: {
+        name: 'Recovery',
+        metric: `${fmt(r.recovery.mDotCond, 2)} kg/s theoretical`,
+        control: 'recovery',
+        accent: byId.recovery.accent,
       },
     }
-
-    return {
-      ...metrics[id],
-      control: 'plume' as StageId,
-      accent: byId.plume.accent,
-    }
+    return info[id]
   }
 
-  const airIntensity = clamp(r.inputs.airMassFlow / 500, 0.12, 1)
+  const airIntensity = clamp(r.inputs.plumeVelocity / 10, 0.12, 1)
   const style = {
     '--air-speed': `${(3.2 - airIntensity * 1.8).toFixed(2)}s`,
-    '--water-speed': '2.2s',
   } as CSSProperties
-
-  const hotWaterColor = '#ff7a4d'
-  const coldWaterColor = '#4aa3ff'
 
   const zone = (id: GraphicZoneId) => {
     const bounds = HOTZONES[id]
@@ -139,7 +111,7 @@ export default function TowerGraphic({
         className={`tower-zone${isSelected ? ' is-selected' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={`${info.name}, select connected inputs`}
+        aria-label={`${info.name}, select station`}
         aria-pressed={isSelected}
         onClick={() => {
           setGraphicZone(id)
@@ -188,7 +160,7 @@ export default function TowerGraphic({
         className={`tower-label${isSelected ? ' is-selected' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={`${info.name}, select connected inputs`}
+        aria-label={`${info.name}, select station`}
         onClick={() => {
           setGraphicZone(id)
           onSelect(info.control)
@@ -244,60 +216,23 @@ export default function TowerGraphic({
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
-        <title id="tower-title">
-          Induced-draft counterflow cooling tower
-        </title>
+        <title id="tower-title">Cooling-tower plume process</title>
         <desc id="tower-desc">
-          Original cooling-tower cutaway. Select the plume, drift eliminator or
-          recovery unit to adjust the connected inputs.
+          Cooling-tower cutaway with four selectable stations: plume, drift
+          eliminator, fan and recovery.
         </desc>
-
-        <defs>
-          <linearGradient id="tg-air" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#4aa3ff" stopOpacity="0.05" />
-            <stop offset="0.5" stopColor="#34d1bf" stopOpacity="0.14" />
-            <stop offset="1" stopColor="#ff9f45" stopOpacity="0.16" />
-          </linearGradient>
-          <linearGradient id="tg-shell" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#1a2634" />
-            <stop offset="1" stopColor="#0f1721" />
-          </linearGradient>
-          <marker
-            id="tg-hot"
-            viewBox="0 0 10 10"
-            refX="7"
-            refY="5"
-            markerWidth="6"
-            markerHeight="6"
-            orient="auto-start-reverse"
-          >
-            <path d="M0 0 L10 5 L0 10 z" fill={hotWaterColor} />
-          </marker>
-          <marker
-            id="tg-cold"
-            viewBox="0 0 10 10"
-            refX="7"
-            refY="5"
-            markerWidth="6"
-            markerHeight="6"
-            orient="auto-start-reverse"
-          >
-            <path d="M0 0 L10 5 L0 10 z" fill={coldWaterColor} />
-          </marker>
-        </defs>
 
         <path
           className="tower-shell"
           d={`M${TOP_L} ${TOP_Y} L${BOT_L} ${BOT_Y} H${BOT_R} L${TOP_R} ${TOP_Y}`}
-          fill="url(#tg-shell)"
         />
         <path
+          className="tower-context-fill"
           d={`M${lx(TOP_Y + 6)} ${TOP_Y + 6} L${lx(
             BOT_Y,
           )} ${BOT_Y} H${rx(BOT_Y)} L${rx(TOP_Y + 6)} ${
             TOP_Y + 6
           } Z`}
-          fill="url(#tg-air)"
         />
 
         <path
@@ -314,26 +249,26 @@ export default function TowerGraphic({
           <path className="rec-duct" d="M196 40 C168 40 140 38 122 44" />
           <rect
             className="rec-shell"
-            x="30"
-            y="18"
-            width="80"
-            height="60"
+            x="18"
+            y="8"
+            width="104"
+            height="86"
             rx="9"
           />
           <path
             className="rec-coil"
-            d="M42 34 H98 M42 46 H98 M42 58 H98"
+            d="M34 28 H106 M34 42 H106 M34 56 H106"
           />
           <path
             className="rec-drop"
-            d="M70 62 C62 74 63 82 70 85 C77 82 78 74 70 62Z"
+            d="M70 60 C60 74 62 84 70 88 C78 84 80 74 70 60Z"
           />
-          <text className="rec-label" x="70" y="96" textAnchor="middle">
+          <text className="rec-label" x="70" y="108" textAnchor="middle">
             RECOVERY
           </text>
-          <text className="rec-value" x="70" y="106" textAnchor="middle">
+          <text className="rec-value" x="70" y="120" textAnchor="middle">
             {r.recovery.feasible
-              ? `${fmt(r.recovery.mDotRecovered, 2)} kg/s`
+              ? `${fmt(r.recovery.mDotCond, 2)} kg/s`
               : 'inactive'}
           </text>
         </g>
@@ -466,12 +401,10 @@ export default function TowerGraphic({
           <path
             className="suction"
             d="M92 316 H150"
-            markerEnd="url(#tg-cold)"
           />
           <path
             className="suction"
             d="M568 316 H510"
-            markerEnd="url(#tg-cold)"
           />
           <text className="suction-label" x="88" y="308" textAnchor="end">
             air ↺
@@ -501,8 +434,6 @@ export default function TowerGraphic({
           <path
             className="pipe-flow"
             d="M40 158 H150"
-            markerEnd="url(#tg-hot)"
-            style={{ stroke: hotWaterColor }}
           />
           <text className="pipe-label" x="40" y="150">
             HOT WATER IN
@@ -517,8 +448,6 @@ export default function TowerGraphic({
           <path
             className="pipe-flow"
             d={`M${rx(380)} 380 H612`}
-            markerEnd="url(#tg-cold)"
-            style={{ stroke: coldWaterColor }}
           />
           <text
             className="pipe-label"
@@ -531,11 +460,9 @@ export default function TowerGraphic({
         </g>
 
         {LABELS.map(label)}
-        {zone('exhaust')}
         {zone('fan')}
         {zone('droplets')}
-        {zone('fill')}
-        {zone('inlet')}
+        {zone('plume')}
         {zone('recovery')}
       </svg>
     </div>
