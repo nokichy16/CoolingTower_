@@ -1,5 +1,4 @@
 import {
-  DEFAULT_INPUTS,
   type TowerInputs,
   type TowerResults,
 } from '../lib/model'
@@ -21,27 +20,19 @@ const STAGE_META: Record<
   {
     index: string
     name: string
-    dotClass: string
-    keys: (keyof TowerInputs)[]
   }
 > = {
   plume: {
     index: '1',
     name: 'Plume conditions',
-    dotClass: 'dot-plume',
-    keys: ['plumeTemperature', 'plumeRh', 'pressure', 'airMassFlow'],
   },
   droplets: {
     index: '2',
     name: 'Liquid droplets',
-    dotClass: 'dot-droplets',
-    keys: ['eliminatorId', 'dropletDiameter', 'eliminatorVelocity'],
   },
   recovery: {
     index: '3',
     name: 'Vapour recovery',
-    dotClass: 'dot-recovery',
-    keys: ['coolingBelowDewPoint', 'recoveryEfficiency'],
   },
 }
 
@@ -69,17 +60,10 @@ export default function Controls({
 }: ControlsProps) {
   const stage = STAGE_META[selectedStage]
   const eliminator = ELIMINATORS[inputs.eliminatorId]
-  const stageChanged = stage.keys.some(
-    (key) => inputs[key] !== DEFAULT_INPUTS[key],
-  )
   const set =
     (key: keyof TowerInputs) =>
     (value: number) =>
       onChange({ [key]: value } as Partial<TowerInputs>)
-
-  const diameterSupported =
-    inputs.dropletDiameter >= results.droplets.supportedDiameterMin &&
-    inputs.dropletDiameter <= results.droplets.supportedDiameterMax
 
   return (
     <aside className="controls">
@@ -96,16 +80,6 @@ export default function Controls({
         <button className="reset" onClick={onReset}>
           Reset all
         </button>
-      </div>
-
-      <div className={`stage-input-state${stageChanged ? ' is-changed' : ''}`}>
-        <span>
-          <i className={`dot ${stage.dotClass}`} aria-hidden="true" />
-          {stageChanged
-            ? 'This section has changed inputs'
-            : 'Using default inputs for this section'}
-        </span>
-        {stageChanged && <em>Changed</em>}
       </div>
 
       <div className="stage-input-panel" key={selectedStage}>
@@ -177,7 +151,7 @@ export default function Controls({
         {selectedStage === 'droplets' && (
           <>
             <p className="stage-context-note">
-              Droplet size feeds the Ruiz Stokes-number correlation. The result
+              Droplet size feeds the source Stokes-number correlation. The result
               is the percentage of droplets of that representative size removed
               by the selected eliminator.
             </p>
@@ -238,23 +212,6 @@ export default function Controls({
               digits={3}
               onChange={set('eliminatorVelocity')}
             />
-
-            <div
-              className={`support-note${
-                diameterSupported ? ' is-supported' : ' is-warning'
-              }`}
-            >
-              <span>
-                Paper-supported size at this velocity and geometry
-              </span>
-              <strong>
-                {fmt(results.droplets.supportedDiameterMin, 0)}–
-                {fmt(results.droplets.supportedDiameterMax, 0)} µm
-              </strong>
-              <small>
-                Based on 0.2 ≤ St ≤ 2 and the 25 µm measurement floor.
-              </small>
-            </div>
 
             <div className="droplet-reduction">
               <div>

@@ -47,6 +47,7 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   dropletDiameter: number // representative diameter, µm
   eliminatorVelocity: number // m/s face velocity
+  fanEfficiency: number // 0–1, for the fan power this eliminator costs
 
   // Vapour recovery
   coolingBelowDewPoint: number // K below plume dew point
@@ -73,6 +74,12 @@ export interface TowerResults {
     reductionPct: number
     remainingPct: number
     pressureDrop: number // Pa
+    /**
+     * Fan power attributable to this eliminator alone — the cost of pushing the
+     * plume through its own pressure drop. Not a whole-tower fan duty: nothing
+     * else in this model has a pressure loss to add.
+     */
+    fanPower: number // kW
     equivalentArea: number // m² at the prescribed face velocity
     supportedDiameterMin: number // µm, from St ≥ 0.2 and the 25 µm floor
     supportedDiameterMax: number // µm, from St ≤ 2
@@ -144,6 +151,9 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4 *
     inputs.eliminatorVelocity ** 2
   const equivalentArea = vDot / inputs.eliminatorVelocity
+  // P = V̇·Δp/η. Pressure is not fed back into the psychrometrics: Δp_de is
+  // ~0.04 % of barometric, so the state is evaluated at constant pressure.
+  const fanPower = (vDot * pressureDrop) / inputs.fanEfficiency / 1000
   const supportedDiameter = supportedDropletRange(
     eliminator,
     inputs.eliminatorVelocity,
@@ -216,6 +226,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       reductionPct: collection * 100,
       remainingPct: (1 - collection) * 100,
       pressureDrop,
+      fanPower,
       equivalentArea,
       supportedDiameterMin: supportedDiameter.min,
       supportedDiameterMax: supportedDiameter.max,
@@ -245,6 +256,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   eliminatorId: 'B',
   dropletDiameter: 50,
   eliminatorVelocity: 3,
+  fanEfficiency: 0.65,
 
   coolingBelowDewPoint: 10,
   recoveryEfficiency: 0.8,

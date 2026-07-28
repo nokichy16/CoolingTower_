@@ -13,14 +13,17 @@ export default function App() {
 
   const patch = (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p }))
   const reset = () => setInputs(DEFAULT_INPUTS)
-  const firstWarning = results.issues.find((issue) => issue.severity === 'warning')
+  const visibleIssues = results.issues.filter(
+    (issue) => !issue.code.startsWith('ruiz-'),
+  )
+  const firstWarning = visibleIssues.find((issue) => issue.severity === 'warning')
   const statusLevel = firstWarning ? 'warning' : 'valid'
   const statusTitle = firstWarning
     ? firstWarning.title
-    : 'Inputs within supported ranges'
+    : 'Calculation ready'
   const statusDetail = firstWarning
     ? 'The result remains visible; review the warning below.'
-    : 'Plume state, condensation and Ruiz checks pass.'
+    : 'Plume, droplet and recovery outputs are updated.'
 
   return (
     <div className="app">

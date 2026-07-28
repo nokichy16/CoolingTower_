@@ -39,12 +39,15 @@ function recoverySweep(r: TowerResults) {
 
 export default function ResultPanel({ r }: { r: TowerResults }) {
   const data = recoverySweep(r)
+  const visibleIssues = r.issues.filter(
+    (issue) => !issue.code.startsWith('ruiz-'),
+  )
 
   return (
     <div className="results">
-      {r.issues.length > 0 && (
+      {visibleIssues.length > 0 && (
         <div className="result-alerts" role="status">
-          {r.issues.map((issue) => (
+          {visibleIssues.map((issue) => (
             <div
               className={`result-alert is-${issue.severity}`}
               key={issue.code}
@@ -115,7 +118,7 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
             </div>
           </div>
           <p className="card-note">
-            This is the Ruiz single-size collection result. It does not claim a
+            This is a single-size collection result. It does not claim a
             mass-flow reduction for an unknown real droplet-size distribution.
           </p>
         </section>

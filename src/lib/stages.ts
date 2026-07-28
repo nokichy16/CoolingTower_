@@ -57,7 +57,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
       name: 'Liquid droplets',
       accent: '#c9b568',
       blurb:
-        'The Ruiz correlation estimates how many droplets of the selected representative size the eliminator collects. This percentage describes liquid-droplet reduction, not water-vapour condensation.',
+        'The selected eliminator estimates how many droplets of the representative size are collected. This percentage describes liquid-droplet reduction, not water-vapour condensation.',
       key: {
         sym: 'Removed',
         value: fmt(r.droplets.reductionPct, 1),
@@ -107,6 +107,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
           sym: 'Δp_de',
           value: fmt(r.droplets.pressureDrop),
           unit: 'Pa',
+        },
+        {
+          sym: 'P_fan',
+          value: fmt(r.droplets.fanPower, 1),
+          unit: 'kW',
         },
         {
           sym: 'A_eq',
