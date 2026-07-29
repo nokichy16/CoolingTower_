@@ -49,7 +49,6 @@ export interface TowerInputs {
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
   dropletDiameter: number // representative diameter, µm
-  eliminatorVelocity: number // m/s face velocity
 
   // Vapour recovery
   coolingBelowDewPoint: number // K below plume dew point
@@ -81,7 +80,7 @@ export interface TowerResults {
      * electrical motor power and does not represent the rest of the tower.
      */
     fanAirPower: number // kW
-    equivalentArea: number // m² at the prescribed face velocity
+    equivalentArea: number // m², same flow area as the prescribed plume
     supportedDiameterMin: number // µm, from St ≥ 0.2 and the 25 µm floor
     supportedDiameterMax: number // µm, from St ≤ 2
   }
@@ -136,11 +135,14 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const tDew = dewPoint(omega4, inputs.pressure)
   const vDot = (inputs.airMassFlow * (1 + omega4)) / rho4
   const flowArea = vDot / inputs.plumeVelocity
+  // Simplified same-area assumption: the full-face eliminator spans the plume
+  // flow area, so its local face velocity equals the after-fill plume velocity.
+  const eliminatorFaceVelocity = inputs.plumeVelocity
 
   const eliminator = evaluateRuizEliminator(
     inputs.eliminatorId,
     rho4,
-    inputs.eliminatorVelocity,
+    eliminatorFaceVelocity,
     inputs.plumeTemperature,
     inputs.dropletDiameter,
   )
@@ -149,15 +151,15 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     eliminator.pressureCoefficient *
     0.5 *
     rho4 *
-    inputs.eliminatorVelocity ** 2
-  const equivalentArea = vDot / inputs.eliminatorVelocity
+    eliminatorFaceVelocity ** 2
+  const equivalentArea = flowArea
   // Ideal air power P_air = V̇·Δp. Pressure is not fed back into the
   // psychrometrics because the eliminator loss is tiny relative to atmospheric
   // pressure. Electrical or shaft power would require a fan efficiency.
   const fanAirPower = (vDot * pressureDrop) / 1000
   const supportedDiameter = supportedDropletRange(
     eliminator,
-    inputs.eliminatorVelocity,
+    eliminatorFaceVelocity,
   )
 
   // Recovery temperature is expressed relative to dew point so the control
@@ -264,7 +266,6 @@ export const DEFAULT_INPUTS: TowerInputs = {
 
   eliminatorId: 'B',
   dropletDiameter: 50,
-  eliminatorVelocity: 3,
 
   coolingBelowDewPoint: 10,
 }

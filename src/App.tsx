@@ -86,9 +86,9 @@ export default function App() {
         <main className="main">
           <section className="panel">
             <div className="panel-head">
-              <h2>Engineering output</h2>
+              <h2>Recovery curve and engineering details</h2>
               <span className="panel-sub">
-                droplet reduction and vapour recovery
+                open each station above for its detailed values
               </span>
             </div>
             <div className="panel-body">

@@ -61,7 +61,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'kg/s',
         },
         {
-          label: 'Plume velocity',
+          label: 'Air velocity after fill',
           value: fmt(r.inputs.plumeVelocity),
           unit: 'm/s',
         },
@@ -114,7 +114,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
         {
           label: 'Face velocity',
-          value: fmt(r.inputs.eliminatorVelocity, 2),
+          value: fmt(r.inputs.plumeVelocity, 3),
           unit: 'm/s',
         },
         {

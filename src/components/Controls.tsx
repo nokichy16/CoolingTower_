@@ -135,13 +135,14 @@ export default function Controls({
               onChange={set('airMassFlow')}
             />
             <Field
-              label="Plume velocity"
+              label="Air velocity after fill"
               sym="u₄"
               unit="m/s"
               value={inputs.plumeVelocity}
-              min={0.5}
-              max={20}
-              step={0.1}
+              min={0.443}
+              max={4.36}
+              step={0.001}
+              digits={3}
               onChange={set('plumeVelocity')}
             />
 
@@ -164,8 +165,8 @@ export default function Controls({
               />
             </div>
             <div className="calculation-scope">
-              Plume velocity sets the implied discharge area from A = V̇ / u₄.
-              It is separate from the drift-eliminator face velocity.
+              The implied flow area is A = V̇ / u₄. The full-face eliminator is
+              assumed to span this same area, so its face velocity is also u₄.
             </div>
           </>
         )}
@@ -223,17 +224,25 @@ export default function Controls({
               digits={0}
               onChange={set('dropletDiameter')}
             />
-            <Field
-              label="Eliminator face velocity"
-              sym="u_de"
-              unit="m/s"
-              value={inputs.eliminatorVelocity}
-              min={0.443}
-              max={4.36}
-              step={0.001}
-              digits={3}
-              onChange={set('eliminatorVelocity')}
-            />
+
+            <div className="derived-strip">
+              <DerivedValue
+                label="Face velocity"
+                value={`${fmt(inputs.plumeVelocity, 3)} m/s`}
+              />
+              <DerivedValue
+                label="Flow area"
+                value={`${fmt(results.droplets.equivalentArea)} m²`}
+              />
+              <DerivedValue
+                label="Pressure drop"
+                value={`${fmt(results.droplets.pressureDrop)} Pa`}
+              />
+            </div>
+            <div className="calculation-scope">
+              Face velocity is read-only here. It is inherited from the
+              after-fill air velocity using the same flow-area assumption.
+            </div>
 
             <div className="droplet-reduction">
               <div>

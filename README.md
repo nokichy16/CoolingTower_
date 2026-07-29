@@ -30,18 +30,21 @@ The plume leaving the fill is prescribed directly:
 - exhaust relative humidity `RH₄`
 - atmospheric pressure `P`
 - dry-air mass flow `ṁ_a`
-- plume velocity `u₄`
+- air velocity after the fill `u₄`
 
 The app does not force the plume to saturation. It calculates humidity ratio,
 enthalpy, density, volumetric flow and dew point from the selected state. Plume
 velocity is used with volumetric flow to calculate the implied discharge area:
-`A_plume = V̇/u₄`. It is separate from the eliminator face velocity.
+`A_plume = V̇/u₄`.
 
 Liquid-droplet performance is controlled separately:
 
 - Ruiz tested eliminator A–F
 - representative droplet diameter `d_d`
-- eliminator face velocity `u_de`
+
+The eliminator spans the same flow area as the plume in this simplified model.
+Its face velocity is therefore a read-only result equal to `u₄`, rather than a
+second independent input.
 
 Vapour recovery uses:
 
@@ -68,7 +71,8 @@ and cooling duty.
 ### Droplet reduction
 
 ```text
-St = ρ_water u_de d_d² / (18 μ Lc)
+u_de = u₄
+St = ρ_water u₄ d_d² / (18 μ Lc)
 droplets removed (%) = 100 ε(St)
 droplets remaining (%) = 100[1 − ε(St)]
 P_air = V̇ Δp_de
