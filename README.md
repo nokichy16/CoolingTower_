@@ -111,12 +111,23 @@ kilogram.
 The 0 °C outlet limit keeps the recovery calculation inside the liquid-water
 saturation range used by the simplified psychrometric model.
 
+### Psychrometric process chart
+
+The recovery panel includes the process chart carried over from the original
+single-file plume-recovery Webapp. It shows 25%, 50%, 75% and 100% relative-
+humidity curves, constant-enthalpy lines, and the live path from the prescribed
+plume to the saturated recovery outlet. The path first cools at constant
+humidity ratio to the dew point and then follows the saturation curve as water
+condenses.
+
 ## Source map
 
 - `src/lib/psychrometrics.ts` — moist-air state, saturation and dew-point functions
+- `src/lib/psychrometric-chart.ts` — chart curves, enthalpy lines and process path
 - `src/lib/eliminators.ts` — Ruiz A–F geometries, correlations and support checks
 - `src/lib/model.ts` — direct plume, droplet and recovery calculations
 - `src/lib/stages.ts` — values shown in the stage summaries
 - `src/components/Controls.tsx` — bounded plume, droplet and recovery inputs
 - `src/components/TowerGraphic.tsx` — preserved cooling-tower cutaway
+- `src/components/PsychrometricChart.tsx` — interactive psychrometric process graph
 - `src/components/ResultPanel.tsx` — percentage reduction, recovery and cooling results

@@ -1150,3 +1150,73 @@ input[type='range']::-moz-range-thumb {
   .tower-plume path,
   .tower-fan .fan-blades { animation: none; }
 }
+
+/* Psychrometric process chart — ported from the original single-file webapp. */
+.psychro-card .chart { margin-top: 12px; }
+
+.psychro-tip {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid #d8d3ca;
+  border-radius: 8px;
+  background: #fbfaf7;
+  color: #57524a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.psychro-tip strong { color: #23211d; }
+
+.psychro-states {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.psychro-state {
+  display: grid;
+  gap: 3px;
+  padding: 11px 13px;
+  border: 1px solid #d8d3ca;
+  border-radius: 12px;
+  background: #fbfaf7;
+}
+.psychro-state.is-inlet { border-color: #9ab9ef; background: rgba(234, 241, 255, 0.7); }
+.psychro-state.is-outlet { border-color: #e7aaa5; background: rgba(255, 240, 239, 0.7); }
+.psychro-state-tag {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #57524a;
+}
+.psychro-state.is-inlet .psychro-state-tag { color: #1749aa; }
+.psychro-state.is-outlet .psychro-state-tag { color: #9f1e1e; }
+.psychro-state strong { font-size: 14px; color: #23211d; }
+.psychro-state small { font-size: 11px; color: #57524a; }
+
+.psychro-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.psychro-chip {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #d8d3ca;
+  border-radius: 12px;
+  background: #f5f3ee;
+  text-align: center;
+}
+.psychro-chip strong { font-size: 15px; color: #514d47; }
+.psychro-chip span { font-size: 10px; line-height: 1.35; color: #57524a; }
+.psychro-chip.is-water { border-color: #bdd0f7; background: #eaf1ff; }
+.psychro-chip.is-water strong { color: #1d4ed8; }
+.psychro-chip.is-heat { border-color: #f1c2be; background: #fff0ef; }
+.psychro-chip.is-heat strong { color: #b42323; }
+
+@media (max-width: 700px) {
+  .psychro-states,
+  .psychro-chips { grid-template-columns: 1fr; }
+}

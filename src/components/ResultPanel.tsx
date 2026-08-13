@@ -11,6 +11,7 @@ import {
 import type { TowerResults } from '../lib/model'
 import { hSat, omegaSat } from '../lib/psychrometrics'
 import { fmt } from '../lib/format'
+import PsychrometricChart from './PsychrometricChart'
 
 function recoverySweep(r: TowerResults) {
   const points: {
@@ -41,6 +42,8 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
 
   return (
     <div className="results">
+      <PsychrometricChart r={r} />
+
       <section className="card chart-card">
         <h4>Recovered water versus cooling below dew point</h4>
         <p className="card-note">
