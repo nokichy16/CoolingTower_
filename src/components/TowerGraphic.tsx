@@ -27,6 +27,7 @@ interface ZoneLabel {
 
 interface GraphicInfo {
   name: string
+  reading: string
   control: StageId
   accent: string
 }
@@ -62,6 +63,9 @@ export default function TowerGraphic({
   ) as Record<StageId, (typeof stages)[number]>
   const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
 
+  const metricReading = (value: string, unit: string) =>
+    `${value}${unit === '%' || unit === '°C' ? '' : ' '}${unit}`
+
   useEffect(() => {
     setGraphicZone(selected)
   }, [selected])
@@ -70,21 +74,40 @@ export default function TowerGraphic({
     const info: Record<GraphicZoneId, GraphicInfo> = {
       plume: {
         name: 'Plume',
+        reading: `T ${metricReading(
+          byId.plume.primary[0].value,
+          byId.plume.primary[0].unit,
+        )} · RH ${metricReading(
+          byId.plume.primary[1].value,
+          byId.plume.primary[1].unit,
+        )}`,
         control: 'plume',
         accent: byId.plume.accent,
       },
       droplets: {
         name: 'Drift eliminator',
+        reading: `Removed ${metricReading(
+          byId.droplets.primary[0].value,
+          byId.droplets.primary[0].unit,
+        )}`,
         control: 'droplets',
         accent: byId.droplets.accent,
       },
       fan: {
         name: 'Fan',
+        reading: `Air power ${metricReading(
+          byId.fan.primary[0].value,
+          byId.fan.primary[0].unit,
+        )}`,
         control: 'fan',
         accent: byId.fan.accent,
       },
       recovery: {
         name: 'Recovery',
+        reading: `Water ${metricReading(
+          byId.recovery.supporting[0].value,
+          byId.recovery.supporting[0].unit,
+        )}`,
         control: 'recovery',
         accent: byId.recovery.accent,
       },
@@ -106,7 +129,7 @@ export default function TowerGraphic({
         className={`tower-zone${isSelected ? ' is-selected' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={`${info.name}, select station`}
+        aria-label={`${info.name}, ${info.reading}, select station`}
         aria-pressed={isSelected}
         onClick={() => {
           setGraphicZone(id)
@@ -156,7 +179,7 @@ export default function TowerGraphic({
         className={`tower-label${isSelected ? ' is-selected' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={`${info.name}, select station`}
+        aria-label={`${info.name}, ${info.reading}, select station`}
         onClick={() => {
           setGraphicZone(id)
           onSelect(info.control)
@@ -188,6 +211,9 @@ export default function TowerGraphic({
         />
         <text className="label-name" x={labelX + 24} y={labelY - 2}>
           {info.name}
+        </text>
+        <text className="label-value" x={labelX + 24} y={labelY + 10}>
+          {info.reading}
         </text>
       </g>
     )
@@ -249,6 +275,9 @@ export default function TowerGraphic({
           />
           <text className="rec-label" x="108" y="108" textAnchor="middle">
             RECOVERY
+          </text>
+          <text className="rec-value" x="108" y="121" textAnchor="middle">
+            {graphicInfo('recovery').reading}
           </text>
         </g>
 

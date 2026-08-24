@@ -605,6 +605,11 @@ input[type='range']::-moz-range-thumb {
 .tower-label:focus-visible { outline: none; }
 .leader { fill: none; stroke: #2c3444; stroke-width: 1; }
 .label-name { fill: var(--text-dim); font: 600 10px var(--sans); }
+.label-value {
+  fill: var(--text);
+  font: 600 8.5px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
 .tower-label.is-selected .label-name { fill: var(--text); }
 
 .tg-recovery { transition: opacity 0.2s ease; }
@@ -627,6 +632,11 @@ input[type='range']::-moz-range-thumb {
   fill: var(--text-dim);
   font: 700 8px var(--mono);
   letter-spacing: 0.1em;
+}
+.rec-value {
+  fill: var(--text);
+  font: 600 8.5px var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Stage summaries */
@@ -1019,6 +1029,7 @@ input[type='range']::-moz-range-thumb {
   --accent: #31c7ac;
   --blue: #6d68e8;
   --amber: #ffb43f;
+  width: min(100%, 780px);
   padding: 0;
   border: 0;
   border-radius: 0;
