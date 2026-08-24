@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { DEFAULT_INPUTS, solveTower, type TowerInputs } from './lib/model'
-import { fmt } from './lib/format'
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
-import TowerExplorer from './components/TowerExplorer'
+import TowerExplorer, {
+  CalculatedOutputs,
+} from './components/TowerExplorer'
 import ResultPanel from './components/ResultPanel'
 
 export default function App() {
@@ -23,31 +24,6 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>Plume Water Recovery</h1>
-          <span className="subtitle">
-            Adjustable exhaust, droplet reduction and condensation
-          </span>
-        </div>
-        <div className="status-summary" role="status" aria-live="polite">
-          <div className="status-primary">
-            <span>Energy required per kilogram</span>
-            <strong>
-              {results.recovery.feasible
-                ? `${fmt(results.recovery.e, 0)} kJ/kg`
-                : '—'}
-            </strong>
-          </div>
-          <div className="status-stat">
-            <span>Theoretical recovery</span>
-            <strong>{fmt(results.recovery.mDotCond, 2)} kg/s</strong>
-          </div>
-          <div className="status-stat">
-            <span>Cooling duty</span>
-            <strong>{fmt(results.recovery.qDuty, 0)} kW</strong>
-          </div>
-          <div className="status-stat">
-            <span>Droplets removed</span>
-            <strong>{fmt(results.droplets.reductionPct, 1)}%</strong>
-          </div>
         </div>
         {firstWarning && (
           <div className="header-warning" role="alert">
@@ -59,37 +35,33 @@ export default function App() {
 
       <div className="page">
         <div className="workspace">
-          <section className="panel visual-panel">
-            <div className="panel-head">
-              <h2>Plume-to-water process</h2>
-              <span className="panel-sub">
-                select a section to change its inputs
-              </span>
-            </div>
-            <div className="panel-body">
-              <TowerExplorer
-                r={results}
-                selected={selectedStage}
-                onSelect={setSelectedStage}
-              />
-            </div>
+          <section
+            className="visual-workspace"
+            aria-label="Cooling-tower process"
+          >
+            <TowerExplorer
+              r={results}
+              selected={selectedStage}
+              onSelect={setSelectedStage}
+            />
           </section>
           <Controls
             inputs={inputs}
-            results={results}
             selectedStage={selectedStage}
             onChange={patch}
             onReset={reset}
           />
+          <CalculatedOutputs
+            r={results}
+            selected={selectedStage}
+            onSelect={setSelectedStage}
+          />
         </div>
 
         <main className="main">
-          <section className="panel">
+          <section className="panel charts-panel">
             <div className="panel-head">
-              <h2>Recovery curve and engineering details</h2>
-              <span className="panel-sub">
-                open each station above for its detailed values
-              </span>
+              <h2>Process charts</h2>
             </div>
             <div className="panel-body">
               <ResultPanel r={results} />

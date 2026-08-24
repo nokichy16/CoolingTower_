@@ -29,26 +29,27 @@ The plume leaving the fill is prescribed directly:
 - exhaust-plume temperature `T₄`
 - exhaust relative humidity `RH₄`
 - atmospheric pressure `P`
-- dry-air mass flow `ṁ_a`
+- full-face flow area `A`
 - air velocity after the fill `u₄`
 
 The app does not force the plume to saturation. It calculates humidity ratio,
-enthalpy, density, volumetric flow and dew point from the selected state. Plume
-velocity is used with volumetric flow to calculate the implied discharge area:
-`A_plume = V̇/u₄`.
+enthalpy, moist-air density and dew point from the selected state. Flow area and
+velocity set the volumetric flow through the assessed tower.
 
 Liquid-droplet performance is controlled separately:
 
 - Ruiz tested eliminator A–F
 - representative droplet diameter `d_d`
+- selected final drift rate `r_d` (%)
 
-The eliminator spans the same flow area as the plume in this simplified model.
-Its face velocity is therefore a read-only result equal to `u₄`, rather than a
-second independent input.
+The eliminator spans the selected plume flow area and inherits the after-fill
+velocity. Its Reynolds-dependent correlation calculates eliminator pressure
+loss. The app does not select or model a designated fan.
 
 Vapour recovery uses:
 
 - cooling below the calculated dew point `ΔT_dew`
+- cycles of concentration `CoC`
 
 The original cooling-tower cutaway remains the visual navigation, with four
 modelled stations: plume, drift eliminator, fan and condensation recovery.
@@ -65,14 +66,22 @@ h₄ = 1.006 T₄ + ω₄(2501 + 1.86 T₄)
 T_dew = f(ω₄, P)
 ```
 
-Dry-air mass flow scales the state into total volumetric flow, recovered water
-and cooling duty.
+The coordinated flow basis is:
+
+```text
+u_de = u₄
+V̇ = A u₄
+ṁ_a = ρ₄ V̇ / (1 + ω₄)
+Δp_de = K(Re(u₄)) ½ρ₄u₄²
+```
+
+The derived dry-air mass flow scales recovered water and cooling duty.
 
 ### Droplet reduction
 
 ```text
 u_de = u₄
-St = ρ_water u₄ d_d² / (18 μ Lc)
+St = ρ_water u_de d_d² / (18 μ Lc)
 droplets removed (%) = 100 ε(St)
 droplets remaining (%) = 100[1 − ε(St)]
 P_air = V̇ Δp_de
@@ -110,6 +119,20 @@ kilogram.
 
 The 0 °C outlet limit keeps the recovery calculation inside the liquid-water
 saturation range used by the simplified psychrometric model.
+
+### Minimal blowdown ratio
+
+```text
+B / E = 1 / (CoC - 1)
+B = E / (CoC - 1)  when the evaporation rate E is known
+```
+
+The app reports blowdown as a percentage of the known evaporation rate. It
+does not add evaporation, recirculation, makeup-water, conductivity or
+water-temperature inputs. The selected drift rate is displayed as an
+independent design input; without a circulating-water flow, it is not converted
+to a drift mass rate and is not inferred from the representative-droplet Ruiz
+efficiency.
 
 ### Psychrometric process chart
 

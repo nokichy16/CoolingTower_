@@ -57,16 +57,16 @@ export function buildStages(r: TowerResults): StageInfo[] {
         { label: 'Air density', value: fmt(r.plume.rho, 3), unit: 'kg/m³' },
         {
           label: 'Dry-air mass flow',
-          value: fmt(r.inputs.airMassFlow),
+          value: fmt(r.plume.airMassFlow),
           unit: 'kg/s',
         },
         {
-          label: 'Air velocity after fill',
-          value: fmt(r.inputs.plumeVelocity),
+          label: 'Selected plume velocity',
+          value: fmt(r.plume.velocity, 3),
           unit: 'm/s',
         },
         {
-          label: 'Implied flow area',
+          label: 'Selected flow area',
           value: fmt(r.plume.flowArea),
           unit: 'm²',
         },
@@ -114,7 +114,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
         {
           label: 'Face velocity',
-          value: fmt(r.inputs.plumeVelocity, 3),
+          value: fmt(r.plume.velocity, 3),
           unit: 'm/s',
         },
         {
@@ -126,6 +126,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
           label: 'Equivalent area',
           value: fmt(r.droplets.equivalentArea),
           unit: 'm²',
+        },
+        {
+          label: 'Selected drift rate',
+          value: fmt(r.inputs.driftRatePct, 3),
+          unit: '%',
         },
       ],
     },
@@ -143,7 +148,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
       ],
       supporting: [
         {
-          label: 'Required pressure',
+          label: 'Required eliminator pressure',
           value: fmt(r.droplets.pressureDrop),
           unit: 'Pa',
         },
@@ -153,7 +158,18 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'm³/s',
         },
       ],
-      details: [],
+      details: [
+        {
+          label: 'Derived dry-air flow',
+          value: fmt(r.plume.airMassFlow),
+          unit: 'kg/s',
+        },
+        {
+          label: 'Selected flow area',
+          value: fmt(r.plume.flowArea),
+          unit: 'm²',
+        },
+      ],
     },
     {
       id: 'recovery',
@@ -204,6 +220,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
           label: 'Enthalpy removed',
           value: fmt(r.recovery.dH),
           unit: 'kJ/kg',
+        },
+        {
+          label: 'Blowdown / evaporation',
+          value: fmt(r.waterBalance.blowdownToEvaporationRatio * 100, 1),
+          unit: '%',
         },
       ],
     },

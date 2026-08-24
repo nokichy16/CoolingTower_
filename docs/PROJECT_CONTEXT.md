@@ -1,6 +1,6 @@
 # Plume Water-Recovery Webapp: Project Context and History
 
-Last updated: 2026-08-21
+Last updated: 2026-08-23
 
 ## Why this file exists
 
@@ -8,16 +8,11 @@ This is the durable handoff for continuing the project on another computer or
 in a new Codex task. Read it with `README.md` and `AGENTS.md` before changing
 the engineering model, documentation, interface, or deployment.
 
-The most important fact is that three related states currently exist:
-
-1. **Published GitHub Pages version:** commit `c1ab59b` on `main`.
-2. **Approved documentation direction:** later physical decisions that are not
-   fully synchronized with the published code.
-3. **Current Mac working copy:** additional uncommitted interface cleanup,
-   documentation files, and an unresolved Qu and Li/Wang drift-source
-   experiment.
-
-Do not assume that the newest local file is automatically the approved model.
+The current source implements the approved coordinated area-and-velocity flow
+basis, the minimal blowdown ratio, and the streamlined technical interface.
+GitHub Pages deployment follows pushes to `main` and must be checked separately
+before describing a source change as live. The earlier uncommitted Mac drift-
+source experiment remains historical context and is not part of this source.
 
 ## Project description
 
@@ -49,12 +44,12 @@ GitHub repository: <https://github.com/nokichy16/CoolingTower_>
 ### 1. Prescribed plume
 
 The plume state is prescribed instead of predicted from the water side. The
-published code uses:
+current source uses:
 
 - plume temperature, `T4`
 - plume relative humidity, `RH4`
 - atmospheric pressure, `P`
-- dry-air mass flow, `m_a`
+- full-face flow area, `A`
 - plume velocity after the fill, `u4`
 
 Psychrometric functions calculate humidity ratio, enthalpy, moist-air density,
@@ -115,12 +110,14 @@ are not equipment-selection or electrical-energy predictions.
 
 The following decisions were approved during the later documentation work:
 
-- The tower flow area is a fixed property for a chosen tower.
-- Air velocity remains an independently adjustable input.
-- Dry-air mass flow also remains an independently entered scaling input for
-  vapour recovery. Do not silently derive it from velocity or vice versa.
-- Liquid drift loading uses circulating-water mass flow and a selected drift
-  rate:
+- Full-face flow area and after-fill air velocity are adjustable assessment
+  inputs; the area remains constant within each calculation.
+- Volumetric flow is `A u`, and dry-air mass flow is derived from moist-air
+  density so pressure loss, ideal air power and vapour recovery use one basis.
+- Eliminator pressure loss is calculated from the Ruiz Reynolds-dependent
+  correlation at the selected velocity. No designated fan is selected.
+- A full liquid-drift mass balance would require circulating-water mass flow
+  and a selected drift rate:
 
 ```text
 m_drift,in = m_circ * (drift_rate / 100)
@@ -132,16 +129,35 @@ m_emitted = (1 - efficiency_used) * m_drift,in
   information, or a clearly stated design assumption.
 - Nozzle diameter, water drenching density, and the Qu and Li/Wang droplet-
   source regression were rejected from this accepted direction.
-- Blowdown, evaporation, makeup, and cycles of concentration remain outside the
-  direct-plume model unless a separate water-balance section is approved.
+- The later approved minimal water-balance addition accepts a selected drift
+  rate and cycles of concentration, but does not add a full water loop.
 
-This accepted direction is not fully implemented in the published Webapp.
+This accepted direction is implemented in the current source.
+
+### Current coordinated implementation
+
+The current implementation replaces independent dry-air-flow scaling
+with adjustable full-face area and after-fill velocity inputs. It derives
+`V̇ = A u` and `ṁ_a = ρV̇/(1+ω)`, then calculates Ruiz eliminator pressure loss
+and ideal eliminator-only air power at that velocity. Eliminator performance,
+air power and condensation recovery all use the same derived flow basis. It
+also displays a selected drift-rate input and calculates only the
+blowdown-to-evaporation ratio:
+
+```text
+B / E = 1 / (CoC - 1)
+```
+
+Evaporation remains an externally known quantity, so no absolute blowdown,
+drift-mass, makeup-water or recirculation rate is calculated. The selected
+drift rate remains separate from the representative-droplet Ruiz efficiency.
+This is the approved current source direction.
 
 ## Current implementation states
 
-### Published `main` at `c1ab59b`
+### Previous published model at `c1ab59b`
 
-The deployed model prescribes dry-air mass flow and plume velocity. It derives
+That earlier deployed model prescribed dry-air mass flow and plume velocity. It
 moist volumetric flow from dry-air mass flow and then reports an implied area:
 
 ```text
@@ -149,16 +165,16 @@ V_dot = m_a * (1 + omega4) / rho4
 A_implied = V_dot / u4
 ```
 
-This differs from the later fixed-area documentation direction. The published
-version calculates representative-droplet removal percentage but does not
-calculate incoming, collected, and emitted liquid-drift mass flows.
+This differed from the coordinated area-and-velocity direction. That version
+calculated representative-droplet removal percentage but did not calculate
+incoming, collected, and emitted liquid-drift mass flows.
 
-The published version includes the psychrometric chart added in `c1ab59b`.
+The version included the psychrometric chart added in `c1ab59b`.
 
-### Current uncommitted Mac working copy
+### Historical uncommitted Mac experiment
 
-As of 2026-08-21, `main` still points to `c1ab59b`, but the working tree has
-local changes.
+Before the coordinated Windows implementation, a Mac working tree contained
+the following local changes and an unresolved drift-source experiment.
 
 Modified tracked files:
 
@@ -176,8 +192,8 @@ Untracked project files include:
 - `Concise_Calculation_Sequence_Plume_Water_Recovery.docx`
 - `Technical_Report_Plume_Water_Recovery.docx`
 
-The interface cleanup removes repeated summary values and repeated
-psychrometric state cards. That cleanup is local only.
+The interface cleanup removed repeated summary values and repeated
+psychrometric state cards.
 
 The local model experiment adds circulating-water flow, reflection-nozzle
 diameter, water drenching density, and a Qu and Li/Wang no-eliminator droplet-
@@ -198,8 +214,9 @@ discard it, revise it, or approve it.
 | 2026-07-27 | `749736b` | Simplified the interface and kept source details internal. | Deployed history |
 | 2026-07-28 | `d1db7a9` | Refined recovery presentation and added plume velocity. | Deployed history |
 | 2026-07-28 | `afdbce3` | Removed a second independent eliminator velocity and inherited face velocity from plume velocity. | Deployed history |
-| 2026-08-13 | `c1ab59b` | Added the psychrometric process chart and deployed it through GitHub Pages. | Current deployed commit |
+| 2026-08-13 | `c1ab59b` | Added the psychrometric process chart and deployed it through GitHub Pages. | Deployed history |
 | After `c1ab59b` | Local working tree | Removed repeated UI values, created documentation artifacts, and added the unresolved Qu and Li/Wang drift-source experiment. | Not committed, pushed, or deployed |
+| 2026-08-23 | Current coordinated source change | Added the unified area-and-velocity flow basis, minimal blowdown ratio, model tests, and streamlined interface and charts. | Approved for `main`; live deployment requires verification |
 
 Earlier commit `a8a119e` contained a cycles-derived water balance. That model is
 historical and is not part of the current direct-plume boundary. If a future
@@ -236,7 +253,7 @@ asking the user to specify cycles independently.
   documentation artifact. Its statements must be checked against the chosen
   model before regeneration.
 
-`src/lib/drift-source.ts` exists only in the current uncommitted experiment.
+`src/lib/drift-source.ts` existed only in the historical uncommitted experiment.
 
 ## Important limitations and factual boundaries
 
@@ -285,30 +302,20 @@ sequence is:
 5. Confirm the GitHub Pages workflow succeeds.
 6. Open the live site and verify the affected behaviour.
 
-## Recommended next decision
+## Current liquid-water scope
 
-Before additional model development, decide which liquid-drift source should
-be authoritative:
-
-1. **Selected drift-rate approach:** matches the approved documentation
-   direction and requires circulating-water mass flow plus an evidence-backed
-   drift rate.
-2. **Qu and Li/Wang regression approach:** matches the current uncommitted
-   experiment but introduces nozzle and drenching-density assumptions with a
-   narrow experimental basis.
-
-After that decision, synchronize the code, README, generated documentation,
-and interface. Separately confirm whether the plume airflow basis should use a
-fixed tower area, an independently entered dry-air mass flow, or both as
-explicitly independent screening inputs. Do not hide that choice in a derived
-quantity.
+The coordinated implementation deliberately keeps the water-side
+addition minimal. The user selects a design drift-rate percentage and cycles of
+concentration. The app reports `B/E = 1/(CoC - 1)` because evaporation is known
+outside the app. A later full water balance would need explicit circulating-
+water and evaporation inputs before calculating drift mass, absolute blowdown
+or makeup water.
 
 ## Windows handoff
 
-After the approved local changes and these context files are committed and
-pushed, clone the repository on Windows and open the cloned folder as the local
-Codex project. Codex should read `AGENTS.md` automatically, and this file will
-provide the durable project history.
+Clone the repository on Windows and open the cloned folder as the local Codex
+project. Codex should read `AGENTS.md` automatically, and this file will provide
+the durable project history.
 
 Do not rely on local chat memory as the only project record. Update this file
 when a model direction is approved, a major feature is completed, or the live

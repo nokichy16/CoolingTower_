@@ -1,7 +1,6 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { TowerResults } from '../lib/model'
 import { buildStages, type StageId } from '../lib/stages'
-import { fmt } from '../lib/format'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -23,21 +22,19 @@ type GraphicZoneId = 'plume' | 'droplets' | 'fan' | 'recovery'
 
 interface ZoneLabel {
   id: Exclude<GraphicZoneId, 'recovery'>
-  labelY: number
   anchor: [number, number]
 }
 
 interface GraphicInfo {
   name: string
-  metric: string
   control: StageId
   accent: string
 }
 
 const LABELS: ZoneLabel[] = [
-  { id: 'fan', labelY: 84, anchor: [320, 84] },
-  { id: 'droplets', labelY: 142, anchor: [360, 134] },
-  { id: 'plume', labelY: 224, anchor: [396, 214] },
+  { id: 'fan', anchor: [320, 84] },
+  { id: 'droplets', anchor: [360, 134] },
+  { id: 'plume', anchor: [396, 214] },
 ]
 
 const HOTZONES: Record<
@@ -47,7 +44,7 @@ const HOTZONES: Record<
   fan: { x: 118, y: 58, width: 326, height: 58 },
   droplets: { x: 118, y: 116, width: 326, height: 38 },
   plume: { x: 118, y: 154, width: 326, height: 210 },
-  recovery: { x: 10, y: 4, width: 118, height: 124 },
+  recovery: { x: 55, y: 4, width: 112, height: 124 },
 }
 
 export default function TowerGraphic({
@@ -65,31 +62,29 @@ export default function TowerGraphic({
   ) as Record<StageId, (typeof stages)[number]>
   const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
 
+  useEffect(() => {
+    setGraphicZone(selected)
+  }, [selected])
+
   const graphicInfo = (id: GraphicZoneId): GraphicInfo => {
     const info: Record<GraphicZoneId, GraphicInfo> = {
       plume: {
         name: 'Plume',
-        metric: `${fmt(r.plume.t)} °C · ${fmt(r.plume.rh, 0)}% RH`,
         control: 'plume',
         accent: byId.plume.accent,
       },
       droplets: {
         name: 'Drift eliminator',
-        metric: `${fmt(r.droplets.reductionPct, 1)}% removed · ${fmt(
-          r.droplets.pressureDrop,
-        )} Pa`,
         control: 'droplets',
         accent: byId.droplets.accent,
       },
       fan: {
         name: 'Fan',
-        metric: `${fmt(r.droplets.fanAirPower, 1)} kW ideal air power`,
         control: 'fan',
         accent: byId.fan.accent,
       },
       recovery: {
         name: 'Recovery',
-        metric: `${fmt(r.recovery.mDotCond, 2)} kg/s theoretical`,
         control: 'recovery',
         accent: byId.recovery.accent,
       },
@@ -97,7 +92,7 @@ export default function TowerGraphic({
     return info[id]
   }
 
-  const airIntensity = clamp(r.inputs.plumeVelocity / 10, 0.12, 1)
+  const airIntensity = clamp(r.plume.velocity / 10, 0.12, 1)
   const style = {
     '--air-speed': `${(3.2 - airIntensity * 1.8).toFixed(2)}s`,
   } as CSSProperties
@@ -150,10 +145,11 @@ export default function TowerGraphic({
     )
   }
 
-  const label = ({ id, labelY, anchor }: ZoneLabel) => {
+  const label = ({ id, anchor }: ZoneLabel) => {
     const info = graphicInfo(id)
     const isSelected = graphicZone === id
     const labelX = 452
+    const labelY = anchor[1]
     return (
       <g
         key={id}
@@ -184,15 +180,6 @@ export default function TowerGraphic({
           r={2.4}
           style={{ fill: info.accent }}
         />
-        <rect
-          className="label-chip"
-          x={labelX}
-          y={labelY - 15}
-          width={196}
-          height={30}
-          rx={7}
-          style={isSelected ? { stroke: info.accent } : undefined}
-        />
         <circle
           cx={labelX + 13}
           cy={labelY}
@@ -202,9 +189,6 @@ export default function TowerGraphic({
         <text className="label-name" x={labelX + 24} y={labelY - 2}>
           {info.name}
         </text>
-        <text className="label-metric" x={labelX + 24} y={labelY + 10}>
-          {info.metric}
-        </text>
       </g>
     )
   }
@@ -212,7 +196,7 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="0 0 660 470"
+        viewBox="55 0 545 405"
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
@@ -246,10 +230,10 @@ export default function TowerGraphic({
             r.recovery.feasible ? '' : ' is-idle'
           }`}
         >
-          <path className="rec-duct" d="M196 40 C168 40 140 38 122 44" />
+          <path className="rec-duct" d="M196 40 C181 40 170 38 160 44" />
           <rect
             className="rec-shell"
-            x="18"
+            x="56"
             y="8"
             width="104"
             height="86"
@@ -257,19 +241,14 @@ export default function TowerGraphic({
           />
           <path
             className="rec-coil"
-            d="M34 28 H106 M34 42 H106 M34 56 H106"
+            d="M72 28 H144 M72 42 H144 M72 56 H144"
           />
           <path
             className="rec-drop"
-            d="M70 60 C60 74 62 84 70 88 C78 84 80 74 70 60Z"
+            d="M108 60 C98 74 100 84 108 88 C116 84 118 74 108 60Z"
           />
-          <text className="rec-label" x="70" y="108" textAnchor="middle">
+          <text className="rec-label" x="108" y="108" textAnchor="middle">
             RECOVERY
-          </text>
-          <text className="rec-value" x="70" y="120" textAnchor="middle">
-            {r.recovery.feasible
-              ? `${fmt(r.recovery.mDotCond, 2)} kg/s`
-              : 'inactive'}
           </text>
         </g>
 

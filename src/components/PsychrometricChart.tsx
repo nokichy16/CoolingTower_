@@ -20,16 +20,19 @@ import {
   YAxis,
 } from 'recharts'
 import type { TowerResults } from '../lib/model'
-import { buildPsychrometricChart } from '../lib/psychrometric-chart'
+import {
+  buildPsychrometricChart,
+  type PsychrometricChartData,
+} from '../lib/psychrometric-chart'
 import { fmt } from '../lib/format'
 
-const AXIS = '#65615b'
-const GRID = '#e8e4dd'
-const LINE = '#d8d3ca'
-const RH_MAIN = '#7da7ef'
-const RH_FAINT = 'rgba(37, 99, 235, 0.25)'
-const ENTHALPY = 'rgba(220, 38, 38, 0.52)'
-const PATH = '#252525'
+const AXIS = '#4c4943'
+const GRID = '#d4cfc5'
+const LINE = '#aaa49a'
+const RH_MAIN = '#4d7fd4'
+const RH_FAINT = 'rgba(37, 99, 235, 0.4)'
+const ENTHALPY = 'rgba(185, 28, 28, 0.68)'
+const PATH = '#111111'
 const STATE_1 = '#2563eb'
 const STATE_2 = '#dc2626'
 
@@ -43,14 +46,38 @@ interface TooltipProps {
   active?: boolean
   label?: number | string
   payload?: TooltipEntry[]
+  chart: PsychrometricChartData
 }
 
 /**
  * Only the relative-humidity curves are reported. Listing every enthalpy line
  * as well turns the tooltip into a wall of numbers for no gain.
  */
-function ChartTooltip({ active, label, payload }: TooltipProps) {
+function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
   if (!active || !payload?.length) return null
+
+  const hoveredTemperature = Number(label)
+  const stateThreshold = ((chart.maxT - chart.minT) / 80) * 1.25
+  const nearestState = [chart.state1, chart.state2]
+    .map((state, index) => ({
+      state,
+      index: index + 1,
+      distance: Math.abs(state.t - hoveredTemperature),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0]
+
+  if (nearestState && nearestState.distance <= stateThreshold) {
+    const { state, index } = nearestState
+    const name = index === 1 ? 'Plume' : 'Recovery outlet'
+    return (
+      <div className="psychro-tip is-state">
+        <strong>State {index} · {name}</strong>
+        <span>T = {fmt(state.t, 1)} °C</span>
+        <span>{fmt(state.rh, 1)}% RH · {fmt(state.w, 2)} g/kg da</span>
+      </div>
+    )
+  }
+
   const rows = payload.filter(
     (entry) =>
       typeof entry.dataKey === 'string' &&
@@ -77,23 +104,38 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
 
   return (
     <section className="card chart-card psychro-card">
-      <h4>Psychrometric process chart</h4>
-      <p className="card-note">
-        Blue curves are relative humidity; dashed red lines are constant
-        moist-air enthalpy h (kJ/kg dry air). The path runs from the prescribed
-        plume to the saturated recovery outlet.
-      </p>
+      <div className="chart-title-row">
+        <h4>Psychrometric process</h4>
+        <div className="chart-legend" aria-label="Chart legend">
+          <span><i className="is-rh" />Relative humidity</span>
+          <span><i className="is-enthalpy" />Enthalpy</span>
+          <span><i className="is-process" />Process path</span>
+        </div>
+      </div>
 
       <div
         className="chart"
         role="img"
         aria-label={`Psychrometric process from plume state ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to saturated recovery state ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
-        <ResponsiveContainer width="100%" height={440}>
+        <ResponsiveContainer width="100%" height={390}>
           <LineChart
             data={c.rows}
             margin={{ top: 24, right: 34, bottom: 12, left: 6 }}
           >
+            <defs>
+              <marker
+                id="psychro-process-arrow"
+                viewBox="0 0 10 10"
+                refX="5"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill={PATH} />
+              </marker>
+            </defs>
             <CartesianGrid stroke={GRID} strokeDasharray="0" />
             <XAxis
               dataKey="t"
@@ -126,7 +168,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 fontSize: 11,
               }}
             />
-            <Tooltip content={<ChartTooltip />} />
+            <Tooltip content={<ChartTooltip chart={c} />} />
 
             {c.enthalpySeries.map((s) => (
               <Line
@@ -195,6 +237,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 dataKey={c.processKey}
                 stroke={PATH}
                 strokeWidth={3}
+                markerStart="url(#psychro-process-arrow)"
                 dot={false}
                 activeDot={false}
                 connectNulls={false}
@@ -234,41 +277,36 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="psychro-states">
-        <div className="psychro-state is-inlet">
-          <span className="psychro-state-tag">State 1 · plume</span>
-          <strong>
-            {fmt(c.state1.t, 1)} °C · {fmt(c.state1.rh, 1)}% RH
-          </strong>
-          <small>
-            W {fmt(c.state1.w, 2)} g/kg da · h {fmt(c.state1.h, 2)} kJ/kg da
-          </small>
-        </div>
-        <div className="psychro-state is-outlet">
-          <span className="psychro-state-tag">State 2 · recovery outlet</span>
-          <strong>
-            {fmt(c.state2.t, 1)} °C · saturated
-          </strong>
-          <small>
-            W {fmt(c.state2.w, 2)} g/kg da · h {fmt(c.state2.h, 2)} kJ/kg da
-          </small>
-        </div>
+      <div className="psychro-table-wrap">
+        <table className="psychro-table">
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Temperature</th>
+              <th>Relative humidity</th>
+              <th>Humidity ratio</th>
+              <th>Enthalpy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>1 · Plume</th>
+              <td>{fmt(c.state1.t, 1)} °C</td>
+              <td>{fmt(c.state1.rh, 1)}%</td>
+              <td>{fmt(c.state1.w, 2)} g/kg da</td>
+              <td>{fmt(c.state1.h, 2)} kJ/kg da</td>
+            </tr>
+            <tr>
+              <th>2 · Recovery outlet</th>
+              <td>{fmt(c.state2.t, 1)} °C</td>
+              <td>Saturated</td>
+              <td>{fmt(c.state2.w, 2)} g/kg da</td>
+              <td>{fmt(c.state2.h, 2)} kJ/kg da</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <div className="psychro-chips">
-        <div className="psychro-chip is-water">
-          <strong>{fmt(c.condensedGrams, 3)} g</strong>
-          <span>condensed water per kg dry air</span>
-        </div>
-        <div className="psychro-chip">
-          <strong>ΔT {fmt(c.deltaT, 1)} °C</strong>
-          <span>dew point {fmt(c.dewPoint, 1)} °C</span>
-        </div>
-        <div className="psychro-chip is-heat">
-          <strong>{fmt(c.heatRemoved, 2)} kJ</strong>
-          <span>heat removed per kg dry air</span>
-        </div>
-      </div>
     </section>
   )
 }

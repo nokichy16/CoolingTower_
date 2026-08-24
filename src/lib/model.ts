@@ -8,8 +8,9 @@
  *   plume state → drift-eliminator reduction → fan air requirement
  *   → vapour condensation
  *
- * Dry-air mass flow is retained because a psychrometric state alone gives only
- * per-kilogram quantities; total water (kg/s) and cooling duty (kW) need flow.
+ * User-selected full-face area and plume velocity determine volumetric
+ * flow. Dry-air mass flow is then derived so
+ * total water (kg/s), air power, and cooling duty share one flow basis.
  */
 
 import {
@@ -19,13 +20,13 @@ import {
   hSat,
   humidityRatio,
   omegaSat,
-} from './psychrometrics'
+} from './psychrometrics.ts'
 import {
   evaluateRuizEliminator,
   RUIZ_LIMITS,
   type EliminatorId,
   type RuizEliminatorResult,
-} from './eliminators'
+} from './eliminators.ts'
 
 export interface SolveIssue {
   code:
@@ -33,6 +34,8 @@ export interface SolveIssue {
     | 'ruiz-collection-extrapolation'
     | 'recovery-temperature-limited'
     | 'no-condensation-depth'
+    | 'flow-input-invalid'
+    | 'cycles-invalid'
   severity: 'warning'
   title: string
   message: string
@@ -43,15 +46,17 @@ export interface TowerInputs {
   plumeTemperature: number // °C, dry-bulb
   plumeRh: number // %
   pressure: number // Pa
-  airMassFlow: number // kg/s dry air
-  plumeVelocity: number // m/s bulk plume velocity
+  flowArea: number // m², selected full-face plume / eliminator area
+  plumeVelocity: number // m/s selected bulk plume / eliminator face velocity
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
   dropletDiameter: number // representative diameter, µm
+  driftRatePct: number // selected final design drift rate, %
 
   // Vapour recovery
   coolingBelowDewPoint: number // K below plume dew point
+  cyclesOfConcentration: number // dimensionless
 }
 
 export interface PlumeState {
@@ -62,12 +67,14 @@ export interface PlumeState {
   rho: number // kg moist air / m³
   dewPoint: number // °C
   vDot: number // m³/s moist air
-  flowArea: number // m² implied by vDot / plumeVelocity
+  flowArea: number // m² selected full-face flow area
+  velocity: number // m/s derived face velocity
+  airMassFlow: number // kg/s dry air derived from the moist-air flow
 }
 
 export interface TowerResults {
   inputs: TowerInputs
-  valid: true
+  valid: boolean
   issues: SolveIssue[]
   plume: PlumeState
   eliminator: RuizEliminatorResult
@@ -94,6 +101,9 @@ export interface TowerResults {
     mDotCond: number // kg/s theoretical condensate
     qDuty: number // kW approximate air-side cooling duty
     feasible: boolean
+  }
+  waterBalance: {
+    blowdownToEvaporationRatio: number // B/E = 1 / (CoC - 1)
   }
 }
 
@@ -133,33 +143,36 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const h4 = enthalpy(inputs.plumeTemperature, omega4)
   const rho4 = density(inputs.plumeTemperature, omega4, inputs.pressure)
   const tDew = dewPoint(omega4, inputs.pressure)
-  const vDot = (inputs.airMassFlow * (1 + omega4)) / rho4
-  const flowArea = vDot / inputs.plumeVelocity
-  // Simplified same-area assumption: the full-face eliminator spans the plume
-  // flow area, so its local face velocity equals the after-fill plume velocity.
-  const eliminatorFaceVelocity = inputs.plumeVelocity
+  const flowAreaValid = Number.isFinite(inputs.flowArea) && inputs.flowArea > 0
+  const velocityValid =
+    Number.isFinite(inputs.plumeVelocity) && inputs.plumeVelocity > 0
+  const eliminatorFaceVelocity = velocityValid ? inputs.plumeVelocity : 0
+  const evaluationVelocity = velocityValid ? inputs.plumeVelocity : 1e-6
+  const vDot = (flowAreaValid ? inputs.flowArea : 0) * eliminatorFaceVelocity
+  const airMassFlow = (rho4 * vDot) / (1 + omega4)
 
   const eliminator = evaluateRuizEliminator(
     inputs.eliminatorId,
     rho4,
-    eliminatorFaceVelocity,
+    evaluationVelocity,
     inputs.plumeTemperature,
     inputs.dropletDiameter,
   )
   const collection = clamp(eliminator.collectionEfficiency, 0, 1)
-  const pressureDrop =
-    eliminator.pressureCoefficient *
-    0.5 *
-    rho4 *
-    eliminatorFaceVelocity ** 2
-  const equivalentArea = flowArea
+  const pressureDrop = velocityValid
+    ? eliminator.pressureCoefficient *
+      0.5 *
+      rho4 *
+      eliminatorFaceVelocity ** 2
+    : 0
+  const equivalentArea = inputs.flowArea
   // Ideal air power P_air = V̇·Δp. Pressure is not fed back into the
   // psychrometrics because the eliminator loss is tiny relative to atmospheric
   // pressure. Electrical or shaft power would require a fan efficiency.
   const fanAirPower = (vDot * pressureDrop) / 1000
   const supportedDiameter = supportedDropletRange(
     eliminator,
-    eliminatorFaceVelocity,
+    evaluationVelocity,
   )
 
   // Recovery temperature is expressed relative to dew point so the control
@@ -176,10 +189,40 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const dH = Math.max(0, h4 - h5)
   const feasible = inputs.coolingBelowDewPoint > 0 && dOmega > 1e-9
   const e = feasible ? dH / dOmega : 0
-  const mDotCond = inputs.airMassFlow * dOmega
-  const qDuty = inputs.airMassFlow * dH
+  const mDotCond = airMassFlow * dOmega
+  const qDuty = airMassFlow * dH
+  const cyclesValid =
+    Number.isFinite(inputs.cyclesOfConcentration) &&
+    inputs.cyclesOfConcentration > 1
+  const blowdownToEvaporationRatio = cyclesValid
+    ? 1 / (inputs.cyclesOfConcentration - 1)
+    : 0
 
   const issues: SolveIssue[] = []
+  if (!flowAreaValid) {
+    issues.push({
+      code: 'flow-input-invalid',
+      severity: 'warning',
+      title: 'Flow area is invalid',
+      message: 'The full-face flow area must be a positive finite value.',
+    })
+  }
+  if (!velocityValid) {
+    issues.push({
+      code: 'flow-input-invalid',
+      severity: 'warning',
+      title: 'Plume velocity is invalid',
+      message: 'The selected plume velocity must be a positive finite value.',
+    })
+  }
+  if (!cyclesValid) {
+    issues.push({
+      code: 'cycles-invalid',
+      severity: 'warning',
+      title: 'Cycles of concentration are invalid',
+      message: 'Cycles of concentration must be greater than 1.',
+    })
+  }
   if (!eliminator.pressureSupported) {
     issues.push({
       code: 'ruiz-pressure-extrapolation',
@@ -221,7 +264,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
 
   return {
     inputs,
-    valid: true,
+    valid: flowAreaValid && velocityValid && cyclesValid,
     issues,
     plume: {
       t: inputs.plumeTemperature,
@@ -231,7 +274,9 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       rho: rho4,
       dewPoint: tDew,
       vDot,
-      flowArea,
+      flowArea: inputs.flowArea,
+      velocity: eliminatorFaceVelocity,
+      airMassFlow,
     },
     eliminator,
     droplets: {
@@ -254,6 +299,9 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       qDuty,
       feasible,
     },
+    waterBalance: {
+      blowdownToEvaporationRatio,
+    },
   }
 }
 
@@ -261,11 +309,13 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeTemperature: 40,
   plumeRh: 95,
   pressure: 101_300,
-  airMassFlow: 146.5,
+  flowArea: 46.55,
   plumeVelocity: 3,
 
   eliminatorId: 'B',
   dropletDiameter: 50,
+  driftRatePct: 0.005,
 
   coolingBelowDewPoint: 10,
+  cyclesOfConcentration: 6,
 }
