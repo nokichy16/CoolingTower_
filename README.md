@@ -39,7 +39,8 @@ velocity set the volumetric flow through the assessed tower.
 Liquid-droplet performance is controlled separately:
 
 - Ruiz tested eliminator A–F
-- representative droplet diameter `d_d`
+- theoretical minimum and maximum droplet sizes
+- theoretical largest-first removal efficiency `η`
 - selected final drift rate `r_d` (%)
 
 The eliminator spans the selected plume flow area and inherits the after-fill
@@ -75,25 +76,28 @@ V̇ = A u₄
 Δp_de = K(Re(u₄)) ½ρ₄u₄²
 ```
 
-The derived dry-air mass flow scales recovered water and cooling duty.
+The linked dry-air mass-flow input scales recovered water and cooling duty.
+Editing it recalculates velocity at the selected area and plume state; editing
+velocity or area updates the displayed dry-air mass flow.
 
-### Droplet reduction
+### Theoretical droplet tracking
 
 ```text
 u_de = u₄
-St = ρ_water u_de d_d² / (18 μ Lc)
-droplets removed (%) = 100 ε(St)
-droplets remaining (%) = 100[1 − ε(St)]
+droplets removed (%) = η
+d_cut = d_max − (η / 100)(d_max − d_min)
+remaining size range = d_min to d_cut
+captured size range = d_cut to d_max
 P_air = V̇ Δp_de
 ```
 
-`ε` is the Ruiz collection efficiency for the selected representative droplet
-size. It is not an overall mass-removal claim for an unknown real droplet-size
-distribution.
+The inlet droplet mass is assumed uniform between the selected size limits,
+and the selected efficiency removes that mass from the largest sizes downward.
+This is a provisional theoretical tracker; Ruiz is retained only for pressure
+loss.
 
-The calculation retains the paper-supported diameter and operating-range checks
-internally. They are based on `0.2 ≤ St ≤ 2`, the paper's 25 µm measurement
-floor, `2,000 ≤ Re ≤ 15,000` and `0.443 ≤ u_de ≤ 4.36 m/s`.
+The Ruiz pressure calculation retains its Reynolds-number and velocity-range
+checks internally.
 `P_air` is ideal air power for the eliminator pressure loss alone, not
 electrical motor power or whole-tower fan duty.
 
@@ -131,8 +135,7 @@ The app reports blowdown as a percentage of the known evaporation rate. It
 does not add evaporation, recirculation, makeup-water, conductivity or
 water-temperature inputs. The selected drift rate is displayed as an
 independent design input; without a circulating-water flow, it is not converted
-to a drift mass rate and is not inferred from the representative-droplet Ruiz
-efficiency.
+to a drift mass rate and is not inferred from the theoretical capture inputs.
 
 ### Psychrometric process chart
 

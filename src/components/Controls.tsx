@@ -5,8 +5,12 @@ import Field from './Field'
 
 interface ControlsProps {
   inputs: TowerInputs
+  dryAirMassFlow: number
+  dryAirMassFlowMin: number
+  dryAirMassFlowMax: number
   selectedStage: StageId
   onChange: (patch: Partial<TowerInputs>) => void
+  onDryAirMassFlowChange: (value: number) => void
   onReset: () => void
 }
 
@@ -37,8 +41,12 @@ const STAGE_META: Record<
 
 export default function Controls({
   inputs,
+  dryAirMassFlow,
+  dryAirMassFlowMin,
+  dryAirMassFlowMax,
   selectedStage,
   onChange,
+  onDryAirMassFlowChange,
   onReset,
 }: ControlsProps) {
   const stage = STAGE_META[selectedStage]
@@ -117,6 +125,17 @@ export default function Controls({
               digits={3}
               onChange={set('plumeVelocity')}
             />
+            <Field
+              label="Dry-air mass flow"
+              sym="ṁ_da"
+              unit="kg/s"
+              value={dryAirMassFlow}
+              min={dryAirMassFlowMin}
+              max={dryAirMassFlowMax}
+              step={0.1}
+              digits={1}
+              onChange={onDryAirMassFlowChange}
+            />
           </>
         )}
 
@@ -146,15 +165,37 @@ export default function Controls({
             </label>
 
             <Field
-              label="Representative droplet"
-              sym="d_d"
+              label="Minimum droplet size"
+              sym="d_min"
               unit="µm"
-              value={inputs.dropletDiameter}
-              min={25}
-              max={250}
-              step={5}
+              value={inputs.dropletDiameterMin}
+              min={1}
+              max={inputs.dropletDiameterMax - 1}
+              step={1}
               digits={0}
-              onChange={set('dropletDiameter')}
+              onChange={set('dropletDiameterMin')}
+            />
+            <Field
+              label="Maximum droplet size"
+              sym="d_max"
+              unit="µm"
+              value={inputs.dropletDiameterMax}
+              min={inputs.dropletDiameterMin + 1}
+              max={1000}
+              step={1}
+              digits={0}
+              onChange={set('dropletDiameterMax')}
+            />
+            <Field
+              label="Theoretical droplet-mass efficiency"
+              sym="η"
+              unit="%"
+              value={inputs.dropletEfficiencyPct}
+              min={0}
+              max={100}
+              step={1}
+              digits={0}
+              onChange={set('dropletEfficiencyPct')}
             />
             <Field
               label="Selected drift rate"

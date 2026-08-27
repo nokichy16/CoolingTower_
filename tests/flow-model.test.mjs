@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { DEFAULT_INPUTS, solveTower } from '../src/lib/model.ts'
+import {
+  DEFAULT_INPUTS,
+  solveTower,
+  velocityFromDryAirMassFlow,
+} from '../src/lib/model.ts'
 
 const closeTo = (actual, expected, relativeTolerance = 1e-8) => {
   const scale = Math.max(1, Math.abs(expected))
@@ -37,6 +41,25 @@ test('adjustable-area plume flow conserves moist and dry-air mass', () => {
     result.plume.airMassFlow,
     (result.plume.rho * result.plume.vDot) / (1 + result.plume.omega),
   )
+})
+
+test('editable dry-air mass flow maps to velocity on the same fixed-area basis', () => {
+  const base = solveTower(DEFAULT_INPUTS)
+  const targetDryAirMassFlow = 200
+  const linkedVelocity = velocityFromDryAirMassFlow(
+    targetDryAirMassFlow,
+    base.plume.rho,
+    DEFAULT_INPUTS.flowArea,
+    base.plume.omega,
+  )
+  const result = solveTower({
+    ...DEFAULT_INPUTS,
+    plumeVelocity: linkedVelocity,
+  })
+
+  closeTo(result.plume.airMassFlow, targetDryAirMassFlow)
+  closeTo(result.plume.flowArea, DEFAULT_INPUTS.flowArea)
+  closeTo(result.plume.velocity, linkedVelocity)
 })
 
 test('eliminator and fan outputs use the same velocity and flow basis', () => {
@@ -77,6 +100,19 @@ test('cycles of concentration sets the blowdown-to-evaporation ratio', () => {
 
   closeTo(result.waterBalance.blowdownToEvaporationRatio, 1 / 5)
   closeTo(result.inputs.driftRatePct, 0.005)
+})
+
+test('theoretical efficiency removes the largest-first droplet range', () => {
+  const result = solveTower({
+    ...DEFAULT_INPUTS,
+    dropletDiameterMin: 10,
+    dropletDiameterMax: 200,
+    dropletEfficiencyPct: 80,
+  })
+
+  closeTo(result.droplets.reductionPct, 80)
+  closeTo(result.droplets.remainingPct, 20)
+  closeTo(result.droplets.captureCutoffDiameter, 48)
 })
 
 test('invalid area, velocity, or cycles are reported without negative airflow', () => {

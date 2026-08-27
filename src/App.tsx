@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react'
-import { DEFAULT_INPUTS, solveTower, type TowerInputs } from './lib/model'
+import {
+  DEFAULT_INPUTS,
+  dryAirMassFlowFromVelocity,
+  solveTower,
+  velocityFromDryAirMassFlow,
+  type TowerInputs,
+} from './lib/model'
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
 import TowerExplorer, {
@@ -14,6 +20,22 @@ export default function App() {
 
   const patch = (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p }))
   const reset = () => setInputs(DEFAULT_INPUTS)
+  const dryAirMassFlowAtVelocity = (velocity: number) =>
+    dryAirMassFlowFromVelocity(
+      results.plume.rho,
+      inputs.flowArea,
+      velocity,
+      results.plume.omega,
+    )
+  const setDryAirMassFlow = (dryAirMassFlow: number) =>
+    patch({
+      plumeVelocity: velocityFromDryAirMassFlow(
+        dryAirMassFlow,
+        results.plume.rho,
+        inputs.flowArea,
+        results.plume.omega,
+      ),
+    })
   const visibleIssues = results.issues.filter(
     (issue) => !issue.code.startsWith('ruiz-'),
   )
@@ -47,8 +69,12 @@ export default function App() {
           </section>
           <Controls
             inputs={inputs}
+            dryAirMassFlow={results.plume.airMassFlow}
+            dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
+            dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}
             selectedStage={selectedStage}
             onChange={patch}
+            onDryAirMassFlowChange={setDryAirMassFlow}
             onReset={reset}
           />
           <CalculatedOutputs

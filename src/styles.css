@@ -996,10 +996,6 @@ input[type='range']::-moz-range-thumb {
   font-size: 13.5px;
   font-variant-numeric: tabular-nums;
 }
-.plume-derived-strip {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .calculation-scope {
   margin-top: 10px;
   padding: 9px 10px 0;

@@ -23,7 +23,6 @@ import {
 } from './psychrometrics.ts'
 import {
   evaluateRuizEliminator,
-  RUIZ_LIMITS,
   type EliminatorId,
   type RuizEliminatorResult,
 } from './eliminators.ts'
@@ -31,7 +30,6 @@ import {
 export interface SolveIssue {
   code:
     | 'ruiz-pressure-extrapolation'
-    | 'ruiz-collection-extrapolation'
     | 'recovery-temperature-limited'
     | 'no-condensation-depth'
     | 'flow-input-invalid'
@@ -51,7 +49,9 @@ export interface TowerInputs {
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
-  dropletDiameter: number // representative diameter, µm
+  dropletDiameterMin: number // theoretical inlet range minimum, µm
+  dropletDiameterMax: number // theoretical inlet range maximum, µm
+  dropletEfficiencyPct: number // theoretical largest-first mass removal, %
   driftRatePct: number // selected final design drift rate, %
 
   // Vapour recovery
@@ -88,8 +88,7 @@ export interface TowerResults {
      */
     fanAirPower: number // kW
     equivalentArea: number // m², same flow area as the prescribed plume
-    supportedDiameterMin: number // µm, from St ≥ 0.2 and the 25 µm floor
-    supportedDiameterMax: number // µm, from St ≤ 2
+    captureCutoffDiameter: number // µm
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -111,27 +110,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-function supportedDropletRange(
-  eliminator: RuizEliminatorResult,
+export function dryAirMassFlowFromVelocity(
+  rho: number,
+  flowArea: number,
   velocity: number,
-): { min: number; max: number } {
-  // Rearranged from St = ρw·u·d² / (18·μ·Lc).
-  const diameterAt = (stokes: number) =>
-    Math.sqrt(
-      (18 *
-        eliminator.dynamicViscosity *
-        eliminator.spec.characteristicLength *
-        stokes) /
-        (997 * velocity),
-    ) * 1e6
+  omega: number,
+): number {
+  return (rho * flowArea * velocity) / (1 + omega)
+}
 
-  return {
-    min: Math.max(
-      RUIZ_LIMITS.dropletDiameterMin,
-      diameterAt(RUIZ_LIMITS.stokesMin),
-    ),
-    max: diameterAt(RUIZ_LIMITS.stokesMax),
-  }
+export function velocityFromDryAirMassFlow(
+  dryAirMassFlow: number,
+  rho: number,
+  flowArea: number,
+  omega: number,
+): number {
+  return (dryAirMassFlow * (1 + omega)) / (rho * flowArea)
 }
 
 export function solveTower(inputs: TowerInputs): TowerResults {
@@ -149,16 +143,24 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const eliminatorFaceVelocity = velocityValid ? inputs.plumeVelocity : 0
   const evaluationVelocity = velocityValid ? inputs.plumeVelocity : 1e-6
   const vDot = (flowAreaValid ? inputs.flowArea : 0) * eliminatorFaceVelocity
-  const airMassFlow = (rho4 * vDot) / (1 + omega4)
+  const airMassFlow = dryAirMassFlowFromVelocity(
+    rho4,
+    flowAreaValid ? inputs.flowArea : 0,
+    eliminatorFaceVelocity,
+    omega4,
+  )
 
   const eliminator = evaluateRuizEliminator(
     inputs.eliminatorId,
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDiameter,
+    (inputs.dropletDiameterMin + inputs.dropletDiameterMax) / 2,
   )
-  const collection = clamp(eliminator.collectionEfficiency, 0, 1)
+  const collection = clamp(inputs.dropletEfficiencyPct, 0, 100) / 100
+  const captureCutoffDiameter =
+    inputs.dropletDiameterMax -
+    collection * (inputs.dropletDiameterMax - inputs.dropletDiameterMin)
   const pressureDrop = velocityValid
     ? eliminator.pressureCoefficient *
       0.5 *
@@ -170,10 +172,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   // psychrometrics because the eliminator loss is tiny relative to atmospheric
   // pressure. Electrical or shaft power would require a fan efficiency.
   const fanAirPower = (vDot * pressureDrop) / 1000
-  const supportedDiameter = supportedDropletRange(
-    eliminator,
-    evaluationVelocity,
-  )
 
   // Recovery temperature is expressed relative to dew point so the control
   // answers the useful question directly: how far into the condensing region
@@ -233,16 +231,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       )}. Pressure loss remains visible but is outside the paper-supported range.`,
     })
   }
-  if (!eliminator.collectionSupported) {
-    issues.push({
-      code: 'ruiz-collection-extrapolation',
-      severity: 'warning',
-      title: 'Droplet reduction is extrapolated',
-      message: `${eliminator.collectionRangeIssues.join(
-        '; ',
-      )}. The percentage remains visible but is not paper-validated here.`,
-    })
-  }
   if (requestedT5 < 0) {
     issues.push({
       code: 'recovery-temperature-limited',
@@ -285,8 +273,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       pressureDrop,
       fanAirPower,
       equivalentArea,
-      supportedDiameterMin: supportedDiameter.min,
-      supportedDiameterMax: supportedDiameter.max,
+      captureCutoffDiameter,
     },
     recovery: {
       t: t5,
@@ -313,7 +300,9 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeVelocity: 3,
 
   eliminatorId: 'B',
-  dropletDiameter: 50,
+  dropletDiameterMin: 10,
+  dropletDiameterMax: 200,
+  dropletEfficiencyPct: 80,
   driftRatePct: 0.005,
 
   coolingBelowDewPoint: 10,

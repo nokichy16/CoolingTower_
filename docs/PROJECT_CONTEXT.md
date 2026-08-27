@@ -61,24 +61,19 @@ Water vapour and liquid drift droplets are different physical paths:
 
 - Vapour recovery uses the humidity-ratio change:
   `m_recovered = m_a * delta_omega`.
-- Liquid drift begins from a liquid-droplet loading and uses eliminator
-  collection efficiency.
+- Liquid drift uses a separate, provisional size-dependent capture assumption.
 
 Their results must not be added together or described as the same form of
 recovery.
 
 ### 3. Drift eliminator
 
-The selected Ruiz eliminator A-F is evaluated using Reynolds number, Stokes
-number, geometry-specific pressure correlations, and a representative droplet
-diameter.
-
-The calculated collection efficiency applies to the selected representative
-diameter. It is not automatically an overall drift-removal efficiency because
-the model does not integrate a measured droplet-size distribution.
-
-The 25 micrometre lower boundary is an experimental evidence limitation from
-the Ruiz measurement method, not a claim that smaller droplets cannot exist.
+The selected Ruiz eliminator A-F is evaluated using its Reynolds-dependent
+pressure correlation. Droplet tracking separately assumes uniform inlet mass
+between selected minimum and maximum sizes. A user-set theoretical efficiency
+removes that mass from the largest diameters downward and defines captured and
+remaining size ranges. This is provisional and not a validated efficiency
+curve.
 
 ### 4. Fan result
 
@@ -141,7 +136,10 @@ with adjustable full-face area and after-fill velocity inputs. It derives
 `V̇ = A u` and `ṁ_a = ρV̇/(1+ω)`, then calculates Ruiz eliminator pressure loss
 and ideal eliminator-only air power at that velocity. Eliminator performance,
 air power and condensation recovery all use the same derived flow basis. It
-also displays a selected drift-rate input and calculates only the
+exposes dry-air mass flow as a linked input: editing it recalculates velocity,
+while editing velocity or area updates dry-air mass flow. It is not a third
+independent flow constraint. The implementation also displays a selected
+drift-rate input and calculates only the
 blowdown-to-evaporation ratio:
 
 ```text
@@ -150,7 +148,7 @@ B / E = 1 / (CoC - 1)
 
 Evaporation remains an externally known quantity, so no absolute blowdown,
 drift-mass, makeup-water or recirculation rate is calculated. The selected
-drift rate remains separate from the representative-droplet Ruiz efficiency.
+drift rate remains separate from the theoretical removal efficiency.
 This is the approved current source direction.
 
 ## Current implementation states

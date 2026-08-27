@@ -79,20 +79,23 @@ export function buildStages(r: TowerResults): StageInfo[] {
       accent: '#c9b568',
       primary: [
         {
-          label: 'Droplets removed',
+          label: 'Theoretical droplet mass removed',
           value: fmt(r.droplets.reductionPct, 1),
           unit: '%',
         },
       ],
       supporting: [
         {
-          label: 'Remaining',
+          label: 'Droplet mass remaining',
           value: fmt(r.droplets.remainingPct, 1),
           unit: '%',
         },
         {
-          label: 'Representative size',
-          value: fmt(r.inputs.dropletDiameter, 0),
+          label: 'Remaining range after',
+          value: `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
+            r.droplets.captureCutoffDiameter,
+            0,
+          )}`,
           unit: 'µm',
         },
         {
@@ -102,11 +105,6 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
       ],
       details: [
-        {
-          label: 'Stokes number',
-          value: fmt(r.eliminator.stokes, 2),
-          unit: '',
-        },
         {
           label: 'Reynolds number',
           value: fmt(r.eliminator.reynolds, 0),
@@ -126,6 +124,22 @@ export function buildStages(r: TowerResults): StageInfo[] {
           label: 'Equivalent area',
           value: fmt(r.droplets.equivalentArea),
           unit: 'm²',
+        },
+        {
+          label: 'Droplet range before',
+          value: `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
+            r.inputs.dropletDiameterMax,
+            0,
+          )}`,
+          unit: 'µm',
+        },
+        {
+          label: 'Captured range',
+          value: `${fmt(r.droplets.captureCutoffDiameter, 0)}–${fmt(
+            r.inputs.dropletDiameterMax,
+            0,
+          )}`,
+          unit: 'µm',
         },
         {
           label: 'Selected drift rate',
