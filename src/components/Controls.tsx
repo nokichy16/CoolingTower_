@@ -3,6 +3,15 @@ import type { StageId } from '../lib/stages'
 import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
 
+const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
+  A: 'Vane · 50 mm gap · 150 mm height · 54.3° direction change',
+  B: 'Vane · 32 mm gap · 150 mm height · 89.4° direction change',
+  C: 'Vane · 25 mm gap · 150 mm height · 36.3° direction change',
+  D: 'Honeycomb · 15 mm hydraulic diameter · 165 mm height',
+  E: 'Wire mesh · 34.79 mm characteristic length · 165 mm height · 45° direction change',
+  F: 'Wire mesh · 34.79 mm characteristic length · 165 mm height · 135° direction change',
+}
+
 interface ControlsProps {
   inputs: TowerInputs
   dryAirMassFlow: number
@@ -50,6 +59,7 @@ export default function Controls({
   onReset,
 }: ControlsProps) {
   const stage = STAGE_META[selectedStage]
+  const selectedEliminator = ELIMINATORS[inputs.eliminatorId]
   const set =
     (key: keyof TowerInputs) =>
     (value: number) =>
@@ -163,6 +173,29 @@ export default function Controls({
                 ))}
               </select>
             </label>
+
+            <div className="eliminator-design-summary" aria-live="polite">
+              <strong>
+                Design {selectedEliminator.id} · {selectedEliminator.type}
+              </strong>
+              <span>{ELIMINATOR_DESCRIPTIONS[selectedEliminator.id]}</span>
+            </div>
+
+            <details className="eliminator-comparison">
+              <summary>Compare designs A–F</summary>
+              <p>The letters identify tested Ruiz configurations, not performance rankings.</p>
+              <div className="eliminator-comparison-list">
+                {Object.values(ELIMINATORS).map((spec) => (
+                  <div
+                    className={spec.id === selectedEliminator.id ? 'is-selected' : ''}
+                    key={spec.id}
+                  >
+                    <strong>{spec.id}</strong>
+                    <span>{ELIMINATOR_DESCRIPTIONS[spec.id]}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
 
             <Field
               label="Minimum droplet size"

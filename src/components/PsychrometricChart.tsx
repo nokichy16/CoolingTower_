@@ -14,6 +14,7 @@ import {
   Line,
   LineChart,
   ReferenceDot,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -101,6 +102,21 @@ function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
 
 export default function PsychrometricChart({ r }: { r: TowerResults }) {
   const c = buildPsychrometricChart(r)
+  const processPoints = c.rows.flatMap((row) => {
+    const w = row[c.processKey]
+    return typeof w === 'number' ? [{ x: row.t, y: w }] : []
+  })
+  const arrowEndIndex = Math.floor((processPoints.length - 1) / 2)
+  const arrowStartIndex = Math.min(
+    processPoints.length - 1,
+    arrowEndIndex + 5,
+  )
+  const processArrow = processPoints.length > 1
+    ? {
+        start: processPoints[arrowStartIndex],
+        end: processPoints[arrowEndIndex],
+      }
+    : null
 
   return (
     <section className="card chart-card psychro-card">
@@ -127,11 +143,11 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               <marker
                 id="psychro-process-arrow"
                 viewBox="0 0 10 10"
-                refX="5"
+                refX="8"
                 refY="5"
                 markerWidth="6"
                 markerHeight="6"
-                orient="auto-start-reverse"
+                orient="auto"
               >
                 <path d="M 0 0 L 10 5 L 0 10 z" fill={PATH} />
               </marker>
@@ -237,11 +253,19 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 dataKey={c.processKey}
                 stroke={PATH}
                 strokeWidth={3}
-                markerStart="url(#psychro-process-arrow)"
                 dot={false}
                 activeDot={false}
                 connectNulls={false}
                 isAnimationActive={false}
+              />
+            )}
+
+            {c.hasProcess && processArrow && (
+              <ReferenceLine
+                segment={[processArrow.start, processArrow.end]}
+                stroke={PATH}
+                strokeWidth={3}
+                markerEnd="url(#psychro-process-arrow)"
               />
             )}
 

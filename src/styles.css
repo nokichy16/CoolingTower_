@@ -966,6 +966,59 @@ input[type='range']::-moz-range-thumb {
     transparent;
 }
 
+.eliminator-design-summary {
+  display: grid;
+  gap: 3px;
+  margin: -2px 0 12px;
+  padding: 10px 0;
+  border-block: 1px solid var(--line-soft);
+}
+.eliminator-design-summary strong {
+  color: var(--text);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.eliminator-design-summary span {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.eliminator-comparison {
+  margin: -2px 0 15px;
+  color: var(--text-dim);
+}
+.eliminator-comparison > summary {
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.eliminator-comparison > p {
+  margin: 8px 0;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+.eliminator-comparison-list {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.eliminator-comparison-list > div {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 7px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+.eliminator-comparison-list > div.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.eliminator-comparison-list strong { color: var(--text); }
+
 .geometry-note { color: var(--text-dim); }
 
 .derived-strip {
