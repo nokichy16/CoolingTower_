@@ -253,7 +253,7 @@ export default function Controls({
             <Field
               label="Cooling below dew point"
               sym="ΔT_dew"
-              unit="K"
+              unit="°C"
               value={inputs.coolingBelowDewPoint}
               min={0}
               max={25}

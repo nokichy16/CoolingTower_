@@ -55,7 +55,7 @@ export interface TowerInputs {
   driftRatePct: number // selected final design drift rate, %
 
   // Vapour recovery
-  coolingBelowDewPoint: number // K below plume dew point
+  coolingBelowDewPoint: number // °C temperature difference below plume dew point
   cyclesOfConcentration: number // dimensionless
 }
 

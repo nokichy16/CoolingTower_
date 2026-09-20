@@ -58,7 +58,7 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
                 label={{
-                  value: 'Cooling below dew point  (K)',
+                  value: 'Cooling below dew point  (°C)',
                   position: 'insideBottom',
                   offset: -2,
                   fill: '#4c4943',
@@ -90,7 +90,7 @@ export default function ResultPanel({ r }: { r: TowerResults }) {
                   `${fmt(value, 2)} kg/s`,
                   'Theoretical recovery',
                 ]}
-                labelFormatter={(value) => `${value} K below dew point`}
+                labelFormatter={(value) => `${value} °C below dew point`}
               />
               <ReferenceLine
                 x={r.inputs.coolingBelowDewPoint}
