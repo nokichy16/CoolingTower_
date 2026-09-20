@@ -99,20 +99,20 @@ test('cycles of concentration sets the blowdown-to-evaporation ratio', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, cyclesOfConcentration: 6 })
 
   closeTo(result.waterBalance.blowdownToEvaporationRatio, 1 / 5)
-  closeTo(result.inputs.driftRatePct, 0.005)
 })
 
-test('theoretical efficiency removes the largest-first droplet range', () => {
+test('Ruiz collection curve determines the theoretical d50 cutoff', () => {
   const result = solveTower({
     ...DEFAULT_INPUTS,
-    dropletDiameterMin: 10,
+    eliminatorId: 'A',
+    dropletDiameterMin: 25,
     dropletDiameterMax: 200,
-    dropletEfficiencyPct: 80,
   })
 
-  closeTo(result.droplets.reductionPct, 80)
-  closeTo(result.droplets.remainingPct, 20)
-  closeTo(result.droplets.captureCutoffDiameter, 48)
+  assert.ok(result.droplets.efficiencyAtMinimum < 0.5)
+  assert.ok(result.droplets.efficiencyAtMaximum >= 0.5)
+  assert.ok(result.droplets.captureCutoffDiameter > 25)
+  assert.ok(result.droplets.captureCutoffDiameter < 200)
 })
 
 test('invalid area, velocity, or cycles are reported without negative airflow', () => {

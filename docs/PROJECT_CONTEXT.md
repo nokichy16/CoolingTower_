@@ -1,6 +1,6 @@
 # Plume Water-Recovery Webapp: Project Context and History
 
-Last updated: 2026-08-23
+Last updated: 2026-09-20
 
 ## Why this file exists
 
@@ -69,11 +69,11 @@ recovery.
 ### 3. Drift eliminator
 
 The selected Ruiz eliminator A-F is evaluated using its Reynolds-dependent
-pressure correlation. Droplet tracking separately assumes uniform inlet mass
-between selected minimum and maximum sizes. A user-set theoretical efficiency
-removes that mass from the largest diameters downward and defines captured and
-remaining size ranges. This is provisional and not a validated efficiency
-curve.
+pressure correlation. The Stokes number and Ruiz collection correlation are
+evaluated across the selected minimum and maximum droplet sizes. The interface
+reports the theoretical 50% collection diameter, d50, and simplified predicted
+captured and remaining ranges. These are screening predictions, not a liquid-
+drift mass balance or an exact physical separation.
 
 ### 4. Fan result
 
@@ -111,8 +111,8 @@ The following decisions were approved during the later documentation work:
   density so pressure loss, ideal air power and vapour recovery use one basis.
 - Eliminator pressure loss is calculated from the Ruiz Reynolds-dependent
   correlation at the selected velocity. No designated fan is selected.
-- A full liquid-drift mass balance would require circulating-water mass flow
-  and a selected drift rate:
+- A future liquid-drift mass balance would require circulating-water mass flow
+  and a supported drift rate:
 
 ```text
 m_drift,in = m_circ * (drift_rate / 100)
@@ -120,12 +120,12 @@ m_collected = efficiency_used * m_drift,in
 m_emitted = (1 - efficiency_used) * m_drift,in
 ```
 
-- The selected drift rate must be supported by measured data, manufacturer
+- Any future drift rate must be supported by measured data, manufacturer
   information, or a clearly stated design assumption.
 - Nozzle diameter, water drenching density, and the Qu and Li/Wang droplet-
   source regression were rejected from this accepted direction.
-- The later approved minimal water-balance addition accepts a selected drift
-  rate and cycles of concentration, but does not add a full water loop.
+- The current theoretical droplet calculation does not request a drift rate or
+  calculate liquid-drift mass flow.
 
 This accepted direction is implemented in the current source.
 
@@ -138,8 +138,7 @@ and ideal eliminator-only air power at that velocity. Eliminator performance,
 air power and condensation recovery all use the same derived flow basis. It
 exposes dry-air mass flow as a linked input: editing it recalculates velocity,
 while editing velocity or area updates dry-air mass flow. It is not a third
-independent flow constraint. The implementation also displays a selected
-drift-rate input and calculates only the
+independent flow constraint. The implementation calculates the
 blowdown-to-evaporation ratio:
 
 ```text
@@ -147,8 +146,7 @@ B / E = 1 / (CoC - 1)
 ```
 
 Evaporation remains an externally known quantity, so no absolute blowdown,
-drift-mass, makeup-water or recirculation rate is calculated. The selected
-drift rate remains separate from the theoretical removal efficiency.
+drift-mass, makeup-water or recirculation rate is calculated.
 This is the approved current source direction.
 
 ## Current implementation states
@@ -215,6 +213,7 @@ discard it, revise it, or approve it.
 | 2026-08-13 | `c1ab59b` | Added the psychrometric process chart and deployed it through GitHub Pages. | Deployed history |
 | After `c1ab59b` | Local working tree | Removed repeated UI values, created documentation artifacts, and added the unresolved Qu and Li/Wang drift-source experiment. | Not committed, pushed, or deployed |
 | 2026-08-23 | Current coordinated source change | Added the unified area-and-velocity flow basis, minimal blowdown ratio, model tests, and streamlined interface and charts. | Approved for `main`; live deployment requires verification |
+| 2026-09-20 | Local predictive droplet update | Replaced user-selected efficiency and drift-rate controls with Ruiz diameter-by-diameter evaluation and a theoretical d50 cutoff. | Locally implemented; verification and deployment required |
 
 Earlier commit `a8a119e` contained a cycles-derived water balance. That model is
 historical and is not part of the current direct-plume boundary. If a future
@@ -302,12 +301,12 @@ sequence is:
 
 ## Current liquid-water scope
 
-The coordinated implementation deliberately keeps the water-side
-addition minimal. The user selects a design drift-rate percentage and cycles of
-concentration. The app reports `B/E = 1/(CoC - 1)` because evaporation is known
-outside the app. A later full water balance would need explicit circulating-
-water and evaporation inputs before calculating drift mass, absolute blowdown
-or makeup water.
+The coordinated implementation deliberately keeps the water-side addition
+minimal. The user selects cycles of concentration, and the app reports
+`B/E = 1/(CoC - 1)` because evaporation is known outside the app. A later full
+water balance would need explicit circulating-water, drift-rate, and
+evaporation inputs before calculating drift mass, absolute blowdown, or makeup
+water.
 
 ## Windows handoff
 

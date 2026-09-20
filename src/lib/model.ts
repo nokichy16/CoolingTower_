@@ -22,6 +22,7 @@ import {
   omegaSat,
 } from './psychrometrics.ts'
 import {
+  collectionEfficiencyAtDiameter,
   evaluateRuizEliminator,
   type EliminatorId,
   type RuizEliminatorResult,
@@ -30,6 +31,7 @@ import {
 export interface SolveIssue {
   code:
     | 'ruiz-pressure-extrapolation'
+    | 'ruiz-collection-extrapolation'
     | 'recovery-temperature-limited'
     | 'no-condensation-depth'
     | 'flow-input-invalid'
@@ -51,8 +53,6 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   dropletDiameterMin: number // theoretical inlet range minimum, µm
   dropletDiameterMax: number // theoretical inlet range maximum, µm
-  dropletEfficiencyPct: number // theoretical largest-first mass removal, %
-  driftRatePct: number // selected final design drift rate, %
 
   // Vapour recovery
   coolingBelowDewPoint: number // °C temperature difference below plume dew point
@@ -79,8 +79,6 @@ export interface TowerResults {
   plume: PlumeState
   eliminator: RuizEliminatorResult
   droplets: {
-    reductionPct: number
-    remainingPct: number
     pressureDrop: number // Pa
     /**
      * Ideal air power attributable to this eliminator alone. This is not
@@ -88,7 +86,9 @@ export interface TowerResults {
      */
     fanAirPower: number // kW
     equivalentArea: number // m², same flow area as the prescribed plume
-    captureCutoffDiameter: number // µm
+    captureCutoffDiameter: number // theoretical d50, µm
+    efficiencyAtMinimum: number // fraction
+    efficiencyAtMaximum: number // fraction
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -106,10 +106,6 @@ export interface TowerResults {
   }
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
-
 export function dryAirMassFlowFromVelocity(
   rho: number,
   flowArea: number,
@@ -117,6 +113,46 @@ export function dryAirMassFlowFromVelocity(
   omega: number,
 ): number {
   return (rho * flowArea * velocity) / (1 + omega)
+}
+
+export function theoreticalCutoffDiameter(
+  eliminatorId: EliminatorId,
+  velocity: number,
+  tAir: number,
+  diameterMin: number,
+  diameterMax: number,
+  targetEfficiency = 0.5,
+): number {
+  const efficiencyAtMinimum = collectionEfficiencyAtDiameter(
+    eliminatorId,
+    velocity,
+    tAir,
+    diameterMin,
+  )
+  const efficiencyAtMaximum = collectionEfficiencyAtDiameter(
+    eliminatorId,
+    velocity,
+    tAir,
+    diameterMax,
+  )
+
+  if (efficiencyAtMinimum >= targetEfficiency) return diameterMin
+  if (efficiencyAtMaximum < targetEfficiency) return diameterMax
+
+  let low = diameterMin
+  let high = diameterMax
+  for (let iteration = 0; iteration < 60; iteration += 1) {
+    const midpoint = (low + high) / 2
+    const efficiency = collectionEfficiencyAtDiameter(
+      eliminatorId,
+      velocity,
+      tAir,
+      midpoint,
+    )
+    if (efficiency >= targetEfficiency) high = midpoint
+    else low = midpoint
+  }
+  return (low + high) / 2
 }
 
 export function velocityFromDryAirMassFlow(
@@ -157,10 +193,45 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     inputs.plumeTemperature,
     (inputs.dropletDiameterMin + inputs.dropletDiameterMax) / 2,
   )
-  const collection = clamp(inputs.dropletEfficiencyPct, 0, 100) / 100
-  const captureCutoffDiameter =
-    inputs.dropletDiameterMax -
-    collection * (inputs.dropletDiameterMax - inputs.dropletDiameterMin)
+  const minimumDropletEvaluation = evaluateRuizEliminator(
+    inputs.eliminatorId,
+    rho4,
+    evaluationVelocity,
+    inputs.plumeTemperature,
+    inputs.dropletDiameterMin,
+  )
+  const maximumDropletEvaluation = evaluateRuizEliminator(
+    inputs.eliminatorId,
+    rho4,
+    evaluationVelocity,
+    inputs.plumeTemperature,
+    inputs.dropletDiameterMax,
+  )
+  const collectionRangeIssues = Array.from(
+    new Set([
+      ...minimumDropletEvaluation.collectionRangeIssues,
+      ...maximumDropletEvaluation.collectionRangeIssues,
+    ]),
+  )
+  const efficiencyAtMinimum = collectionEfficiencyAtDiameter(
+    inputs.eliminatorId,
+    evaluationVelocity,
+    inputs.plumeTemperature,
+    inputs.dropletDiameterMin,
+  )
+  const efficiencyAtMaximum = collectionEfficiencyAtDiameter(
+    inputs.eliminatorId,
+    evaluationVelocity,
+    inputs.plumeTemperature,
+    inputs.dropletDiameterMax,
+  )
+  const captureCutoffDiameter = theoreticalCutoffDiameter(
+    inputs.eliminatorId,
+    evaluationVelocity,
+    inputs.plumeTemperature,
+    inputs.dropletDiameterMin,
+    inputs.dropletDiameterMax,
+  )
   const pressureDrop = velocityValid
     ? eliminator.pressureCoefficient *
       0.5 *
@@ -231,6 +302,16 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       )}. Pressure loss remains visible but is outside the paper-supported range.`,
     })
   }
+  if (collectionRangeIssues.length > 0) {
+    issues.push({
+      code: 'ruiz-collection-extrapolation',
+      severity: 'warning',
+      title: 'Droplet prediction is extrapolated',
+      message: `${collectionRangeIssues.join(
+        '; ',
+      )}. The predicted cutoff remains visible but is outside the paper-supported range.`,
+    })
+  }
   if (requestedT5 < 0) {
     issues.push({
       code: 'recovery-temperature-limited',
@@ -268,12 +349,12 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     },
     eliminator,
     droplets: {
-      reductionPct: collection * 100,
-      remainingPct: (1 - collection) * 100,
       pressureDrop,
       fanAirPower,
       equivalentArea,
       captureCutoffDiameter,
+      efficiencyAtMinimum,
+      efficiencyAtMaximum,
     },
     recovery: {
       t: t5,
@@ -302,8 +383,6 @@ export const DEFAULT_INPUTS: TowerInputs = {
   eliminatorId: 'B',
   dropletDiameterMin: 10,
   dropletDiameterMax: 200,
-  dropletEfficiencyPct: 80,
-  driftRatePct: 0.005,
 
   coolingBelowDewPoint: 10,
   cyclesOfConcentration: 6,

@@ -219,28 +219,6 @@ export default function Controls({
               digits={0}
               onChange={set('dropletDiameterMax')}
             />
-            <Field
-              label="Theoretical droplet-mass efficiency"
-              sym="η"
-              unit="%"
-              value={inputs.dropletEfficiencyPct}
-              min={0}
-              max={100}
-              step={1}
-              digits={0}
-              onChange={set('dropletEfficiencyPct')}
-            />
-            <Field
-              label="Selected drift rate"
-              sym="r_d"
-              unit="%"
-              value={inputs.driftRatePct}
-              min={0.001}
-              max={0.02}
-              step={0.001}
-              digits={3}
-              onChange={set('driftRatePct')}
-            />
           </>
         )}
 

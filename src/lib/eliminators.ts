@@ -5,9 +5,9 @@
  *   Kp = f(Re, geometry)
  *   Δp = Kp · ½ρv²
  *
- * Collection efficiency is for one representative droplet diameter. It is
- * deliberately kept separate from drift as a percentage of circulating water:
- * converting one into the other requires an incoming droplet mass spectrum.
+ * Collection efficiency is evaluated by droplet diameter. The application
+ * reports a theoretical d50 cutoff within the selected diameter range; it does
+ * not convert that prediction into a circulating-water drift mass flow.
  */
 
 export type EliminatorId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
@@ -126,7 +126,10 @@ function pressureCoefficient(spec: EliminatorSpec, reynolds: number): number {
  * - vane/honeycomb: Eq. 10 with negative β;
  * - wire mesh: exponential in St using the signed negative β coefficient.
  */
-function collectionEfficiency(spec: EliminatorSpec, stokes: number): number {
+export function collectionEfficiency(
+  spec: EliminatorSpec,
+  stokes: number,
+): number {
   if (spec.type === 'wire-mesh') {
     const alpha = spec.id === 'E' ? 0.113 : 0.718
     const beta = spec.id === 'E' ? -3.96 : -6.02
@@ -146,6 +149,36 @@ function outside(value: number, min: number, max: number): boolean {
   return !Number.isFinite(value) || value < min || value > max
 }
 
+export function stokesNumber(
+  spec: EliminatorSpec,
+  velocity: number,
+  dynamicViscosity: number,
+  dropletDiameterUm: number,
+): number {
+  const dropletDiameter = dropletDiameterUm * 1e-6
+  return (
+    (997 * velocity * dropletDiameter ** 2) /
+    (18 * dynamicViscosity * spec.characteristicLength)
+  )
+}
+
+export function collectionEfficiencyAtDiameter(
+  id: EliminatorId,
+  velocity: number,
+  tAir: number,
+  dropletDiameterUm: number,
+): number {
+  const spec = ELIMINATORS[id]
+  const dynamicViscosity = airDynamicViscosity(tAir)
+  const stokes = stokesNumber(
+    spec,
+    velocity,
+    dynamicViscosity,
+    dropletDiameterUm,
+  )
+  return collectionEfficiency(spec, stokes)
+}
+
 export function evaluateRuizEliminator(
   id: EliminatorId,
   rhoAir: number,
@@ -157,10 +190,12 @@ export function evaluateRuizEliminator(
   const dynamicViscosity = airDynamicViscosity(tAir)
   const reynolds =
     (rhoAir * velocity * spec.characteristicLength) / dynamicViscosity
-  const dropletDiameter = dropletDiameterUm * 1e-6
-  const stokes =
-    (997 * velocity * dropletDiameter ** 2) /
-    (18 * dynamicViscosity * spec.characteristicLength)
+  const stokes = stokesNumber(
+    spec,
+    velocity,
+    dynamicViscosity,
+    dropletDiameterUm,
+  )
   const kp = pressureCoefficient(spec, reynolds)
   const efficiency = collectionEfficiency(spec, stokes)
 

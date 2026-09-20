@@ -32,8 +32,9 @@ current local working copy.
   recovery results together.
 - Treat theoretical condensate and cooling duty as screening results, not
   recovery-equipment sizing or guaranteed performance.
-- Treat Ruiz collection efficiency as a single-representative-droplet result,
-  not total circulating-water recovery and not a size-distribution integral.
+- Treat Ruiz collection efficiency as a diameter-specific prediction. The
+  current interface reports a theoretical d50 cutoff across a selected size
+  range, not total circulating-water recovery or a drift mass balance.
 - Treat the Ruiz 25 micrometre lower limit as an evidence/measurement limit,
   not a physical minimum droplet size.
 - Treat eliminator fan power as ideal air power for the eliminator pressure
@@ -42,10 +43,10 @@ current local working copy.
   a separately approved water-balance boundary and the necessary tower inputs.
 - Do not make blowdown and cycles of concentration simultaneous independent
   inputs.
-- The approved documentation direction uses a selected drift rate with
-  circulating-water mass flow. The current uncommitted Qu and Li/Wang
-  nozzle-and-drenching-density source model is an unresolved experiment. Do
-  not present or commit it as approved without the user's explicit decision.
+- A liquid-drift mass balance would require circulating-water mass flow and a
+  supported drift rate. Neither is part of the current theoretical d50 model.
+  Do not present the historical Qu and Li/Wang nozzle-and-drenching-density
+  experiment as approved.
 - The area/airflow basis is not yet synchronized across the deployed code and
   approved documentation direction. Confirm the intended formulation before
   changing it.

@@ -6,7 +6,7 @@ cooling-tower exhaust plume.
 **Live website:** https://nokichy16.github.io/CoolingTower_/
 
 > This is a simplified engineering model. It estimates psychrometric recovery
-> potential and single-size drift-eliminator performance; it does not replace
+> potential and theoretical drift-eliminator performance; it does not replace
 > tower rating, recovery-equipment selection or manufacturer data.
 
 ## Run
@@ -40,8 +40,6 @@ Liquid-droplet performance is controlled separately:
 
 - Ruiz tested eliminator A–F
 - theoretical minimum and maximum droplet sizes
-- theoretical largest-first removal efficiency `η`
-- selected final drift rate `r_d` (%)
 
 The eliminator spans the selected plume flow area and inherits the after-fill
 velocity. Its Reynolds-dependent correlation calculates eliminator pressure
@@ -80,21 +78,22 @@ The linked dry-air mass-flow input scales recovered water and cooling duty.
 Editing it recalculates velocity at the selected area and plume state; editing
 velocity or area updates the displayed dry-air mass flow.
 
-### Theoretical droplet tracking
+### Theoretical droplet prediction
 
 ```text
 u_de = u₄
-droplets removed (%) = η
-d_cut = d_max − (η / 100)(d_max − d_min)
-remaining size range = d_min to d_cut
-captured size range = d_cut to d_max
+St(d) = ρ_water u_de d² / (18 μ L_c)
+η(d) = f(St(d), eliminator geometry)
+η(d50) = 0.50
+predicted remaining range = d_min to d50
+predicted captured range = d50 to d_max
 P_air = V̇ Δp_de
 ```
 
-The inlet droplet mass is assumed uniform between the selected size limits,
-and the selected efficiency removes that mass from the largest sizes downward.
-This is a provisional theoretical tracker; Ruiz is retained only for pressure
-loss.
+The application evaluates the Ruiz collection curve across the selected size
+limits and reports the theoretical 50% collection diameter. The two reported
+ranges are screening predictions, not an exact physical separation or a
+liquid-drift mass balance.
 
 The Ruiz pressure calculation retains its Reynolds-number and velocity-range
 checks internally.
@@ -133,9 +132,8 @@ B = E / (CoC - 1)  when the evaporation rate E is known
 
 The app reports blowdown as a percentage of the known evaporation rate. It
 does not add evaporation, recirculation, makeup-water, conductivity or
-water-temperature inputs. The selected drift rate is displayed as an
-independent design input; without a circulating-water flow, it is not converted
-to a drift mass rate and is not inferred from the theoretical capture inputs.
+water-temperature inputs. No liquid-drift mass flow is calculated because
+circulating-water flow is not an input to the current model.
 
 ### Psychrometric process chart
 
@@ -156,4 +154,4 @@ condenses.
 - `src/components/Controls.tsx` — bounded plume, droplet and recovery inputs
 - `src/components/TowerGraphic.tsx` — preserved cooling-tower cutaway
 - `src/components/PsychrometricChart.tsx` — interactive psychrometric process graph
-- `src/components/ResultPanel.tsx` — percentage reduction, recovery and cooling results
+- `src/components/ResultPanel.tsx` — recovery and cooling results

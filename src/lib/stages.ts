@@ -20,6 +20,23 @@ export interface StageInfo {
 }
 
 export function buildStages(r: TowerResults): StageInfo[] {
+  const hasPredictedRemainingRange = r.droplets.efficiencyAtMinimum < 0.5
+  const hasPredictedCapturedRange = r.droplets.efficiencyAtMaximum >= 0.5
+  const predictedRemainingRange =
+    hasPredictedRemainingRange
+      ? `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
+          r.droplets.captureCutoffDiameter,
+          0,
+        )}`
+      : 'None in selected range'
+  const predictedCapturedRange =
+    hasPredictedCapturedRange
+      ? `${fmt(r.droplets.captureCutoffDiameter, 0)}–${fmt(
+          r.inputs.dropletDiameterMax,
+          0,
+        )}`
+      : 'None in selected range'
+
   return [
     {
       id: 'plume',
@@ -79,19 +96,16 @@ export function buildStages(r: TowerResults): StageInfo[] {
       accent: '#c9b568',
       primary: [
         {
-          label: 'Theoretical droplet mass removed',
-          value: fmt(r.droplets.reductionPct, 1),
-          unit: '%',
+          label: 'Theoretical cutoff diameter (d50)',
+          value: fmt(r.droplets.captureCutoffDiameter, 0),
+          unit: 'µm',
         },
       ],
       supporting: [
         {
-          label: 'Remaining range after',
-          value: `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
-            r.droplets.captureCutoffDiameter,
-            0,
-          )}`,
-          unit: 'µm',
+          label: 'Predicted remaining range',
+          value: predictedRemainingRange,
+          unit: hasPredictedRemainingRange ? 'µm' : '',
         },
         {
           label: 'Pressure drop',
@@ -111,12 +125,9 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: '',
         },
         {
-          label: 'Captured range',
-          value: `${fmt(r.droplets.captureCutoffDiameter, 0)}–${fmt(
-            r.inputs.dropletDiameterMax,
-            0,
-          )}`,
-          unit: 'µm',
+          label: 'Predicted captured range',
+          value: predictedCapturedRange,
+          unit: hasPredictedCapturedRange ? 'µm' : '',
         },
       ],
     },
