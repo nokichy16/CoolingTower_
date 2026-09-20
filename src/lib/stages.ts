@@ -61,12 +61,12 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'kg/s',
         },
         {
-          label: 'Selected plume velocity',
+          label: 'Plume velocity',
           value: fmt(r.plume.velocity, 3),
           unit: 'm/s',
         },
         {
-          label: 'Selected flow area',
+          label: 'Flow area',
           value: fmt(r.plume.flowArea),
           unit: 'm²',
         },
@@ -85,11 +85,6 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
       ],
       supporting: [
-        {
-          label: 'Droplet mass remaining',
-          value: fmt(r.droplets.remainingPct, 1),
-          unit: '%',
-        },
         {
           label: 'Remaining range after',
           value: `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
@@ -111,27 +106,9 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: '',
         },
         {
-          label: 'Face velocity',
-          value: fmt(r.plume.velocity, 3),
-          unit: 'm/s',
-        },
-        {
           label: 'Loss coefficient',
           value: fmt(r.eliminator.pressureCoefficient, 2),
           unit: '',
-        },
-        {
-          label: 'Equivalent area',
-          value: fmt(r.droplets.equivalentArea),
-          unit: 'm²',
-        },
-        {
-          label: 'Droplet range before',
-          value: `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
-            r.inputs.dropletDiameterMax,
-            0,
-          )}`,
-          unit: 'µm',
         },
         {
           label: 'Captured range',
@@ -140,11 +117,6 @@ export function buildStages(r: TowerResults): StageInfo[] {
             0,
           )}`,
           unit: 'µm',
-        },
-        {
-          label: 'Selected drift rate',
-          value: fmt(r.inputs.driftRatePct, 3),
-          unit: '%',
         },
       ],
     },
@@ -160,30 +132,8 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'kW',
         },
       ],
-      supporting: [
-        {
-          label: 'Required eliminator pressure',
-          value: fmt(r.droplets.pressureDrop),
-          unit: 'Pa',
-        },
-        {
-          label: 'Volumetric airflow',
-          value: fmt(r.plume.vDot),
-          unit: 'm³/s',
-        },
-      ],
-      details: [
-        {
-          label: 'Derived dry-air flow',
-          value: fmt(r.plume.airMassFlow),
-          unit: 'kg/s',
-        },
-        {
-          label: 'Selected flow area',
-          value: fmt(r.plume.flowArea),
-          unit: 'm²',
-        },
-      ],
+      supporting: [],
+      details: [],
     },
     {
       id: 'recovery',
