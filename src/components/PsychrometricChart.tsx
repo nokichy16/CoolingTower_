@@ -1,5 +1,5 @@
 /**
- * Psychrometric process chart.
+ * Recovery process plot.
  *
  * Ported from the original single-file Plotly webapp. The chart content is the
  * same — relative-humidity background curves, constant-enthalpy lines, and the
@@ -69,7 +69,7 @@ function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
 
   if (nearestState && nearestState.distance <= stateThreshold) {
     const { state, index } = nearestState
-    const name = index === 1 ? 'Plume' : 'Recovery outlet'
+    const name = index === 1 ? 'Recovery inlet' : 'Recovery state'
     return (
       <div className="psychro-tip is-state">
         <strong>State {index} · {name}</strong>
@@ -121,7 +121,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
   return (
     <section className="card chart-card psychro-card">
       <div className="chart-title-row">
-        <h4>Psychrometric process</h4>
+        <h4>Recovery process</h4>
         <div className="chart-legend" aria-label="Chart legend">
           <span><i className="is-rh" />Relative humidity</span>
           <span><i className="is-enthalpy" />Enthalpy</span>
@@ -132,7 +132,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
       <div
         className="chart"
         role="img"
-        aria-label={`Psychrometric process from plume state ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to saturated recovery state ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
+        aria-label={`Recovery process from the inlet plume state at ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to the calculated saturated recovery state at ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
         <ResponsiveContainer width="100%" height={390}>
           <LineChart
@@ -162,7 +162,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               stroke={LINE}
               tickFormatter={(v: number) => `${fmt(v, 0)}`}
               label={{
-                value: 'Dry-bulb temperature  (°C)',
+                value: 'Temperature  (°C)',
                 position: 'insideBottom',
                 offset: -4,
                 fill: AXIS,
@@ -314,14 +314,14 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
           </thead>
           <tbody>
             <tr>
-              <th>1 · Plume</th>
+              <th>1 · Recovery inlet</th>
               <td>{fmt(c.state1.t, 1)} °C</td>
               <td>{fmt(c.state1.rh, 1)}%</td>
               <td>{fmt(c.state1.w, 2)} g/kg da</td>
               <td>{fmt(c.state1.h, 2)} kJ/kg da</td>
             </tr>
             <tr>
-              <th>2 · Recovery outlet</th>
+              <th>2 · Recovery state</th>
               <td>{fmt(c.state2.t, 1)} °C</td>
               <td>Saturated</td>
               <td>{fmt(c.state2.w, 2)} g/kg da</td>

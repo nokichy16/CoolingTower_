@@ -41,7 +41,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     {
       id: 'plume',
       index: '1',
-      name: 'Plume',
+      name: 'Plume & airflow',
       accent: '#ff9f45',
       primary: [
         { label: 'Temperature', value: fmt(r.plume.t), unit: '°C' },
@@ -59,23 +59,20 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'kg/kg',
         },
         { label: 'Enthalpy', value: fmt(r.plume.h), unit: 'kJ/kg' },
-        {
-          label: 'Volumetric flow',
-          value: fmt(r.plume.vDot),
-          unit: 'm³/s',
-        },
       ],
       details: [
+        // Plume state
         {
           label: 'Atmospheric pressure',
           value: fmt(r.inputs.pressure / 1000),
           unit: 'kPa',
         },
         { label: 'Air density', value: fmt(r.plume.rho, 3), unit: 'kg/m³' },
+        // Airflow, in input order: area → velocity → flows
         {
-          label: 'Dry-air mass flow',
-          value: fmt(r.plume.airMassFlow),
-          unit: 'kg/s',
+          label: 'Flow area',
+          value: fmt(r.plume.flowArea),
+          unit: 'm²',
         },
         {
           label: 'Plume velocity',
@@ -83,9 +80,14 @@ export function buildStages(r: TowerResults): StageInfo[] {
           unit: 'm/s',
         },
         {
-          label: 'Flow area',
-          value: fmt(r.plume.flowArea),
-          unit: 'm²',
+          label: 'Volumetric flow',
+          value: fmt(r.plume.vDot),
+          unit: 'm³/s',
+        },
+        {
+          label: 'Dry-air mass flow',
+          value: fmt(r.plume.airMassFlow),
+          unit: 'kg/s',
         },
       ],
     },

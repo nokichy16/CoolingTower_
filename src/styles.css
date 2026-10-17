@@ -1335,7 +1335,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .charts-panel .results {
-  grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 18px;
 }
@@ -1459,4 +1459,72 @@ input[type='range']::-moz-range-thumb {
     gap: 7px;
   }
   .chart-legend { justify-content: flex-start; }
+}
+
+/* Layout A: wider input column; inlet groups side by side */
+.workspace {
+  grid-template-columns: minmax(0, 1.05fr) minmax(440px, 0.95fr);
+}
+.inlet-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px 22px;
+  min-width: 0;
+}
+.input-group { min-width: 0; }
+.input-group.is-wide {
+  grid-column: 1 / -1;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.input-group-title {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.droplet-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 22px;
+  align-items: start;
+}
+.droplet-fields, .droplet-result { min-width: 0; }
+.droplet-chart {
+  min-width: 0;
+  padding: 10px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.droplet-chart-title {
+  display: block;
+  padding: 0 12px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.droplet-checks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+.droplet-check {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+.droplet-check span { color: var(--text-dim); white-space: nowrap; }
+.droplet-check strong { font: 10.5px var(--mono); color: var(--text); white-space: nowrap; }
+.droplet-check.is-bad { border-color: #b8641a; }
+.droplet-check.is-bad strong { color: #b8641a; }
+@media (max-width: 920px) {
+  .workspace { grid-template-columns: 1fr; }
 }

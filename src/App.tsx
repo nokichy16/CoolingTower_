@@ -87,12 +87,13 @@ export default function App() {
         <main className="main">
           <section className="panel charts-panel">
             <div className="panel-head">
-              <h2>Process charts</h2>
+              <h2>Process chart</h2>
             </div>
             <div className="panel-body">
               <ResultPanel r={results} />
             </div>
           </section>
+
         </main>
       </div>
     </div>
