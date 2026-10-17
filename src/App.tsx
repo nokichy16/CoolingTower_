@@ -69,6 +69,7 @@ export default function App() {
           </section>
           <Controls
             inputs={inputs}
+            droplets={results.droplets}
             dryAirMassFlow={results.plume.airMassFlow}
             dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
             dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}

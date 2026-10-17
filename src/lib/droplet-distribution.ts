@@ -1,74 +1,69 @@
 /**
- * Inlet droplet-size distribution (Rosin–Rammler).
+ * Inlet drift droplet-size distribution (log-normal, by mass).
  *
  * Cumulative mass fraction of droplets smaller than diameter d:
  *
- *   F(d) = 1 − exp[−(d / dₑ)ⁿ]
+ *   F(d) = ½ [1 + erf( ln(d / d_med) / (√2 · ln σg) )]
  *
- * dₑ is the characteristic diameter (63.2% of the mass is smaller) and n is
- * the spread parameter (larger n = narrower distribution).
+ * d_med is the mass median diameter (50 % of the mass is smaller) and σg is
+ * the geometric standard deviation (σg = 1 is a single size; larger is wider).
  *
- * This is an empirical form chosen as an input assumption. It is not yet
- * connected to the eliminator collection-efficiency calculation.
+ * Ruiz et al. (2013), Atmospheric Environment 69:170–181, found the
+ * log-normal function fitted measured cooling-tower drift better than
+ * Rosin–Rammler. Their test run 1 gives the default values below. Those
+ * measurements were taken at the tower exit, so using them as an eliminator
+ * inlet distribution is an assumption.
  */
 
-export function rosinRammlerCumulative(
+/** Ruiz et al. (2013) Table 6, test run 1: λ = −3.3015 (ln mm), s = 0.5971. */
+export const RUIZ_2013_RUN1 = {
+  medianDiameterUm: 1000 * Math.exp(-3.3015),
+  geometricSpread: Math.exp(0.5971),
+} as const
+
+/** Error function, Abramowitz & Stegun 7.1.26 (|error| < 1.5e-7). */
+export function erf(x: number): number {
+  const sign = x < 0 ? -1 : 1
+  const ax = Math.abs(x)
+  const t = 1 / (1 + 0.3275911 * ax)
+  const poly =
+    t *
+    (0.254829592 +
+      t *
+        (-0.284496736 +
+          t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))))
+  return sign * (1 - poly * Math.exp(-ax * ax))
+}
+
+export function logNormalCumulative(
   diameterUm: number,
-  characteristicDiameterUm: number,
-  spread: number,
+  medianDiameterUm: number,
+  geometricSpread: number,
 ): number {
   if (
     !Number.isFinite(diameterUm) ||
-    !Number.isFinite(characteristicDiameterUm) ||
-    !Number.isFinite(spread) ||
+    !Number.isFinite(medianDiameterUm) ||
+    !Number.isFinite(geometricSpread) ||
     diameterUm <= 0 ||
-    characteristicDiameterUm <= 0 ||
-    spread <= 0
+    medianDiameterUm <= 0 ||
+    geometricSpread <= 1
   ) {
     return 0
   }
-  return 1 - Math.exp(-((diameterUm / characteristicDiameterUm) ** spread))
+  const z =
+    Math.log(diameterUm / medianDiameterUm) /
+    (Math.SQRT2 * Math.log(geometricSpread))
+  return 0.5 * (1 + erf(z))
 }
 
-export interface DistributionSplit {
-  below: number // mass fraction smaller than d_min
-  within: number // mass fraction between d_min and d_max
-  above: number // mass fraction larger than d_max
-}
-
-/** Mass fractions below, within, and above the selected diameter range. */
-export function distributionSplit(
-  diameterMinUm: number,
-  diameterMaxUm: number,
-  characteristicDiameterUm: number,
-  spread: number,
-): DistributionSplit {
-  const fMin = rosinRammlerCumulative(
-    diameterMinUm,
-    characteristicDiameterUm,
-    spread,
-  )
-  const fMax = rosinRammlerCumulative(
-    diameterMaxUm,
-    characteristicDiameterUm,
-    spread,
-  )
-  return {
-    below: fMin,
-    within: Math.max(0, fMax - fMin),
-    above: Math.max(0, 1 - fMax),
-  }
-}
-
-/** Log-spaced diameters for plotting the cumulative curve. */
-export function logSpacedDiameters(
+/** Evenly spaced diameters for plotting the cumulative curve. */
+export function linearDiameters(
   minUm: number,
   maxUm: number,
   count: number,
 ): number[] {
-  const logMin = Math.log10(minUm)
-  const logMax = Math.log10(maxUm)
-  return Array.from({ length: count }, (_, index) =>
-    10 ** (logMin + ((logMax - logMin) * index) / (count - 1)),
+  return Array.from(
+    { length: count },
+    (_, index) => minUm + ((maxUm - minUm) * index) / (count - 1),
   )
 }

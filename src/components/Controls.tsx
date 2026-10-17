@@ -1,4 +1,4 @@
-import type { TowerInputs } from '../lib/model'
+import type { TowerInputs, TowerResults } from '../lib/model'
 import type { StageId } from '../lib/stages'
 import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
@@ -15,6 +15,7 @@ const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
 
 interface ControlsProps {
   inputs: TowerInputs
+  droplets: TowerResults['droplets']
   dryAirMassFlow: number
   dryAirMassFlowMin: number
   dryAirMassFlowMax: number
@@ -51,6 +52,7 @@ const STAGE_META: Record<
 
 export default function Controls({
   inputs,
+  droplets,
   dryAirMassFlow,
   dryAirMassFlowMin,
   dryAirMassFlowMax,
@@ -159,7 +161,11 @@ export default function Controls({
             />
             </section>
 
-            <DropletDistribution inputs={inputs} onChange={onChange} />
+            <DropletDistribution
+              inputs={inputs}
+              droplets={droplets}
+              onChange={onChange}
+            />
           </div>
         )}
 

@@ -2,79 +2,55 @@ import {
   Line,
   LineChart,
   ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TowerInputs } from '../lib/model'
+import type { TowerInputs, TowerResults } from '../lib/model'
 import {
-  distributionSplit,
-  logSpacedDiameters,
-  rosinRammlerCumulative,
+  linearDiameters,
+  logNormalCumulative,
 } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
 interface DropletDistributionProps {
   inputs: TowerInputs
+  droplets: TowerResults['droplets']
   onChange: (patch: Partial<TowerInputs>) => void
 }
 
-const PLOT_MIN = 1 // µm
-const PLOT_MAX = 1000 // µm
+const PLOT_MIN = 0 // µm
+const PLOT_MAX = 500 // µm, same span as Ruiz et al. (2013) Fig. 9
 
 /**
- * Drift droplets entering the eliminator: selected diameter range and
- * Rosin–Rammler inlet distribution, shown as cumulative mass fraction with
- * the range marked on the curve. The distribution is an input assumption and
- * is not yet linked to the eliminator collection calculation.
+ * Drift droplets entering the eliminator: log-normal cumulative mass
+ * distribution over the full size range, with the eliminator d50 cutoff
+ * marked. Droplets smaller than d50 escape; larger droplets are captured
+ * (ideal sharp cut).
  */
 export default function DropletDistribution({
   inputs,
+  droplets,
   onChange,
 }: DropletDistributionProps) {
-  const {
-    dropletCharacteristicDiameter: dE,
-    dropletSpread: n,
-    dropletDiameterMin: dMin,
-    dropletDiameterMax: dMax,
-  } = inputs
+  const { dropletMedianDiameter: dMed, dropletGeometricSpread: sg } = inputs
+  const { cutoffFound, captureCutoffDiameter: d50, massEscaping, massCaptured } =
+    droplets
 
-  const data = logSpacedDiameters(PLOT_MIN, PLOT_MAX, 160).map((d) => ({
+  const data = linearDiameters(PLOT_MIN, PLOT_MAX, 251).map((d) => ({
     d,
-    cumulative: 100 * rosinRammlerCumulative(d, dE, n),
+    cumulative: 100 * logNormalCumulative(d, dMed, sg),
   }))
-  const split = distributionSplit(dMin, dMax, dE, n)
-  const rangeValid = dMin < dMax
-  const fMaxPct = 100 * (split.below + split.within)
-
-  // Y ticks: 0 and 100 plus F(d_min) and F(d_max), skipping any that would
-  // sit on top of another label.
-  const yTicks = [0, 100, 100 * split.below, fMaxPct]
-    .map((v) => Math.round(v))
-    .filter((v, i, all) => all.findIndex((u) => Math.abs(u - v) < 7) === i)
-    .sort((x, y) => x - y)
-
-  // Place each share label away from the curve: below it where the curve
-  // runs high through the region, above it where the curve runs low.
-  const regionLabel = (
-    fraction: number,
-    x1: number,
-    x2: number,
-    emphasis = false,
-  ) => {
-    const curveAtMiddle = rosinRammlerCumulative(Math.sqrt(x1 * x2), dE, n)
-    return {
-      value: `${fmt(fraction * 100, 1)} %`,
-      position: curveAtMiddle > 0.5 ? 'insideBottom' : 'insideTop',
-      offset: 14,
-      fill: emphasis ? '#252525' : '#57524a',
-      fontSize: emphasis ? 13 : 11,
-      fontWeight: emphasis ? 600 : 400,
-    } as const
-  }
+  const escapingPct = 100 * massEscaping
+  const yTicks = cutoffFound
+    ? [0, 100, Math.round(escapingPct)].filter(
+        (v, i, all) => all.findIndex((u) => Math.abs(u - v) < 7) === i,
+      ).sort((x, y) => x - y)
+    : [0, 50, 100]
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
@@ -85,51 +61,31 @@ export default function DropletDistribution({
       <div className="droplet-layout">
         <div className="droplet-fields">
           <Field
-            label="Minimum droplet size"
-            sym="d_min"
+            label="Mass median diameter"
+            sym="d_med"
             unit="µm"
-            value={dMin}
-            min={1}
-            max={dMax - 1}
-            step={1}
-            digits={0}
-            onChange={(value) => onChange({ dropletDiameterMin: value })}
-          />
-          <Field
-            label="Maximum droplet size"
-            sym="d_max"
-            unit="µm"
-            value={dMax}
-            min={dMin + 1}
-            max={1000}
-            step={1}
-            digits={0}
-            onChange={(value) => onChange({ dropletDiameterMax: value })}
-          />
-          <Field
-            label="Characteristic diameter"
-            sym="dₑ"
-            unit="µm"
-            value={dE}
+            value={dMed}
             min={5}
-            max={500}
-            step={1}
-            digits={0}
-            onChange={(value) =>
-              onChange({ dropletCharacteristicDiameter: value })
-            }
-          />
-          <Field
-            label="Spread"
-            sym="n"
-            unit=""
-            value={n}
-            min={0.5}
-            max={6}
+            max={300}
             step={0.1}
             digits={1}
-            onChange={(value) => onChange({ dropletSpread: value })}
+            onChange={(value) => onChange({ dropletMedianDiameter: value })}
           />
+          <Field
+            label="Geometric spread"
+            sym="σg"
+            unit=""
+            value={sg}
+            min={1.05}
+            max={4}
+            step={0.01}
+            digits={2}
+            onChange={(value) => onChange({ dropletGeometricSpread: value })}
+          />
+          <p className="card-note">
+            Log-normal by mass. Defaults: Ruiz et al. (2013), test run 1,
+            measured at the tower exit.
+          </p>
         </div>
 
         <div className="droplet-result">
@@ -141,9 +97,8 @@ export default function DropletDistribution({
               <XAxis
                 dataKey="d"
                 type="number"
-                scale="log"
                 domain={[PLOT_MIN, PLOT_MAX]}
-                ticks={[1, 10, 100, 1000]}
+                ticks={[0, 100, 200, 300, 400, 500]}
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
                 label={{
@@ -182,74 +137,59 @@ export default function DropletDistribution({
                   `${fmt(value, 1)} %`,
                   'Cumulative mass',
                 ]}
-                labelFormatter={(value) => `${fmt(Number(value), 1)} µm`}
+                labelFormatter={(value) => `${fmt(Number(value), 0)} µm`}
               />
-              {rangeValid && (
+              {cutoffFound && (
                 <>
                   <ReferenceArea
-                    x1={PLOT_MIN}
-                    x2={dMin}
-                    fill="none"
-                    stroke="none"
-                    label={regionLabel(split.below, PLOT_MIN, dMin)}
-                  />
-                  <ReferenceArea
-                    x1={dMin}
-                    x2={dMax}
-                    fill="#ff9f45"
-                    fillOpacity={0.12}
-                    stroke="none"
-                    label={regionLabel(split.within, dMin, dMax, true)}
-                  />
-                  <ReferenceArea
-                    x1={dMax}
+                    x1={d50}
                     x2={PLOT_MAX}
-                    fill="none"
+                    fill="#c9b568"
+                    fillOpacity={0.14}
                     stroke="none"
-                    label={regionLabel(split.above, dMax, PLOT_MAX)}
+                    label={{
+                      value: `Captured ${fmt(100 * massCaptured, 1)} %`,
+                      position: 'center',
+                      fill: '#252525',
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
                   />
                   <ReferenceLine
                     segment={[
-                      { x: PLOT_MIN, y: 100 * split.below },
-                      { x: dMin, y: 100 * split.below },
+                      { x: PLOT_MIN, y: escapingPct },
+                      { x: d50, y: escapingPct },
                     ]}
                     stroke="#888780"
                     strokeDasharray="2 3"
-                    ifOverflow="extendDomain"
                   />
                   <ReferenceLine
-                    segment={[
-                      { x: PLOT_MIN, y: fMaxPct },
-                      { x: dMax, y: fMaxPct },
-                    ]}
-                    stroke="#888780"
-                    strokeDasharray="2 3"
-                    ifOverflow="extendDomain"
+                    x={d50}
+                    stroke="#b8641a"
+                    strokeDasharray="4 3"
+                    label={{
+                      value: 'd₅₀',
+                      position: 'top',
+                      fill: '#b8641a',
+                      fontSize: 11,
+                    }}
+                  />
+                  <ReferenceDot
+                    x={d50}
+                    y={escapingPct}
+                    r={3.5}
+                    fill="#b8641a"
+                    stroke="none"
+                    label={{
+                      value: `Escapes ${fmt(escapingPct, 1)} %`,
+                      position: 'right',
+                      offset: 8,
+                      fill: '#57524a',
+                      fontSize: 11,
+                    }}
                   />
                 </>
               )}
-              <ReferenceLine
-                x={dMin}
-                stroke="#ff9f45"
-                strokeDasharray="4 3"
-                label={{
-                  value: 'd_min',
-                  position: 'top',
-                  fill: '#b8641a',
-                  fontSize: 10,
-                }}
-              />
-              <ReferenceLine
-                x={dMax}
-                stroke="#ff9f45"
-                strokeDasharray="4 3"
-                label={{
-                  value: 'd_max',
-                  position: 'top',
-                  fill: '#b8641a',
-                  fontSize: 10,
-                }}
-              />
               <Line
                 type="monotone"
                 dataKey="cumulative"
@@ -261,19 +201,14 @@ export default function DropletDistribution({
             </LineChart>
           </ResponsiveContainer>
 
-          {!rangeValid && (
-            <p className="droplet-warning" role="alert">
-              d_min must be smaller than d_max.
+          {!cutoffFound && (
+            <p className="droplet-warning" role="status">
+              No 50 % cutoff for this eliminator: the Ruiz correlation stays
+              above 50 % capture at all sizes. Captured mass is not shown.
             </p>
           )}
         </div>
       </div>
-
-      <p className="card-note">
-        Rosin–Rammler form F(d) = 1 − exp[−(d/dₑ)ⁿ]. dₑ and n are placeholder
-        inputs, not measured data. This distribution is not yet used in the
-        eliminator capture calculation.
-      </p>
     </section>
   )
 }

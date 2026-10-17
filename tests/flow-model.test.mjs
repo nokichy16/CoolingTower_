@@ -102,17 +102,19 @@ test('cycles of concentration sets the blowdown-to-evaporation ratio', () => {
 })
 
 test('Ruiz collection curve determines the theoretical d50 cutoff', () => {
-  const result = solveTower({
-    ...DEFAULT_INPUTS,
-    eliminatorId: 'A',
-    dropletDiameterMin: 25,
-    dropletDiameterMax: 200,
-  })
+  const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'A' })
 
-  assert.ok(result.droplets.efficiencyAtMinimum < 0.5)
-  assert.ok(result.droplets.efficiencyAtMaximum >= 0.5)
+  assert.equal(result.droplets.cutoffFound, true)
   assert.ok(result.droplets.captureCutoffDiameter > 25)
   assert.ok(result.droplets.captureCutoffDiameter < 200)
+  closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
+})
+
+test('eliminators above 50 % capture at every size report no cutoff', () => {
+  const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'B' })
+
+  assert.equal(result.droplets.cutoffFound, false)
+  assert.ok(Number.isNaN(result.droplets.massEscaping))
 })
 
 test('invalid area, velocity, or cycles are reported without negative airflow', () => {
