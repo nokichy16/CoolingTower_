@@ -48,6 +48,33 @@ export default function DropletDistribution({
   }))
   const split = distributionSplit(dMin, dMax, dE, n)
   const rangeValid = dMin < dMax
+  const fMaxPct = 100 * (split.below + split.within)
+
+  // Y ticks: 0 and 100 plus F(d_min) and F(d_max), skipping any that would
+  // sit on top of another label.
+  const yTicks = [0, 100, 100 * split.below, fMaxPct]
+    .map((v) => Math.round(v))
+    .filter((v, i, all) => all.findIndex((u) => Math.abs(u - v) < 7) === i)
+    .sort((x, y) => x - y)
+
+  // Place each share label away from the curve: below it where the curve
+  // runs high through the region, above it where the curve runs low.
+  const regionLabel = (
+    fraction: number,
+    x1: number,
+    x2: number,
+    emphasis = false,
+  ) => {
+    const curveAtMiddle = rosinRammlerCumulative(Math.sqrt(x1 * x2), dE, n)
+    return {
+      value: `${fmt(fraction * 100, 1)} %`,
+      position: curveAtMiddle > 0.5 ? 'insideBottom' : 'insideTop',
+      offset: 14,
+      fill: emphasis ? '#252525' : '#57524a',
+      fontSize: emphasis ? 13 : 11,
+      fontWeight: emphasis ? 600 : 400,
+    } as const
+  }
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
@@ -106,125 +133,139 @@ export default function DropletDistribution({
         </div>
 
         <div className="droplet-result">
-          <div className="droplet-chart">
-            <span className="droplet-chart-title">
-              Cumulative mass smaller than d
-            </span>
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart
-                data={data}
-                margin={{ top: 18, right: 14, bottom: 6, left: -8 }}
-              >
-                <XAxis
-                  dataKey="d"
-                  type="number"
-                  scale="log"
-                  domain={[PLOT_MIN, PLOT_MAX]}
-                  ticks={[1, 10, 100, 1000]}
-                  tick={{ fill: '#4c4943', fontSize: 10 }}
-                  stroke="#aaa49a"
-                  label={{
-                    value: 'd  (µm)',
-                    position: 'insideBottom',
-                    offset: -2,
-                    fill: '#4c4943',
-                    fontSize: 10,
-                  }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  ticks={[0, 50, 100]}
-                  tick={{ fill: '#4c4943', fontSize: 10 }}
-                  stroke="#aaa49a"
-                  width={44}
-                  label={{
-                    value: '%',
-                    angle: -90,
-                    position: 'insideLeft',
-                    fill: '#137f70',
-                    fontSize: 9,
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#fbfaf7',
-                    border: '1px solid #d8d3ca',
-                    borderRadius: 8,
-                    color: '#252525',
-                    fontSize: 11,
-                  }}
-                  labelStyle={{ color: '#57524a' }}
-                  formatter={(value: number) => [
-                    `${fmt(value, 1)} %`,
-                    'Cumulative mass',
-                  ]}
-                  labelFormatter={(value) => `${fmt(Number(value), 1)} µm`}
-                />
-                {rangeValid && (
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart
+              data={data}
+              margin={{ top: 22, right: 14, bottom: 8, left: -6 }}
+            >
+              <XAxis
+                dataKey="d"
+                type="number"
+                scale="log"
+                domain={[PLOT_MIN, PLOT_MAX]}
+                ticks={[1, 10, 100, 1000]}
+                tick={{ fill: '#4c4943', fontSize: 10 }}
+                stroke="#aaa49a"
+                label={{
+                  value: 'Droplet diameter d  (µm)',
+                  position: 'insideBottom',
+                  offset: -4,
+                  fill: '#4c4943',
+                  fontSize: 10,
+                }}
+              />
+              <YAxis
+                domain={[0, 100]}
+                ticks={yTicks}
+                tick={{ fill: '#4c4943', fontSize: 10 }}
+                stroke="#aaa49a"
+                width={44}
+                label={{
+                  value: 'Mass < d  (%)',
+                  angle: -90,
+                  position: 'insideLeft',
+                  offset: 14,
+                  fill: '#137f70',
+                  fontSize: 10,
+                }}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: '#fbfaf7',
+                  border: '1px solid #d8d3ca',
+                  borderRadius: 8,
+                  color: '#252525',
+                  fontSize: 11,
+                }}
+                labelStyle={{ color: '#57524a' }}
+                formatter={(value: number) => [
+                  `${fmt(value, 1)} %`,
+                  'Cumulative mass',
+                ]}
+                labelFormatter={(value) => `${fmt(Number(value), 1)} µm`}
+              />
+              {rangeValid && (
+                <>
+                  <ReferenceArea
+                    x1={PLOT_MIN}
+                    x2={dMin}
+                    fill="none"
+                    stroke="none"
+                    label={regionLabel(split.below, PLOT_MIN, dMin)}
+                  />
                   <ReferenceArea
                     x1={dMin}
                     x2={dMax}
                     fill="#ff9f45"
                     fillOpacity={0.12}
                     stroke="none"
+                    label={regionLabel(split.within, dMin, dMax, true)}
                   />
-                )}
-                <ReferenceLine
-                  x={dMin}
-                  stroke="#ff9f45"
-                  strokeDasharray="4 3"
-                  label={{
-                    value: `d_min ${fmt(dMin, 0)}`,
-                    position: 'insideTopLeft',
-                    fill: '#b8641a',
-                    fontSize: 10,
-                  }}
-                />
-                <ReferenceLine
-                  x={dMax}
-                  stroke="#ff9f45"
-                  strokeDasharray="4 3"
-                  label={{
-                    value: `d_max ${fmt(dMax, 0)}`,
-                    position: 'insideBottomRight',
-                    fill: '#b8641a',
-                    fontSize: 10,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cumulative"
-                  stroke="#137f70"
-                  strokeWidth={2.4}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                  <ReferenceArea
+                    x1={dMax}
+                    x2={PLOT_MAX}
+                    fill="none"
+                    stroke="none"
+                    label={regionLabel(split.above, dMax, PLOT_MAX)}
+                  />
+                  <ReferenceLine
+                    segment={[
+                      { x: PLOT_MIN, y: 100 * split.below },
+                      { x: dMin, y: 100 * split.below },
+                    ]}
+                    stroke="#888780"
+                    strokeDasharray="2 3"
+                    ifOverflow="extendDomain"
+                  />
+                  <ReferenceLine
+                    segment={[
+                      { x: PLOT_MIN, y: fMaxPct },
+                      { x: dMax, y: fMaxPct },
+                    ]}
+                    stroke="#888780"
+                    strokeDasharray="2 3"
+                    ifOverflow="extendDomain"
+                  />
+                </>
+              )}
+              <ReferenceLine
+                x={dMin}
+                stroke="#ff9f45"
+                strokeDasharray="4 3"
+                label={{
+                  value: 'd_min',
+                  position: 'top',
+                  fill: '#b8641a',
+                  fontSize: 10,
+                }}
+              />
+              <ReferenceLine
+                x={dMax}
+                stroke="#ff9f45"
+                strokeDasharray="4 3"
+                label={{
+                  value: 'd_max',
+                  position: 'top',
+                  fill: '#b8641a',
+                  fontSize: 10,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="cumulative"
+                stroke="#137f70"
+                strokeWidth={2.4}
+                dot={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
 
-          <div className="droplet-checks" aria-live="polite">
-            <div className={`droplet-check${rangeValid ? '' : ' is-bad'}`}>
-              <span>Range</span>
-              <strong>
-                {rangeValid
-                  ? `${fmt(dMin, 0)}–${fmt(dMax, 0)} µm`
-                  : 'd_min ≥ d_max'}
-              </strong>
-            </div>
-            <div className="droplet-check">
-              <span>Below d_min</span>
-              <strong>{fmt(split.below * 100, 1)} %</strong>
-            </div>
-            <div className="droplet-check">
-              <span>Within range</span>
-              <strong>{fmt(split.within * 100, 1)} %</strong>
-            </div>
-            <div className="droplet-check">
-              <span>Above d_max</span>
-              <strong>{fmt(split.above * 100, 1)} %</strong>
-            </div>
-          </div>
+          {!rangeValid && (
+            <p className="droplet-warning" role="alert">
+              d_min must be smaller than d_max.
+            </p>
+          )}
         </div>
       </div>
 
