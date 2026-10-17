@@ -43,7 +43,7 @@ export interface SolveIssue {
 
 export interface TowerInputs {
   // Exhaust plume leaving the fill
-  plumeTemperature: number // °C, dry-bulb
+  plumeTemperature: number // °C
   plumeRh: number // %
   pressure: number // Pa
   flowArea: number // m², selected full-face plume / eliminator area
@@ -53,6 +53,8 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   dropletDiameterMin: number // theoretical inlet range minimum, µm
   dropletDiameterMax: number // theoretical inlet range maximum, µm
+  dropletCharacteristicDiameter: number // Rosin–Rammler dₑ, µm (63.2% undersize)
+  dropletSpread: number // Rosin–Rammler n, dimensionless
 
   // Vapour recovery
   coolingBelowDewPoint: number // °C temperature difference below plume dew point
@@ -383,6 +385,8 @@ export const DEFAULT_INPUTS: TowerInputs = {
   eliminatorId: 'B',
   dropletDiameterMin: 10,
   dropletDiameterMax: 200,
+  dropletCharacteristicDiameter: 100, // placeholder, not measured data
+  dropletSpread: 2, // placeholder, not measured data
 
   coolingBelowDewPoint: 10,
   cyclesOfConcentration: 6,

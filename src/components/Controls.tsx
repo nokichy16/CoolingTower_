@@ -2,6 +2,7 @@ import type { TowerInputs } from '../lib/model'
 import type { StageId } from '../lib/stages'
 import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
+import DropletDistribution from './DropletDistribution'
 
 const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
   A: 'Vane · 50 mm gap · 150 mm height · 54.3° direction change',
@@ -81,7 +82,11 @@ export default function Controls({
 
       <div className="stage-input-panel" key={selectedStage}>
         {selectedStage === 'plume' && (
-          <>
+          <div className="inlet-layout">
+            <section className="input-group" aria-labelledby="group-plume">
+            <h3 className="input-group-title" id="group-plume">
+              Plume state
+            </h3>
             <Field
               label="Plume temperature"
               sym="T₄"
@@ -113,6 +118,12 @@ export default function Controls({
               step={0.1}
               onChange={(value) => onChange({ pressure: value * 1000 })}
             />
+            </section>
+
+            <section className="input-group" aria-labelledby="group-airflow">
+            <h3 className="input-group-title" id="group-airflow">
+              Airflow
+            </h3>
             <Field
               label="Tower flow area"
               sym="A"
@@ -146,7 +157,10 @@ export default function Controls({
               digits={1}
               onChange={onDryAirMassFlowChange}
             />
-          </>
+            </section>
+
+            <DropletDistribution inputs={inputs} onChange={onChange} />
+          </div>
         )}
 
         {selectedStage === 'droplets' && (
@@ -197,28 +211,6 @@ export default function Controls({
               </div>
             </details>
 
-            <Field
-              label="Minimum droplet size"
-              sym="d_min"
-              unit="µm"
-              value={inputs.dropletDiameterMin}
-              min={1}
-              max={inputs.dropletDiameterMax - 1}
-              step={1}
-              digits={0}
-              onChange={set('dropletDiameterMin')}
-            />
-            <Field
-              label="Maximum droplet size"
-              sym="d_max"
-              unit="µm"
-              value={inputs.dropletDiameterMax}
-              min={inputs.dropletDiameterMin + 1}
-              max={1000}
-              step={1}
-              digits={0}
-              onChange={set('dropletDiameterMax')}
-            />
           </>
         )}
 
