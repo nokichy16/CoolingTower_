@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   erf,
   logNormalCumulative,
+  logNormalFromD10D90,
   RUIZ_2013_RUN1,
 } from '../src/lib/droplet-distribution.ts'
 
@@ -33,12 +34,16 @@ test('cumulative fraction is monotonic and bounded', () => {
   }
 })
 
-test('Ruiz 2013 run 1 defaults reproduce the reported d0.5 and d0.9', () => {
-  const { medianDiameterUm: dm, geometricSpread: sg } = RUIZ_2013_RUN1
-  // Table 5 run 1: d0.5 = 32.3 µm, d0.9 = 76.2 µm (measured; fit is approximate)
-  assert.ok(dm > 30 && dm < 40)
-  const d90 = dm * sg ** 1.2816
-  assert.ok(d90 > 65 && d90 < 85)
+test('d10 and d90 inputs give a curve through 10 % and 90 %', () => {
+  const { d10Um, d90Um } = RUIZ_2013_RUN1
+  const { medianDiameterUm: dm, geometricSpread: sg } = logNormalFromD10D90(
+    d10Um,
+    d90Um,
+  )
+  assert.ok(Math.abs(logNormalCumulative(d10Um, dm, sg) - 0.1) < 1e-6)
+  assert.ok(Math.abs(logNormalCumulative(d90Um, dm, sg) - 0.9) < 1e-6)
+  // Ruiz run 1 measured d0.5 = 32.3 µm; the two-point fit gives about 39 µm.
+  assert.ok(dm > 35 && dm < 42)
 })
 
 test('invalid parameters return zero instead of NaN', () => {

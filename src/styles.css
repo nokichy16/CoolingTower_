@@ -1499,3 +1499,14 @@ input[type='range']::-moz-range-thumb {
 @media (max-width: 920px) {
   .workspace { grid-template-columns: 1fr; }
 }
+
+.droplet-derived {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 10px;
+  font-size: 11px;
+}
+.droplet-derived div { display: flex; justify-content: space-between; gap: 12px; }
+.droplet-derived dt, .droplet-derived dd { white-space: nowrap; }
+.droplet-derived dt { color: var(--text-dim); }
+.droplet-derived dd { margin: 0; color: var(--text); font: 11px var(--mono); }

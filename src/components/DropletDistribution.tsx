@@ -37,9 +37,15 @@ export default function DropletDistribution({
   droplets,
   onChange,
 }: DropletDistributionProps) {
-  const { dropletMedianDiameter: dMed, dropletGeometricSpread: sg } = inputs
-  const { cutoffFound, captureCutoffDiameter: d50, massEscaping, massCaptured } =
-    droplets
+  const { dropletD10: d10, dropletD90: d90 } = inputs
+  const {
+    cutoffFound,
+    captureCutoffDiameter: d50,
+    massEscaping,
+    massCaptured,
+    medianDiameter: dMed,
+    geometricSpread: sg,
+  } = droplets
 
   const data = linearDiameters(PLOT_MIN, PLOT_MAX, 251).map((d) => ({
     d,
@@ -61,30 +67,40 @@ export default function DropletDistribution({
       <div className="droplet-layout">
         <div className="droplet-fields">
           <Field
-            label="Mass median diameter"
-            sym="d_med"
+            label="10 % mass diameter"
+            sym="d₁₀"
             unit="µm"
-            value={dMed}
-            min={5}
-            max={300}
+            value={d10}
+            min={1}
+            max={Math.max(1, d90 - 1)}
             step={0.1}
             digits={1}
-            onChange={(value) => onChange({ dropletMedianDiameter: value })}
+            onChange={(value) => onChange({ dropletD10: value })}
           />
           <Field
-            label="Geometric spread"
-            sym="σg"
-            unit=""
-            value={sg}
-            min={1.05}
-            max={4}
-            step={0.01}
-            digits={2}
-            onChange={(value) => onChange({ dropletGeometricSpread: value })}
+            label="90 % mass diameter"
+            sym="d₉₀"
+            unit="µm"
+            value={d90}
+            min={d10 + 1}
+            max={500}
+            step={0.1}
+            digits={1}
+            onChange={(value) => onChange({ dropletD90: value })}
           />
+          <dl className="droplet-derived">
+            <div>
+              <dt>Mass median d_med</dt>
+              <dd>{fmt(dMed, 1)} µm</dd>
+            </div>
+            <div>
+              <dt>Geometric spread σg</dt>
+              <dd>{fmt(sg, 2)}</dd>
+            </div>
+          </dl>
           <p className="card-note">
-            Log-normal by mass. Defaults: Ruiz et al. (2013), test run 1,
-            measured at the tower exit.
+            Log-normal by mass, fitted through d₁₀ and d₉₀. Defaults: Ruiz et
+            al. (2013), test run 1, measured at the tower exit.
           </p>
         </div>
 

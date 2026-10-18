@@ -29,6 +29,7 @@ import {
 } from './eliminators.ts'
 import {
   logNormalCumulative,
+  logNormalFromD10D90,
   RUIZ_2013_RUN1,
 } from './droplet-distribution.ts'
 
@@ -59,8 +60,8 @@ export interface TowerInputs {
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
-  dropletMedianDiameter: number // log-normal mass median diameter, µm
-  dropletGeometricSpread: number // log-normal geometric standard deviation σg
+  dropletD10: number // 10 % of inlet drift mass is smaller, µm
+  dropletD90: number // 90 % of inlet drift mass is smaller, µm
 
   // Vapour recovery
   coolingBelowDewPoint: number // °C temperature difference below plume dew point
@@ -98,6 +99,8 @@ export interface TowerResults {
     cutoffFound: boolean // false when ε stays above or below 50 % at all sizes
     massEscaping: number // inlet mass fraction smaller than d50 (NaN if no cutoff)
     massCaptured: number // inlet mass fraction larger than d50 (NaN if no cutoff)
+    medianDiameter: number // log-normal d_med from d10 and d90, µm
+    geometricSpread: number // log-normal σg from d10 and d90
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -195,6 +198,10 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     omega4,
   )
 
+  const { medianDiameterUm, geometricSpread } = logNormalFromD10D90(
+    inputs.dropletD10,
+    inputs.dropletD90,
+  )
   // Pressure loss depends only on Reynolds; the representative droplet size
   // (inlet mass median) only sets the reported Stokes number.
   const eliminator = evaluateRuizEliminator(
@@ -202,7 +209,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletMedianDiameter,
+    medianDiameterUm,
   )
   const efficiencyAtSearchMin = collectionEfficiencyAtDiameter(
     inputs.eliminatorId,
@@ -230,8 +237,8 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const massEscaping = cutoffFound
     ? logNormalCumulative(
         captureCutoffDiameter,
-        inputs.dropletMedianDiameter,
-        inputs.dropletGeometricSpread,
+        medianDiameterUm,
+        geometricSpread,
       )
     : Number.NaN
   const massCaptured = cutoffFound ? 1 - massEscaping : Number.NaN
@@ -379,6 +386,8 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       cutoffFound,
       massEscaping,
       massCaptured,
+      medianDiameter: medianDiameterUm,
+      geometricSpread,
     },
     recovery: {
       t: t5,
@@ -406,8 +415,8 @@ export const DEFAULT_INPUTS: TowerInputs = {
 
   eliminatorId: 'B',
   // Ruiz et al. (2013) test run 1, measured at the tower exit
-  dropletMedianDiameter: Number(RUIZ_2013_RUN1.medianDiameterUm.toFixed(1)),
-  dropletGeometricSpread: Number(RUIZ_2013_RUN1.geometricSpread.toFixed(2)),
+  dropletD10: RUIZ_2013_RUN1.d10Um,
+  dropletD90: RUIZ_2013_RUN1.d90Um,
 
   coolingBelowDewPoint: 10,
   cyclesOfConcentration: 6,
