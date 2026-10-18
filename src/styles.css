@@ -1545,3 +1545,22 @@ input[type='range']::-moz-range-thumb {
   border: 1.5px solid;
   background: transparent;
 }
+
+/* Recovery process chart, same style as the drift droplet graphs */
+.process-chart { min-width: 0; padding-top: 4px; }
+.process-chart .chart { margin-top: 2px; }
+.chart-legend-row i.is-dash {
+  width: 14px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed;
+  background: transparent;
+  vertical-align: 3px;
+}
+.chart-legend-row i.is-dot.is-filled { border: 0; }
+.charts-panel .process-chart .chart {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
