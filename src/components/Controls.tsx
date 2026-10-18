@@ -3,6 +3,7 @@ import type { StageId } from '../lib/stages'
 import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
 import DropletDistribution from './DropletDistribution'
+import EliminatorOutput from './EliminatorOutput'
 
 const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
   A: 'Vane · 50 mm gap · 150 mm height · 54.3° direction change',
@@ -216,6 +217,8 @@ export default function Controls({
                 ))}
               </div>
             </details>
+
+            <EliminatorOutput inputs={inputs} droplets={droplets} />
 
           </>
         )}

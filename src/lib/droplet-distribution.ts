@@ -18,25 +18,89 @@
  * inlet distribution is an assumption.
  */
 
-/** Ruiz et al. (2013) Table 5, test run 1: d0.1 = 0.0204 mm, d0.9 = 0.0762 mm. */
-export const RUIZ_2013_RUN1 = {
-  d10Um: 20.4,
-  d90Um: 76.2,
-} as const
+/**
+ * Two-mode inlet distribution, truncated at d_max.
+ *
+ *   F_raw(d) = (1 − w)·LN(d; d_med, σg) + w·LN(d; d_tail, σg,tail)
+ *   F(d)     = F_raw(d) / F_raw(d_max)   for d < d_max,   F(d) = 1 for d ≥ d_max
+ *
+ * The main mode gives the steep rise; the tail mode (mass fraction w) gives
+ * the long, flat end seen in measured drift. σg of the main mode follows from
+ * d_min, the diameter where 1 % of the main-mode mass is smaller:
+ *   σg = (d_med / d_min)^(1 / z99).
+ */
+export interface DropletDistributionParams {
+  dMinUm: number // 1 % of main-mode mass is smaller
+  dMedMainUm: number // main-mode mass median
+  tailFraction: number // w, mass fraction in the tail mode
+  tailMedianUm: number
+  tailSpread: number // σg of the tail mode
+  dMaxUm: number // hard upper limit: 100 % of mass is smaller
+}
 
-/** Standard normal quantile at 90 %: Φ⁻¹(0.9). */
-export const Z90 = 1.2815516
+/** Standard normal quantile at 99 %: Φ⁻¹(0.99). */
+export const Z99 = 2.3263479
 
 /**
- * Log-normal parameters from the 10 % and 90 % mass diameters.
- * ln d10 = ln d_med − z90·ln σg and ln d90 = ln d_med + z90·ln σg, so
- *   d_med = √(d10 · d90),  σg = (d90 / d10)^(1 / (2 · z90)).
+ * Defaults: a fit by eye to Ruiz et al. (2013) Fig. 9(a), test run 1, which
+ * was measured at the tower exit (after the eliminator). Used here as an
+ * assumed inlet shape.
  */
-export function logNormalFromD10D90(d10Um: number, d90Um: number) {
-  return {
-    medianDiameterUm: Math.sqrt(d10Um * d90Um),
-    geometricSpread: (d90Um / d10Um) ** (1 / (2 * Z90)),
+export const RUIZ_2013_RUN1_FIT: DropletDistributionParams = {
+  dMinUm: 11,
+  dMedMainUm: 30.5,
+  tailFraction: 0.135,
+  tailMedianUm: 100,
+  tailSpread: 2,
+  dMaxUm: 300,
+}
+
+/** Ruiz et al. (2013) Fig. 9(a) run 1 points, read approximately (µm, fraction). */
+export const RUIZ_2013_RUN1_POINTS: ReadonlyArray<readonly [number, number]> = [
+  [20.4, 0.1],
+  [32.3, 0.5],
+  [76.2, 0.9],
+  [100, 0.93],
+  [130, 0.95],
+  [160, 0.965],
+  [280, 0.985],
+]
+
+export function mainSpread(p: DropletDistributionParams): number {
+  return (p.dMedMainUm / p.dMinUm) ** (1 / Z99)
+}
+
+export function twoModeCumulative(
+  diameterUm: number,
+  p: DropletDistributionParams,
+): number {
+  if (!(diameterUm > 0)) return 0
+  if (diameterUm >= p.dMaxUm) return 1
+  const sg = mainSpread(p)
+  const raw = (d: number) =>
+    (1 - p.tailFraction) * logNormalCumulative(d, p.dMedMainUm, sg) +
+    p.tailFraction * logNormalCumulative(d, p.tailMedianUm, p.tailSpread)
+  const top = raw(p.dMaxUm)
+  return top > 0 ? Math.min(1, raw(diameterUm) / top) : 0
+}
+
+/**
+ * Relative droplet count per size class: mass in the class divided by the
+ * mass of one droplet at the class midpoint (∝ d³). Normalised to peak = 1.
+ */
+export function countHistogram(
+  p: DropletDistributionParams,
+  binUm: number,
+): { mid: number; count: number }[] {
+  const bins: { mid: number; count: number }[] = []
+  for (let a = 0; a < p.dMaxUm; a += binUm) {
+    const b = Math.min(a + binUm, p.dMaxUm)
+    const mid = (a + b) / 2
+    const mass = twoModeCumulative(b, p) - twoModeCumulative(a, p)
+    bins.push({ mid, count: mass / mid ** 3 })
   }
+  const peak = Math.max(...bins.map((x) => x.count))
+  return bins.map((x) => ({ ...x, count: peak > 0 ? x.count / peak : 0 }))
 }
 
 /** Error function, Abramowitz & Stegun 7.1.26 (|error| < 1.5e-7). */

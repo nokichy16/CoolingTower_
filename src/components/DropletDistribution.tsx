@@ -1,19 +1,14 @@
 import {
-  Line,
-  LineChart,
-  ReferenceArea,
-  ReferenceDot,
-  ReferenceLine,
+  Bar,
+  BarChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TowerInputs, TowerResults } from '../lib/model'
-import {
-  linearDiameters,
-  logNormalCumulative,
-} from '../lib/droplet-distribution'
+import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
+import { countHistogram } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
@@ -23,98 +18,124 @@ interface DropletDistributionProps {
   onChange: (patch: Partial<TowerInputs>) => void
 }
 
-const PLOT_MIN = 0 // µm
-const PLOT_MAX = 500 // µm, same span as Ruiz et al. (2013) Fig. 9
+export const GRID_STROKE = '#dcd8cf'
+const BIN_UM = 5
 
 /**
- * Drift droplets entering the eliminator: log-normal cumulative mass
- * distribution over the full size range, with the eliminator d50 cutoff
- * marked. Droplets smaller than d50 escape; larger droplets are captured
- * (ideal sharp cut).
+ * Inlet drift droplets (graph 1): relative number of droplets per 5 µm size
+ * class, in the style of Ruiz et al. (2013) Fig. 8. The shape comes from the
+ * two-mode mass distribution set by the inputs.
  */
 export default function DropletDistribution({
   inputs,
   droplets,
   onChange,
 }: DropletDistributionProps) {
-  const { dropletD10: d10, dropletD90: d90 } = inputs
-  const {
-    cutoffFound,
-    captureCutoffDiameter: d50,
-    massEscaping,
-    massCaptured,
-    medianDiameter: dMed,
-    geometricSpread: sg,
-  } = droplets
-
-  const data = linearDiameters(PLOT_MIN, PLOT_MAX, 251).map((d) => ({
-    d,
-    cumulative: 100 * logNormalCumulative(d, dMed, sg),
-  }))
-  const escapingPct = 100 * massEscaping
-  const yTicks = cutoffFound
-    ? [0, 100, Math.round(escapingPct)].filter(
-        (v, i, all) => all.findIndex((u) => Math.abs(u - v) < 7) === i,
-      ).sort((x, y) => x - y)
-    : [0, 50, 100]
+  const p = distributionParams(inputs)
+  const bins = countHistogram(p, BIN_UM)
+  const xTicks = Array.from(
+    { length: Math.floor(p.dMaxUm / 50) + 1 },
+    (_, i) => i * 50,
+  )
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
       <h3 className="input-group-title" id="group-droplets">
-        Drift droplets
+        Drift droplets at the eliminator inlet
       </h3>
 
       <div className="droplet-layout">
         <div className="droplet-fields">
           <Field
-            label="10 % mass diameter"
-            sym="d₁₀"
+            label="Smallest droplets (1 %)"
+            sym="d_min"
             unit="µm"
-            value={d10}
+            value={inputs.dropletDMin}
             min={1}
-            max={Math.max(1, d90 - 1)}
-            step={0.1}
+            max={Math.max(1, inputs.dropletDMedMain - 1)}
+            step={0.5}
             digits={1}
-            onChange={(value) => onChange({ dropletD10: value })}
+            onChange={(value) => onChange({ dropletDMin: value })}
           />
           <Field
-            label="90 % mass diameter"
-            sym="d₉₀"
+            label="Main-mode median"
+            sym="d_med"
             unit="µm"
-            value={d90}
-            min={d10 + 1}
-            max={500}
-            step={0.1}
+            value={inputs.dropletDMedMain}
+            min={inputs.dropletDMin + 1}
+            max={200}
+            step={0.5}
             digits={1}
-            onChange={(value) => onChange({ dropletD90: value })}
+            onChange={(value) => onChange({ dropletDMedMain: value })}
+          />
+          <Field
+            label="Largest droplets (100 %)"
+            sym="d_max"
+            unit="µm"
+            value={inputs.dropletDMax}
+            min={Math.ceil(inputs.dropletDMedMain + 10)}
+            max={1000}
+            step={10}
+            digits={0}
+            onChange={(value) => onChange({ dropletDMax: value })}
+          />
+          <Field
+            label="Tail mass fraction"
+            sym="w"
+            unit="%"
+            value={inputs.dropletTailFraction * 100}
+            min={0}
+            max={40}
+            step={0.5}
+            digits={1}
+            onChange={(value) => onChange({ dropletTailFraction: value / 100 })}
+          />
+          <Field
+            label="Tail median"
+            sym="d_tail"
+            unit="µm"
+            value={inputs.dropletTailMedian}
+            min={20}
+            max={Math.max(20, inputs.dropletDMax)}
+            step={5}
+            digits={0}
+            onChange={(value) => onChange({ dropletTailMedian: value })}
+          />
+          <Field
+            label="Tail spread"
+            sym="σg,tail"
+            unit=""
+            value={inputs.dropletTailSpread}
+            min={1.1}
+            max={3}
+            step={0.05}
+            digits={2}
+            onChange={(value) => onChange({ dropletTailSpread: value })}
           />
           <dl className="droplet-derived">
             <div>
-              <dt>Mass median d_med</dt>
-              <dd>{fmt(dMed, 1)} µm</dd>
-            </div>
-            <div>
-              <dt>Geometric spread σg</dt>
-              <dd>{fmt(sg, 2)}</dd>
+              <dt>Main-mode spread σg</dt>
+              <dd>{fmt(droplets.mainSpread, 2)}</dd>
             </div>
           </dl>
-          <p className="card-note">
-            Log-normal by mass, fitted through d₁₀ and d₉₀. Defaults: Ruiz et
-            al. (2013), test run 1, measured at the tower exit.
-          </p>
         </div>
 
         <div className="droplet-result">
+          <span className="droplet-chart-title">
+            Inlet: relative number of droplets per {BIN_UM} µm size class
+          </span>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart
-              data={data}
-              margin={{ top: 22, right: 14, bottom: 8, left: -6 }}
+            <BarChart
+              data={bins}
+              margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
+              barCategoryGap={0}
             >
+              <CartesianGrid stroke={GRID_STROKE} strokeDasharray="0" />
               <XAxis
-                dataKey="d"
+                dataKey="mid"
                 type="number"
-                domain={[PLOT_MIN, PLOT_MAX]}
-                ticks={[0, 100, 200, 300, 400, 500]}
+                domain={[0, p.dMaxUm]}
+                ticks={xTicks}
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
                 label={{
@@ -126,19 +147,11 @@ export default function DropletDistribution({
                 }}
               />
               <YAxis
-                domain={[0, 100]}
-                ticks={yTicks}
+                domain={[0, 1]}
+                ticks={[0, 0.25, 0.5, 0.75, 1]}
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
-                width={44}
-                label={{
-                  value: 'Mass < d  (%)',
-                  angle: -90,
-                  position: 'insideLeft',
-                  offset: 14,
-                  fill: '#137f70',
-                  fontSize: 10,
-                }}
+                width={52}
               />
               <Tooltip
                 contentStyle={{
@@ -148,81 +161,22 @@ export default function DropletDistribution({
                   color: '#252525',
                   fontSize: 11,
                 }}
-                labelStyle={{ color: '#57524a' }}
-                formatter={(value: number) => [
-                  `${fmt(value, 1)} %`,
-                  'Cumulative mass',
-                ]}
-                labelFormatter={(value) => `${fmt(Number(value), 0)} µm`}
+                formatter={(value: number) => [fmt(value, 3), 'Relative count']}
+                labelFormatter={(mid) =>
+                  `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(
+                    Number(mid) + BIN_UM / 2,
+                    0,
+                  )} µm`
+                }
               />
-              {cutoffFound && (
-                <>
-                  <ReferenceArea
-                    x1={d50}
-                    x2={PLOT_MAX}
-                    fill="#c9b568"
-                    fillOpacity={0.14}
-                    stroke="none"
-                    label={{
-                      value: `Captured ${fmt(100 * massCaptured, 1)} %`,
-                      position: 'center',
-                      fill: '#252525',
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  />
-                  <ReferenceLine
-                    segment={[
-                      { x: PLOT_MIN, y: escapingPct },
-                      { x: d50, y: escapingPct },
-                    ]}
-                    stroke="#888780"
-                    strokeDasharray="2 3"
-                  />
-                  <ReferenceLine
-                    x={d50}
-                    stroke="#b8641a"
-                    strokeDasharray="4 3"
-                    label={{
-                      value: 'd₅₀',
-                      position: 'top',
-                      fill: '#b8641a',
-                      fontSize: 11,
-                    }}
-                  />
-                  <ReferenceDot
-                    x={d50}
-                    y={escapingPct}
-                    r={3.5}
-                    fill="#b8641a"
-                    stroke="none"
-                    label={{
-                      value: `Escapes ${fmt(escapingPct, 1)} %`,
-                      position: 'right',
-                      offset: 8,
-                      fill: '#57524a',
-                      fontSize: 11,
-                    }}
-                  />
-                </>
-              )}
-              <Line
-                type="monotone"
-                dataKey="cumulative"
-                stroke="#137f70"
-                strokeWidth={2.4}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
+              <Bar dataKey="count" fill="#137f70" isAnimationActive={false} />
+            </BarChart>
           </ResponsiveContainer>
-
-          {!cutoffFound && (
-            <p className="droplet-warning" role="status">
-              No 50 % cutoff for this eliminator: the Ruiz correlation stays
-              above 50 % capture at all sizes. Captured mass is not shown.
-            </p>
-          )}
+          <p className="card-note">
+            Two log-normal modes by mass, cut at d_max. Defaults: fit to Ruiz et
+            al. (2013) Fig. 9(a), run 1, measured at the tower exit. The inlet
+            shape is therefore an assumption.
+          </p>
         </div>
       </div>
     </section>

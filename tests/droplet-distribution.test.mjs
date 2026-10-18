@@ -2,10 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  countHistogram,
   erf,
   logNormalCumulative,
-  logNormalFromD10D90,
-  RUIZ_2013_RUN1,
+  mainSpread,
+  RUIZ_2013_RUN1_FIT,
+  RUIZ_2013_RUN1_POINTS,
+  twoModeCumulative,
 } from '../src/lib/droplet-distribution.ts'
 
 test('erf matches reference values', () => {
@@ -34,16 +37,28 @@ test('cumulative fraction is monotonic and bounded', () => {
   }
 })
 
-test('d10 and d90 inputs give a curve through 10 % and 90 %', () => {
-  const { d10Um, d90Um } = RUIZ_2013_RUN1
-  const { medianDiameterUm: dm, geometricSpread: sg } = logNormalFromD10D90(
-    d10Um,
-    d90Um,
-  )
-  assert.ok(Math.abs(logNormalCumulative(d10Um, dm, sg) - 0.1) < 1e-6)
-  assert.ok(Math.abs(logNormalCumulative(d90Um, dm, sg) - 0.9) < 1e-6)
-  // Ruiz run 1 measured d0.5 = 32.3 µm; the two-point fit gives about 39 µm.
-  assert.ok(dm > 35 && dm < 42)
+test('two-mode curve reaches exactly 100 % at d_max', () => {
+  const p = RUIZ_2013_RUN1_FIT
+  assert.equal(twoModeCumulative(p.dMaxUm, p), 1)
+  assert.ok(twoModeCumulative(p.dMaxUm - 1, p) < 1)
+})
+
+test('d_min is the 1 % point of the main mode', () => {
+  const p = RUIZ_2013_RUN1_FIT
+  const f = logNormalCumulative(p.dMinUm, p.dMedMainUm, mainSpread(p))
+  assert.ok(Math.abs(f - 0.01) < 1e-6)
+})
+
+test('default fit follows the Ruiz run 1 tail within 2 %', () => {
+  for (const [d, y] of RUIZ_2013_RUN1_POINTS.filter(([d]) => d >= 76)) {
+    assert.ok(Math.abs(twoModeCumulative(d, RUIZ_2013_RUN1_FIT) - y) < 0.02)
+  }
+})
+
+test('count histogram peaks at small sizes', () => {
+  const bins = countHistogram(RUIZ_2013_RUN1_FIT, 5)
+  const peak = bins.find((b) => b.count === 1)
+  assert.ok(peak && peak.mid < 30)
 })
 
 test('invalid parameters return zero instead of NaN', () => {

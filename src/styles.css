@@ -1510,3 +1510,38 @@ input[type='range']::-moz-range-thumb {
 .droplet-derived dt, .droplet-derived dd { white-space: nowrap; }
 .droplet-derived dt { color: var(--text-dim); }
 .droplet-derived dd { margin: 0; color: var(--text); font: 11px var(--mono); }
+
+.droplet-chart-title {
+  display: block;
+  margin: 0 0 4px 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.eliminator-output {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.chart-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.chart-legend-row i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+.chart-legend-row i.is-dot {
+  border-radius: 50%;
+  border: 1.5px solid;
+  background: transparent;
+}
