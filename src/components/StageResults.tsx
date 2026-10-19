@@ -166,7 +166,7 @@ export default function StageResults({
     <section className="stage-results" aria-labelledby="stage-results-title">
       <div className="output-section-head">
         <h2 id="stage-results-title">All calculated values</h2>
-        <span>Grey rows are inputs; every other row is calculated</span>
+        <span>Rows tagged “input” are set by you; every other row is calculated</span>
       </div>
 
       <div className="stage-result-grid">
@@ -187,7 +187,10 @@ export default function StageResults({
               {b.rows.map((row) => (
                 <li key={row.label} className={row.kind === 'input' ? 'is-input' : ''}>
                   <span className="row-label">
-                    {row.label}
+                    <span>
+                      {row.label}
+                      {row.kind === 'input' && <em className="input-tag">input</em>}
+                    </span>
                     {row.kind !== 'input' && <code>{row.formula}</code>}
                   </span>
                   <span className="row-value">
