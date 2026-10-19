@@ -159,7 +159,7 @@ export default function DropletDistribution({
           <span className="droplet-chart-title">
             Inlet: relative number of droplets per {BIN_UM} µm size class
           </span>
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={440}>
             <BarChart
               data={bins}
               margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
@@ -171,22 +171,22 @@ export default function DropletDistribution({
                 type="number"
                 domain={[0, p.dMaxUm]}
                 ticks={xTicks}
-                tick={{ fill: '#4c4943', fontSize: 10 }}
+                tick={{ fill: '#4c4943', fontSize: 12.5 }}
                 stroke="#aaa49a"
                 label={{
                   value: 'Droplet diameter d  (µm)',
                   position: 'insideBottom',
                   offset: -4,
                   fill: '#4c4943',
-                  fontSize: 10,
+                  fontSize: 12.5,
                 }}
               />
               <YAxis
                 domain={[0, 1]}
                 ticks={[0, 0.25, 0.5, 0.75, 1]}
-                tick={{ fill: '#4c4943', fontSize: 10 }}
+                tick={{ fill: '#4c4943', fontSize: 12.5 }}
                 stroke="#aaa49a"
-                width={52}
+                width={60}
               />
               <Tooltip
                 contentStyle={{
@@ -194,7 +194,7 @@ export default function DropletDistribution({
                   border: '1px solid #d8d3ca',
                   borderRadius: 8,
                   color: '#252525',
-                  fontSize: 11,
+                  fontSize: 13.5,
                 }}
                 formatter={(value: number) => [fmt(value, 3), 'Relative count']}
                 labelFormatter={(mid) =>

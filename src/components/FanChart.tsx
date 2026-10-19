@@ -37,7 +37,7 @@ export default function FanChart({ r }: { r: TowerResults }) {
         <span><i style={{ background: '#6250d6' }} />Ideal fan air power (kW)</span>
         <span><i className="is-dot is-filled" style={{ background: '#b8641a' }} />Current velocity</span>
       </div>
-      <ResponsiveContainer width="100%" height={250}>
+      <ResponsiveContainer width="100%" height={440}>
         <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: -6 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
@@ -45,27 +45,27 @@ export default function FanChart({ r }: { r: TowerResults }) {
             type="number"
             domain={[0.5, 6]}
             ticks={[0.5, 1, 2, 3, 4, 5, 6]}
-            tick={{ fill: '#4c4943', fontSize: 10 }}
+            tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
             label={{
               value: 'Face velocity u  (m/s)',
               position: 'insideBottom',
               offset: -4,
               fill: '#4c4943',
-              fontSize: 10,
+              fontSize: 12.5,
             }}
           />
           <YAxis
-            tick={{ fill: '#4c4943', fontSize: 10 }}
+            tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
-            width={48}
+            width={58}
             label={{
               value: 'kW',
               angle: -90,
               position: 'insideLeft',
               offset: 16,
               fill: '#4c4943',
-              fontSize: 10,
+              fontSize: 12.5,
             }}
           />
           <Tooltip
@@ -74,7 +74,7 @@ export default function FanChart({ r }: { r: TowerResults }) {
               border: '1px solid #d8d3ca',
               borderRadius: 8,
               color: '#252525',
-              fontSize: 11,
+              fontSize: 13.5,
             }}
             formatter={(value: number, _name, item) => [
               `${fmt(value, 1)} kW  (Δp ${fmt(item.payload.dp, 1)} Pa)`,
@@ -103,7 +103,7 @@ export default function FanChart({ r }: { r: TowerResults }) {
                 position: 'left',
                 offset: 10,
                 fill: '#57524a',
-                fontSize: 11,
+                fontSize: 13.5,
               }}
             />
           )}
