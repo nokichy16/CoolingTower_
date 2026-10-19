@@ -8,10 +8,9 @@ import {
 } from './lib/model'
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
-import TowerExplorer, {
-  CalculatedOutputs,
-} from './components/TowerExplorer'
-import ResultPanel from './components/ResultPanel'
+import TowerExplorer from './components/TowerExplorer'
+import KpiStrip from './components/KpiStrip'
+import CalculationSequence from './components/CalculationSequence'
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
@@ -47,6 +46,7 @@ export default function App() {
         <div className="brand">
           <h1>Plume Water Recovery</h1>
         </div>
+        <KpiStrip r={results} onSelect={setSelectedStage} />
         {firstWarning && (
           <div className="header-warning" role="alert">
             <strong>{firstWarning.title}</strong>
@@ -69,32 +69,20 @@ export default function App() {
           </section>
           <Controls
             inputs={inputs}
-            droplets={results.droplets}
+            r={results}
             dryAirMassFlow={results.plume.airMassFlow}
             dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
             dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}
             selectedStage={selectedStage}
             onChange={patch}
             onDryAirMassFlowChange={setDryAirMassFlow}
+            onSelectStage={setSelectedStage}
             onReset={reset}
-          />
-          <CalculatedOutputs
-            r={results}
-            selected={selectedStage}
-            onSelect={setSelectedStage}
           />
         </div>
 
         <main className="main">
-          <section className="panel charts-panel">
-            <div className="panel-head">
-              <h2>Process chart</h2>
-            </div>
-            <div className="panel-body">
-              <ResultPanel r={results} />
-            </div>
-          </section>
-
+          <CalculationSequence r={results} />
         </main>
       </div>
     </div>

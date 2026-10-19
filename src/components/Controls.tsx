@@ -4,6 +4,8 @@ import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
 import DropletDistribution from './DropletDistribution'
 import EliminatorOutput from './EliminatorOutput'
+import FanChart from './FanChart'
+import PsychrometricChart from './PsychrometricChart'
 
 const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
   A: 'Vane · 50 mm gap · 150 mm height · 54.3° direction change',
@@ -16,13 +18,14 @@ const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
 
 interface ControlsProps {
   inputs: TowerInputs
-  droplets: TowerResults['droplets']
+  r: TowerResults
   dryAirMassFlow: number
   dryAirMassFlowMin: number
   dryAirMassFlowMax: number
   selectedStage: StageId
   onChange: (patch: Partial<TowerInputs>) => void
   onDryAirMassFlowChange: (value: number) => void
+  onSelectStage: (id: StageId) => void
   onReset: () => void
 }
 
@@ -31,37 +34,31 @@ const STAGE_META: Record<
   {
     index: string
     name: string
+    path: 'air' | 'liquid'
   }
 > = {
-  plume: {
-    index: '1',
-    name: 'Plume & airflow',
-  },
-  droplets: {
-    index: '2',
-    name: 'Drift eliminator',
-  },
-  fan: {
-    index: '3',
-    name: 'Fan',
-  },
-  recovery: {
-    index: '4',
-    name: 'Recovery & CoC',
-  },
+  plume: { index: '1', name: 'Plume & airflow', path: 'air' },
+  drift: { index: '2', name: 'Drift droplets', path: 'liquid' },
+  droplets: { index: '3', name: 'Drift eliminator', path: 'liquid' },
+  fan: { index: '4', name: 'Fan', path: 'air' },
+  recovery: { index: '5', name: 'Condensation recovery', path: 'air' },
 }
+
+const STAGE_ORDER: StageId[] = ['plume', 'drift', 'droplets', 'fan', 'recovery']
 
 export default function Controls({
   inputs,
-  droplets,
+  r,
   dryAirMassFlow,
   dryAirMassFlowMin,
   dryAirMassFlowMax,
   selectedStage,
   onChange,
   onDryAirMassFlowChange,
+  onSelectStage,
   onReset,
 }: ControlsProps) {
+  const droplets = r.droplets
   const stage = STAGE_META[selectedStage]
   const selectedEliminator = ELIMINATORS[inputs.eliminatorId]
   const set =
@@ -74,7 +71,8 @@ export default function Controls({
       <div className="controls-head">
         <div>
           <span className="controls-kicker">
-            Selected section · {stage.index}
+            Stage {stage.index} ·{' '}
+            {stage.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
           </span>
           <h2>{stage.name}</h2>
         </div>
@@ -82,6 +80,23 @@ export default function Controls({
           Reset all
         </button>
       </div>
+
+      <nav className="stage-tabs" aria-label="Stages">
+        {STAGE_ORDER.map((id) => (
+          <button
+            type="button"
+            key={id}
+            className={`stage-tab is-${STAGE_META[id].path}${
+              id === selectedStage ? ' is-selected' : ''
+            }`}
+            aria-pressed={id === selectedStage}
+            onClick={() => onSelectStage(id)}
+          >
+            <span>{STAGE_META[id].index}</span>
+            {STAGE_META[id].name}
+          </button>
+        ))}
+      </nav>
 
       <div className="stage-input-panel" key={selectedStage}>
         {selectedStage === 'plume' && (
@@ -162,12 +177,15 @@ export default function Controls({
             />
             </section>
 
-            <DropletDistribution
-              inputs={inputs}
-              droplets={droplets}
-              onChange={onChange}
-            />
           </div>
+        )}
+
+        {selectedStage === 'drift' && (
+          <DropletDistribution
+            inputs={inputs}
+            droplets={droplets}
+            onChange={onChange}
+          />
         )}
 
         {selectedStage === 'droplets' && (
@@ -224,7 +242,13 @@ export default function Controls({
         )}
 
         {selectedStage === 'fan' && (
-          <div className="no-stage-inputs">No independent inputs</div>
+          <>
+            <div className="no-stage-inputs">
+              No independent inputs. Velocity comes from stage 1; the
+              eliminator comes from stage 3.
+            </div>
+            <FanChart r={r} />
+          </>
         )}
 
         {selectedStage === 'recovery' && (
@@ -250,6 +274,9 @@ export default function Controls({
               digits={1}
               onChange={set('cyclesOfConcentration')}
             />
+            <div className="stage-graph">
+              <PsychrometricChart r={r} />
+            </div>
           </>
         )}
       </div>

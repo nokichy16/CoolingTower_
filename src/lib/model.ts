@@ -435,7 +435,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   flowArea: 46.55,
   plumeVelocity: 3,
 
-  eliminatorId: 'B',
+  eliminatorId: 'A', // A has a d50 inside the fitted range at default conditions
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // Fit to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit

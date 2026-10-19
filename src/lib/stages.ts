@@ -1,7 +1,7 @@
 import type { TowerResults } from './model'
 import { fmt, sig } from './format'
 
-export type StageId = 'plume' | 'droplets' | 'fan' | 'recovery'
+export type StageId = 'plume' | 'drift' | 'droplets' | 'fan' | 'recovery'
 
 export interface Metric {
   label: string
@@ -79,8 +79,23 @@ export function buildStages(r: TowerResults): StageInfo[] {
       ],
     },
     {
-      id: 'droplets',
+      id: 'drift',
       index: '2',
+      name: 'Drift droplets',
+      accent: '#d9a441',
+      primary: [
+        {
+          label: 'Drift entering eliminator',
+          value: kgs(r.droplets.driftInlet),
+          unit: 'kg/s',
+        },
+      ],
+      supporting: [],
+      details: [],
+    },
+    {
+      id: 'droplets',
+      index: '3',
       name: 'Drift eliminator',
       accent: '#c9b568',
       primary: [
@@ -137,7 +152,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'fan',
-      index: '3',
+      index: '4',
       name: 'Fan',
       accent: '#9c83ff',
       primary: [
@@ -152,7 +167,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'recovery',
-      index: '4',
+      index: '5',
       name: 'Condensation recovery',
       accent: '#5ec8ff',
       primary: [

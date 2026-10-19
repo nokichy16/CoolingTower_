@@ -43,6 +43,10 @@ export default function DropletDistribution({
       <h3 className="input-group-title" id="group-droplets">
         Drift droplets at the eliminator inlet
       </h3>
+      <p className="stage-note">
+        Liquid drift leaving the fill. Kept separate from the water vapour in
+        the plume.
+      </p>
 
       <div className="droplet-layout">
         <div className="droplet-fields">
@@ -107,6 +111,8 @@ export default function DropletDistribution({
             digits={0}
             onChange={(value) => onChange({ dropletDMax: value })}
           />
+          <details className="advanced">
+            <summary>Advanced: large-droplet tail</summary>
           <Field
             label="Tail mass fraction"
             sym="w"
@@ -140,6 +146,7 @@ export default function DropletDistribution({
             digits={2}
             onChange={(value) => onChange({ dropletTailSpread: value })}
           />
+          </details>
           <dl className="droplet-derived">
             <div>
               <dt>Main-mode spread σg</dt>

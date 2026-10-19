@@ -61,13 +61,14 @@ export default function TowerGraphic({
   const byId = Object.fromEntries(
     stages.map((stage) => [stage.id, stage]),
   ) as Record<StageId, (typeof stages)[number]>
-  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
+  const toZone = (id: StageId): GraphicZoneId => (id === 'drift' ? 'droplets' : id)
+  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(toZone(selected))
 
   const metricReading = (value: string, unit: string) =>
     `${value}${unit === '%' || unit === '°C' ? '' : ' '}${unit}`
 
   useEffect(() => {
-    setGraphicZone(selected)
+    setGraphicZone(toZone(selected))
   }, [selected])
 
   const graphicInfo = (id: GraphicZoneId): GraphicInfo => {
