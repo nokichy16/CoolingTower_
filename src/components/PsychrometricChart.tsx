@@ -144,7 +144,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
         role="img"
         aria-label={`Recovery process from the inlet plume state at ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to the calculated saturated recovery state at ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={510}>
           <LineChart
             data={c.rows}
             margin={{ top: 18, right: 34, bottom: 8, left: -6 }}
@@ -169,7 +169,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               domain={[c.minT, c.maxT]}
               ticks={ticksBetween(c.minT, c.maxT, 2)}
               allowDataOverflow
-              tick={{ fill: AXIS, fontSize: 10 }}
+              tick={{ fill: AXIS, fontSize: 12.5 }}
               stroke={LINE}
               tickFormatter={(v: number) => `${fmt(v, 0)}`}
               label={{
@@ -177,7 +177,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 position: 'insideBottom',
                 offset: -4,
                 fill: AXIS,
-                fontSize: 10,
+                fontSize: 12.5,
               }}
             />
             <YAxis
@@ -186,7 +186,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               ticks={ticksBetween(c.yMin, c.yMax, 5)}
               allowDataOverflow
               width={62}
-              tick={{ fill: AXIS, fontSize: 10 }}
+              tick={{ fill: AXIS, fontSize: 12.5 }}
               stroke={LINE}
               label={{
                 value: 'Humidity ratio W  (g/kg da)',
@@ -194,7 +194,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 position: 'insideLeft',
                 offset: 14,
                 fill: AXIS,
-                fontSize: 10,
+                fontSize: 12.5,
               }}
             />
             <Tooltip content={<ChartTooltip chart={c} />} />
@@ -238,7 +238,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                   value: s.label,
                   position: 'insideBottomRight',
                   fill: '#8a4a13',
-                  fontSize: 10,
+                  fontSize: 12.5,
                 }}
               />
             ))}
@@ -254,7 +254,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                     value: s.label,
                     position: 'insideTopLeft',
                     fill: '#1f5fae',
-                    fontSize: 10,
+                    fontSize: 12.5,
                   }}
                 />
               ) : null,
@@ -293,7 +293,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 value: '1',
                 position: 'top',
                 fill: STATE_1,
-                fontSize: 11,
+                fontSize: 13.5,
               }}
             />
             <ReferenceDot
@@ -307,7 +307,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 value: '2',
                 position: 'bottom',
                 fill: STATE_2,
-                fontSize: 11,
+                fontSize: 13.5,
               }}
             />
           </LineChart>
