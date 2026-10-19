@@ -8,9 +8,8 @@ import {
 } from './lib/model'
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
-import TowerExplorer, {
-  CalculatedOutputs,
-} from './components/TowerExplorer'
+import TowerExplorer from './components/TowerExplorer'
+import StageResults from './components/StageResults'
 import ResultPanel from './components/ResultPanel'
 
 export default function App() {
@@ -78,11 +77,7 @@ export default function App() {
             onDryAirMassFlowChange={setDryAirMassFlow}
             onReset={reset}
           />
-          <CalculatedOutputs
-            r={results}
-            selected={selectedStage}
-            onSelect={setSelectedStage}
-          />
+          <StageResults r={results} onSelect={setSelectedStage} />
         </div>
 
         <main className="main">
