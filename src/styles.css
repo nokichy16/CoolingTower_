@@ -1499,3 +1499,155 @@ input[type='range']::-moz-range-thumb {
 @media (max-width: 920px) {
   .workspace { grid-template-columns: 1fr; }
 }
+
+.droplet-derived {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 10px;
+  font-size: 11px;
+}
+.droplet-derived div { display: flex; justify-content: space-between; gap: 12px; }
+.droplet-derived dt, .droplet-derived dd { white-space: nowrap; }
+.droplet-derived dt { color: var(--text-dim); }
+.droplet-derived dd { margin: 0; color: var(--text); font: 11px var(--mono); }
+
+.droplet-chart-title {
+  display: block;
+  margin: 0 0 4px 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.eliminator-output {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.chart-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.chart-legend-row i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+.chart-legend-row i.is-dot {
+  border-radius: 50%;
+  border: 1.5px solid;
+  background: transparent;
+}
+
+/* Recovery process chart, same style as the drift droplet graphs */
+.process-chart { min-width: 0; padding-top: 4px; }
+.process-chart .chart { margin-top: 2px; }
+.chart-legend-row i.is-dash {
+  width: 14px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed;
+  background: transparent;
+  vertical-align: 3px;
+}
+.chart-legend-row i.is-dot.is-filled { border: 0; }
+.charts-panel .process-chart .chart {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.drift-flows { margin-top: 8px; }
+
+/* All calculated values, always visible */
+.stage-results { margin-top: 8px; }
+.stage-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px 28px;
+  align-items: start;
+}
+.stage-result { min-width: 0; }
+.stage-result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--text);
+}
+.stage-result.is-air .stage-result-head { border-color: #ff9f45; }
+.stage-result.is-liquid .stage-result-head { border-color: #c9a441; }
+.stage-result-head strong { flex: 1; font-size: 13px; color: var(--text); }
+.stage-result-index {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font: 10px var(--mono);
+}
+.stage-result.is-air .stage-result-index { background: #ff9f45; }
+.stage-result.is-liquid .stage-result-index { background: #c9a441; }
+.stage-result-edit {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 10px;
+  cursor: pointer;
+}
+.stage-result-edit:hover { border-color: var(--text); }
+.stage-result-rows { margin: 0; padding: 0; list-style: none; }
+.stage-result-rows li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft, #e4e0d7);
+}
+.row-label { display: grid; gap: 1px; min-width: 0; color: var(--text); font-size: 11.5px; font-weight: 600; }
+.row-label code {
+  color: var(--text-faint);
+  font: 400 10px var(--mono);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.row-value { white-space: nowrap; }
+.row-value strong { font: 600 12.5px var(--mono); color: var(--text); }
+.row-value small { margin-left: 4px; color: var(--text-faint); font-size: 10px; }
+.input-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font: 400 9px var(--mono);
+  font-style: normal;
+  vertical-align: 1px;
+}
+.stage-result-notes {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+/* Desktop: all five stages side by side, like the original outputs row */
+@media (min-width: 1200px) {
+  .stage-result-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 22px; }
+  .stage-result + .stage-result { padding-left: 22px; border-left: 1px solid var(--line); }
+  .stage-result-grid { column-gap: 0; }
+  .stage-result { padding-right: 22px; }
+  .stage-result:last-child { padding-right: 0; }
+}
+.workspace > .stage-results { grid-column: 1 / -1; }

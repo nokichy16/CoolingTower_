@@ -28,14 +28,22 @@ import {
 import { fmt } from '../lib/format'
 
 const AXIS = '#4c4943'
-const GRID = '#d4cfc5'
+const GRID = '#dcd8cf' // same grid as the drift droplet graphs
 const LINE = '#aaa49a'
-const RH_MAIN = '#4d7fd4'
-const RH_FAINT = 'rgba(37, 99, 235, 0.4)'
-const ENTHALPY = 'rgba(185, 28, 28, 0.68)'
-const PATH = '#111111'
-const STATE_1 = '#2563eb'
-const STATE_2 = '#dc2626'
+const RH_MAIN = '#2a78d6'
+const RH_FAINT = 'rgba(42, 120, 214, 0.38)'
+const ENTHALPY = 'rgba(184, 100, 26, 0.55)'
+const PATH = '#252525'
+const STATE_1 = '#b8641a'
+const STATE_2 = '#137f70'
+
+function ticksBetween(min: number, max: number, step: number): number[] {
+  const out: number[] = []
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) {
+    out.push(Number(v.toFixed(6)))
+  }
+  return out
+}
 
 interface TooltipEntry {
   dataKey?: string | number
@@ -119,14 +127,16 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
     : null
 
   return (
-    <section className="card chart-card psychro-card">
-      <div className="chart-title-row">
-        <h4>Recovery process</h4>
-        <div className="chart-legend" aria-label="Chart legend">
-          <span><i className="is-rh" />Relative humidity</span>
-          <span><i className="is-enthalpy" />Enthalpy</span>
-          <span><i className="is-process" />Process path</span>
-        </div>
+    <section className="process-chart" aria-labelledby="process-chart-title">
+      <h3 className="input-group-title" id="process-chart-title">
+        Recovery process
+      </h3>
+      <div className="chart-legend-row" aria-label="Chart legend">
+        <span><i style={{ background: RH_MAIN }} />Relative humidity</span>
+        <span><i className="is-dash" style={{ borderColor: STATE_1 }} />Enthalpy (kJ/kg da)</span>
+        <span><i style={{ background: PATH }} />Process path</span>
+        <span><i className="is-dot is-filled" style={{ background: STATE_1 }} />1 · Recovery inlet</span>
+        <span><i className="is-dot is-filled" style={{ background: STATE_2 }} />2 · Recovery state</span>
       </div>
 
       <div
@@ -134,10 +144,10 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
         role="img"
         aria-label={`Recovery process from the inlet plume state at ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to the calculated saturated recovery state at ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
-        <ResponsiveContainer width="100%" height={390}>
+        <ResponsiveContainer width="100%" height={340}>
           <LineChart
             data={c.rows}
-            margin={{ top: 24, right: 34, bottom: 12, left: 6 }}
+            margin={{ top: 18, right: 34, bottom: 8, left: -6 }}
           >
             <defs>
               <marker
@@ -157,31 +167,34 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               dataKey="t"
               type="number"
               domain={[c.minT, c.maxT]}
+              ticks={ticksBetween(c.minT, c.maxT, 2)}
               allowDataOverflow
-              tick={{ fill: AXIS, fontSize: 11 }}
+              tick={{ fill: AXIS, fontSize: 10 }}
               stroke={LINE}
               tickFormatter={(v: number) => `${fmt(v, 0)}`}
               label={{
-                value: 'Temperature  (°C)',
+                value: 'Dry-bulb temperature  (°C)',
                 position: 'insideBottom',
                 offset: -4,
                 fill: AXIS,
-                fontSize: 11,
+                fontSize: 10,
               }}
             />
             <YAxis
               type="number"
               domain={[c.yMin, c.yMax]}
+              ticks={ticksBetween(c.yMin, c.yMax, 5)}
               allowDataOverflow
               width={62}
-              tick={{ fill: AXIS, fontSize: 11 }}
+              tick={{ fill: AXIS, fontSize: 10 }}
               stroke={LINE}
               label={{
-                value: 'W  (g water / kg dry air)',
+                value: 'Humidity ratio W  (g/kg da)',
                 angle: -90,
                 position: 'insideLeft',
+                offset: 14,
                 fill: AXIS,
-                fontSize: 11,
+                fontSize: 10,
               }}
             />
             <Tooltip content={<ChartTooltip chart={c} />} />
@@ -192,7 +205,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 type="monotone"
                 dataKey={s.key}
                 stroke={ENTHALPY}
-                strokeWidth={1.5}
+                strokeWidth={1.2}
                 strokeDasharray="5 4"
                 dot={false}
                 activeDot={false}
@@ -224,7 +237,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 label={{
                   value: s.label,
                   position: 'insideBottomRight',
-                  fill: '#a61f1f',
+                  fill: '#8a4a13',
                   fontSize: 10,
                 }}
               />
@@ -240,7 +253,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                   label={{
                     value: s.label,
                     position: 'insideTopLeft',
-                    fill: '#4775c5',
+                    fill: '#1f5fae',
                     fontSize: 10,
                   }}
                 />
@@ -252,7 +265,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
                 type="monotone"
                 dataKey={c.processKey}
                 stroke={PATH}
-                strokeWidth={3}
+                strokeWidth={2.4}
                 dot={false}
                 activeDot={false}
                 connectNulls={false}
@@ -264,7 +277,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
               <ReferenceLine
                 segment={[processArrow.start, processArrow.end]}
                 stroke={PATH}
-                strokeWidth={3}
+                strokeWidth={2.4}
                 markerEnd="url(#psychro-process-arrow)"
               />
             )}
@@ -272,10 +285,10 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
             <ReferenceDot
               x={c.state1.t}
               y={c.state1.w}
-              r={7}
+              r={5.5}
               fill={STATE_1}
               stroke="#ffffff"
-              strokeWidth={3}
+              strokeWidth={2}
               label={{
                 value: '1',
                 position: 'top',
@@ -286,10 +299,10 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
             <ReferenceDot
               x={c.state2.t}
               y={c.state2.w}
-              r={7}
+              r={5.5}
               fill={STATE_2}
               stroke="#ffffff"
-              strokeWidth={3}
+              strokeWidth={2}
               label={{
                 value: '2',
                 position: 'bottom',

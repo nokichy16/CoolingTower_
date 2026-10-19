@@ -1,149 +1,169 @@
 import {
-  Line,
-  LineChart,
-  ReferenceArea,
-  ReferenceLine,
+  Bar,
+  BarChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TowerInputs } from '../lib/model'
-import {
-  distributionSplit,
-  logSpacedDiameters,
-  rosinRammlerCumulative,
-} from '../lib/droplet-distribution'
+import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
+import { countHistogram } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
 interface DropletDistributionProps {
   inputs: TowerInputs
+  droplets: TowerResults['droplets']
   onChange: (patch: Partial<TowerInputs>) => void
 }
 
-const PLOT_MIN = 1 // µm
-const PLOT_MAX = 1000 // µm
+export const GRID_STROKE = '#dcd8cf'
+const BIN_UM = 5
 
 /**
- * Drift droplets entering the eliminator: selected diameter range and
- * Rosin–Rammler inlet distribution, shown as cumulative mass fraction with
- * the range marked on the curve. The distribution is an input assumption and
- * is not yet linked to the eliminator collection calculation.
+ * Inlet drift droplets (graph 1): relative number of droplets per 5 µm size
+ * class, in the style of Ruiz et al. (2013) Fig. 8. The shape comes from the
+ * two-mode mass distribution set by the inputs.
  */
 export default function DropletDistribution({
   inputs,
+  droplets,
   onChange,
 }: DropletDistributionProps) {
-  const {
-    dropletCharacteristicDiameter: dE,
-    dropletSpread: n,
-    dropletDiameterMin: dMin,
-    dropletDiameterMax: dMax,
-  } = inputs
-
-  const data = logSpacedDiameters(PLOT_MIN, PLOT_MAX, 160).map((d) => ({
-    d,
-    cumulative: 100 * rosinRammlerCumulative(d, dE, n),
-  }))
-  const split = distributionSplit(dMin, dMax, dE, n)
-  const rangeValid = dMin < dMax
-  const fMaxPct = 100 * (split.below + split.within)
-
-  // Y ticks: 0 and 100 plus F(d_min) and F(d_max), skipping any that would
-  // sit on top of another label.
-  const yTicks = [0, 100, 100 * split.below, fMaxPct]
-    .map((v) => Math.round(v))
-    .filter((v, i, all) => all.findIndex((u) => Math.abs(u - v) < 7) === i)
-    .sort((x, y) => x - y)
-
-  // Place each share label away from the curve: below it where the curve
-  // runs high through the region, above it where the curve runs low.
-  const regionLabel = (
-    fraction: number,
-    x1: number,
-    x2: number,
-    emphasis = false,
-  ) => {
-    const curveAtMiddle = rosinRammlerCumulative(Math.sqrt(x1 * x2), dE, n)
-    return {
-      value: `${fmt(fraction * 100, 1)} %`,
-      position: curveAtMiddle > 0.5 ? 'insideBottom' : 'insideTop',
-      offset: 14,
-      fill: emphasis ? '#252525' : '#57524a',
-      fontSize: emphasis ? 13 : 11,
-      fontWeight: emphasis ? 600 : 400,
-    } as const
-  }
+  const p = distributionParams(inputs)
+  const bins = countHistogram(p, BIN_UM)
+  const xTicks = Array.from(
+    { length: Math.floor(p.dMaxUm / 50) + 1 },
+    (_, i) => i * 50,
+  )
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
       <h3 className="input-group-title" id="group-droplets">
-        Drift droplets
+        Drift droplets at the eliminator inlet
       </h3>
 
       <div className="droplet-layout">
         <div className="droplet-fields">
           <Field
-            label="Minimum droplet size"
+            label="Circulating water flow"
+            sym="ṁ_circ"
+            unit="kg/s"
+            value={inputs.circulatingWaterFlow}
+            min={1}
+            max={2000}
+            step={1}
+            digits={0}
+            onChange={(value) => onChange({ circulatingWaterFlow: value })}
+          />
+          <Field
+            label="Drift rate at eliminator inlet"
+            sym="D_in"
+            unit="%"
+            value={inputs.inletDriftRate}
+            min={0}
+            max={5}
+            step={0.01}
+            digits={2}
+            onChange={(value) => onChange({ inletDriftRate: value })}
+          />
+          <dl className="droplet-derived">
+            <div>
+              <dt>Drift entering eliminator</dt>
+              <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
+            </div>
+          </dl>
+          <Field
+            label="Smallest droplets (1 %)"
             sym="d_min"
             unit="µm"
-            value={dMin}
+            value={inputs.dropletDMin}
             min={1}
-            max={dMax - 1}
-            step={1}
-            digits={0}
-            onChange={(value) => onChange({ dropletDiameterMin: value })}
+            max={Math.max(1, inputs.dropletDMedMain - 1)}
+            step={0.5}
+            digits={1}
+            onChange={(value) => onChange({ dropletDMin: value })}
           />
           <Field
-            label="Maximum droplet size"
+            label="Main-mode median"
+            sym="d_med"
+            unit="µm"
+            value={inputs.dropletDMedMain}
+            min={inputs.dropletDMin + 1}
+            max={200}
+            step={0.5}
+            digits={1}
+            onChange={(value) => onChange({ dropletDMedMain: value })}
+          />
+          <Field
+            label="Largest droplets (100 %)"
             sym="d_max"
             unit="µm"
-            value={dMax}
-            min={dMin + 1}
+            value={inputs.dropletDMax}
+            min={Math.ceil(inputs.dropletDMedMain + 10)}
             max={1000}
-            step={1}
+            step={10}
             digits={0}
-            onChange={(value) => onChange({ dropletDiameterMax: value })}
+            onChange={(value) => onChange({ dropletDMax: value })}
           />
           <Field
-            label="Characteristic diameter"
-            sym="dₑ"
-            unit="µm"
-            value={dE}
-            min={5}
-            max={500}
-            step={1}
-            digits={0}
-            onChange={(value) =>
-              onChange({ dropletCharacteristicDiameter: value })
-            }
-          />
-          <Field
-            label="Spread"
-            sym="n"
-            unit=""
-            value={n}
-            min={0.5}
-            max={6}
-            step={0.1}
+            label="Tail mass fraction"
+            sym="w"
+            unit="%"
+            value={inputs.dropletTailFraction * 100}
+            min={0}
+            max={40}
+            step={0.5}
             digits={1}
-            onChange={(value) => onChange({ dropletSpread: value })}
+            onChange={(value) => onChange({ dropletTailFraction: value / 100 })}
           />
+          <Field
+            label="Tail median"
+            sym="d_tail"
+            unit="µm"
+            value={inputs.dropletTailMedian}
+            min={20}
+            max={Math.max(20, inputs.dropletDMax)}
+            step={5}
+            digits={0}
+            onChange={(value) => onChange({ dropletTailMedian: value })}
+          />
+          <Field
+            label="Tail spread"
+            sym="σg,tail"
+            unit=""
+            value={inputs.dropletTailSpread}
+            min={1.1}
+            max={3}
+            step={0.05}
+            digits={2}
+            onChange={(value) => onChange({ dropletTailSpread: value })}
+          />
+          <dl className="droplet-derived">
+            <div>
+              <dt>Main-mode spread σg</dt>
+              <dd>{fmt(droplets.mainSpread, 2)}</dd>
+            </div>
+          </dl>
         </div>
 
         <div className="droplet-result">
+          <span className="droplet-chart-title">
+            Inlet: relative number of droplets per {BIN_UM} µm size class
+          </span>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart
-              data={data}
-              margin={{ top: 22, right: 14, bottom: 8, left: -6 }}
+            <BarChart
+              data={bins}
+              margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
+              barCategoryGap={0}
             >
+              <CartesianGrid stroke={GRID_STROKE} strokeDasharray="0" />
               <XAxis
-                dataKey="d"
+                dataKey="mid"
                 type="number"
-                scale="log"
-                domain={[PLOT_MIN, PLOT_MAX]}
-                ticks={[1, 10, 100, 1000]}
+                domain={[0, p.dMaxUm]}
+                ticks={xTicks}
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
                 label={{
@@ -155,19 +175,11 @@ export default function DropletDistribution({
                 }}
               />
               <YAxis
-                domain={[0, 100]}
-                ticks={yTicks}
+                domain={[0, 1]}
+                ticks={[0, 0.25, 0.5, 0.75, 1]}
                 tick={{ fill: '#4c4943', fontSize: 10 }}
                 stroke="#aaa49a"
-                width={44}
-                label={{
-                  value: 'Mass < d  (%)',
-                  angle: -90,
-                  position: 'insideLeft',
-                  offset: 14,
-                  fill: '#137f70',
-                  fontSize: 10,
-                }}
+                width={52}
               />
               <Tooltip
                 contentStyle={{
@@ -177,103 +189,24 @@ export default function DropletDistribution({
                   color: '#252525',
                   fontSize: 11,
                 }}
-                labelStyle={{ color: '#57524a' }}
-                formatter={(value: number) => [
-                  `${fmt(value, 1)} %`,
-                  'Cumulative mass',
-                ]}
-                labelFormatter={(value) => `${fmt(Number(value), 1)} µm`}
+                formatter={(value: number) => [fmt(value, 3), 'Relative count']}
+                labelFormatter={(mid) =>
+                  `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(
+                    Number(mid) + BIN_UM / 2,
+                    0,
+                  )} µm`
+                }
               />
-              {rangeValid && (
-                <>
-                  <ReferenceArea
-                    x1={PLOT_MIN}
-                    x2={dMin}
-                    fill="none"
-                    stroke="none"
-                    label={regionLabel(split.below, PLOT_MIN, dMin)}
-                  />
-                  <ReferenceArea
-                    x1={dMin}
-                    x2={dMax}
-                    fill="#ff9f45"
-                    fillOpacity={0.12}
-                    stroke="none"
-                    label={regionLabel(split.within, dMin, dMax, true)}
-                  />
-                  <ReferenceArea
-                    x1={dMax}
-                    x2={PLOT_MAX}
-                    fill="none"
-                    stroke="none"
-                    label={regionLabel(split.above, dMax, PLOT_MAX)}
-                  />
-                  <ReferenceLine
-                    segment={[
-                      { x: PLOT_MIN, y: 100 * split.below },
-                      { x: dMin, y: 100 * split.below },
-                    ]}
-                    stroke="#888780"
-                    strokeDasharray="2 3"
-                    ifOverflow="extendDomain"
-                  />
-                  <ReferenceLine
-                    segment={[
-                      { x: PLOT_MIN, y: fMaxPct },
-                      { x: dMax, y: fMaxPct },
-                    ]}
-                    stroke="#888780"
-                    strokeDasharray="2 3"
-                    ifOverflow="extendDomain"
-                  />
-                </>
-              )}
-              <ReferenceLine
-                x={dMin}
-                stroke="#ff9f45"
-                strokeDasharray="4 3"
-                label={{
-                  value: 'd_min',
-                  position: 'top',
-                  fill: '#b8641a',
-                  fontSize: 10,
-                }}
-              />
-              <ReferenceLine
-                x={dMax}
-                stroke="#ff9f45"
-                strokeDasharray="4 3"
-                label={{
-                  value: 'd_max',
-                  position: 'top',
-                  fill: '#b8641a',
-                  fontSize: 10,
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="cumulative"
-                stroke="#137f70"
-                strokeWidth={2.4}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
+              <Bar dataKey="count" fill="#137f70" isAnimationActive={false} />
+            </BarChart>
           </ResponsiveContainer>
-
-          {!rangeValid && (
-            <p className="droplet-warning" role="alert">
-              d_min must be smaller than d_max.
-            </p>
-          )}
+          <p className="card-note">
+            Two log-normal modes by mass, cut at d_max. Defaults: fit to Ruiz et
+            al. (2013) Fig. 9(a), run 1, measured at the tower exit. The inlet
+            shape is therefore an assumption.
+          </p>
         </div>
       </div>
-
-      <p className="card-note">
-        Rosin–Rammler form F(d) = 1 − exp[−(d/dₑ)ⁿ]. dₑ and n are placeholder
-        inputs, not measured data. This distribution is not yet used in the
-        eliminator capture calculation.
-      </p>
     </section>
   )
 }
