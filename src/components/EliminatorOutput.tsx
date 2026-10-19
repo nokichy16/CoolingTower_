@@ -179,10 +179,28 @@ export default function EliminatorOutput({
           50 % capture at all sizes. The outlet curve is not shown.
         </p>
       )}
+      {cutoffFound && (
+        <dl className="droplet-derived drift-flows">
+          <div>
+            <dt>Drift entering</dt>
+            <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
+          </div>
+          <div>
+            <dt>Drift escaping</dt>
+            <dd>{fmt(droplets.driftEscaping, 3)} kg/s</dd>
+          </div>
+          <div>
+            <dt>Drift captured</dt>
+            <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
+          </div>
+        </dl>
+      )}
       <p className="card-note">
         Ideal sharp cut: droplets smaller than d₅₀ escape, larger droplets are
-        captured on the vanes. Ruiz points are outlet measurements, so they
-        include large droplets that a sharp cut would remove.
+        captured on the vanes. Drift (kg/s) = circulating water × inlet drift
+        rate × mass fraction; the inlet drift rate is an assumption. Ruiz
+        points are outlet measurements, so they include large droplets that a
+        sharp cut would remove.
       </p>
     </section>
   )

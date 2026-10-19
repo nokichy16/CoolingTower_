@@ -110,6 +110,21 @@ test('Ruiz collection curve determines the theoretical d50 cutoff', () => {
   closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
 })
 
+test('drift mass flows follow circulating water, drift rate and the cut', () => {
+  const result = solveTower({
+    ...DEFAULT_INPUTS,
+    eliminatorId: 'A',
+    circulatingWaterFlow: 100,
+    inletDriftRate: 0.5,
+  })
+  closeTo(result.droplets.driftInlet, 0.5)
+  closeTo(
+    result.droplets.driftEscaping + result.droplets.driftCaptured,
+    result.droplets.driftInlet,
+  )
+  closeTo(result.droplets.driftEscaping, 0.5 * result.droplets.massEscaping)
+})
+
 test('eliminators above 50 % capture at every size report no cutoff', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'B' })
 

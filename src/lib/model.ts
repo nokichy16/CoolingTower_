@@ -74,6 +74,8 @@ export interface TowerInputs {
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
+  circulatingWaterFlow: number // kg/s water through the fill
+  inletDriftRate: number // % of circulating water carried as droplets into the eliminator
   dropletDMin: number // 1 % of main-mode mass is smaller, µm
   dropletDMedMain: number // main-mode mass median, µm
   dropletTailFraction: number // mass fraction in the tail mode
@@ -118,6 +120,9 @@ export interface TowerResults {
     massEscaping: number // inlet mass fraction smaller than d50 (NaN if no cutoff)
     massCaptured: number // inlet mass fraction larger than d50 (NaN if no cutoff)
     mainSpread: number // main-mode σg derived from d_min and d_med
+    driftInlet: number // kg/s liquid drift entering the eliminator
+    driftEscaping: number // kg/s, NaN if no cutoff
+    driftCaptured: number // kg/s, NaN if no cutoff
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -252,6 +257,11 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     ? twoModeCumulative(captureCutoffDiameter, distribution)
     : Number.NaN
   const massCaptured = cutoffFound ? 1 - massEscaping : Number.NaN
+  // Liquid drift mass balance (kept separate from vapour recovery):
+  // ṁ_drift,in = ṁ_circ · drift rate / 100
+  const driftInlet =
+    Math.max(0, inputs.circulatingWaterFlow) *
+    (Math.max(0, inputs.inletDriftRate) / 100)
   const collectionRangeIssues = cutoffFound
     ? evaluateRuizEliminator(
         inputs.eliminatorId,
@@ -397,6 +407,9 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       massEscaping,
       massCaptured,
       mainSpread: mainSpread(distribution),
+      driftInlet,
+      driftEscaping: driftInlet * massEscaping,
+      driftCaptured: driftInlet * massCaptured,
     },
     recovery: {
       t: t5,
@@ -423,6 +436,8 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeVelocity: 3,
 
   eliminatorId: 'B',
+  circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
+  inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // Fit to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
   dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
   dropletDMedMain: RUIZ_2013_RUN1_FIT.dMedMainUm,

@@ -47,6 +47,34 @@ export default function DropletDistribution({
       <div className="droplet-layout">
         <div className="droplet-fields">
           <Field
+            label="Circulating water flow"
+            sym="ṁ_circ"
+            unit="kg/s"
+            value={inputs.circulatingWaterFlow}
+            min={1}
+            max={2000}
+            step={1}
+            digits={0}
+            onChange={(value) => onChange({ circulatingWaterFlow: value })}
+          />
+          <Field
+            label="Drift rate at eliminator inlet"
+            sym="D_in"
+            unit="%"
+            value={inputs.inletDriftRate}
+            min={0}
+            max={5}
+            step={0.01}
+            digits={2}
+            onChange={(value) => onChange({ inletDriftRate: value })}
+          />
+          <dl className="droplet-derived">
+            <div>
+              <dt>Drift entering eliminator</dt>
+              <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
+            </div>
+          </dl>
+          <Field
             label="Smallest droplets (1 %)"
             sym="d_min"
             unit="µm"

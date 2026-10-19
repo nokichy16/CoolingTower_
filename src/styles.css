@@ -1564,3 +1564,5 @@ input[type='range']::-moz-range-thumb {
   border-radius: 0;
   background: transparent;
 }
+
+.drift-flows { margin-top: 8px; }

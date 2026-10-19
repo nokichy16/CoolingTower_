@@ -22,6 +22,7 @@ export interface StageInfo {
 export function buildStages(r: TowerResults): StageInfo[] {
   const cut = r.droplets.cutoffFound
   const pct = (fraction: number) => (cut ? fmt(fraction * 100, 1) : '—')
+  const kgs = (value: number) => (Number.isFinite(value) ? sig(value, 3) : '—')
 
   return [
     {
@@ -91,6 +92,16 @@ export function buildStages(r: TowerResults): StageInfo[] {
       ],
       supporting: [
         {
+          label: 'Drift escaping',
+          value: kgs(r.droplets.driftEscaping),
+          unit: cut ? 'kg/s' : '',
+        },
+        {
+          label: 'Drift captured',
+          value: kgs(r.droplets.driftCaptured),
+          unit: cut ? 'kg/s' : '',
+        },
+        {
           label: 'Inlet mass escaping (< d50)',
           value: pct(r.droplets.massEscaping),
           unit: cut ? '%' : '',
@@ -107,6 +118,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
       ],
       details: [
+        {
+          label: 'Drift entering eliminator',
+          value: kgs(r.droplets.driftInlet),
+          unit: 'kg/s',
+        },
         {
           label: 'Reynolds number',
           value: fmt(r.eliminator.reynolds, 0),
