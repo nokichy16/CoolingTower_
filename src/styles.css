@@ -1794,3 +1794,33 @@ input[type='range']::-moz-range-thumb {
 }
 .droplet-fields > * { min-width: 0; }
 .droplet-fields > details.advanced, .droplet-fields > .droplet-derived { grid-column: 1 / -1; }
+
+/* Eliminator picker: one selectable list */
+.eliminator-picker { margin: 0; padding: 0; border: 0; min-width: 0; }
+.eliminator-picker legend { padding: 0; margin-bottom: 4px; }
+.eliminator-picker-note { margin: 0 0 8px; color: var(--text-dim); font-size: 13px; }
+.eliminator-picker-list { display: grid; border-top: 1px solid var(--line-soft); }
+.eliminator-picker-list button {
+  display: grid;
+  grid-template-columns: 18px 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.eliminator-picker-list button:hover { background: rgba(19, 127, 112, 0.06); }
+.eliminator-picker-list button.is-selected { background: rgba(19, 127, 112, 0.14); }
+.picker-dot {
+  width: 14px; height: 14px;
+  border: 1.5px solid #8a857c;
+  border-radius: 50%;
+}
+.is-selected .picker-dot { border-color: #137f70; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 8px #137f70; }

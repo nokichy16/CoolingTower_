@@ -190,51 +190,34 @@ export default function Controls({
 
         {selectedStage === 'droplets' && (
           <>
-            <label className="select-field">
-              <span className="field-head">
-                <span className="field-label">
-                  Tested eliminator
-                  <span className="field-sym">A–F</span>
-                </span>
-              </span>
-              <select
-                value={inputs.eliminatorId}
-                onChange={(event) =>
-                  onChange({
-                    eliminatorId: event.target.value as EliminatorId,
-                  })
-                }
-              >
-                {Object.values(ELIMINATORS).map((spec) => (
-                  <option value={spec.id} key={spec.id}>
-                    {spec.id} · {spec.type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="eliminator-design-summary" aria-live="polite">
-              <strong>
-                Design {selectedEliminator.id} · {selectedEliminator.type}
-              </strong>
-              <span>{ELIMINATOR_DESCRIPTIONS[selectedEliminator.id]}</span>
-            </div>
-
-            <details className="eliminator-comparison">
-              <summary>Compare designs A–F</summary>
-              <p>The letters identify tested Ruiz configurations, not performance rankings.</p>
-              <div className="eliminator-comparison-list">
-                {Object.values(ELIMINATORS).map((spec) => (
-                  <div
-                    className={spec.id === selectedEliminator.id ? 'is-selected' : ''}
-                    key={spec.id}
-                  >
-                    <strong>{spec.id}</strong>
-                    <span>{ELIMINATOR_DESCRIPTIONS[spec.id]}</span>
-                  </div>
-                ))}
+            <fieldset className="eliminator-picker">
+              <legend className="field-label">
+                Tested eliminator <span className="field-sym">A–F</span>
+              </legend>
+              <p className="eliminator-picker-note">
+                Select a design. The letters identify tested Ruiz
+                configurations, not performance rankings.
+              </p>
+              <div className="eliminator-picker-list" role="radiogroup">
+                {Object.values(ELIMINATORS).map((spec) => {
+                  const on = spec.id === selectedEliminator.id
+                  return (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      className={on ? 'is-selected' : ''}
+                      key={spec.id}
+                      onClick={() => onChange({ eliminatorId: spec.id as EliminatorId })}
+                    >
+                      <span className="picker-dot" aria-hidden="true" />
+                      <strong>{spec.id}</strong>
+                      <span>{ELIMINATOR_DESCRIPTIONS[spec.id]}</span>
+                    </button>
+                  )
+                })}
               </div>
-            </details>
+            </fieldset>
 
             <EliminatorOutput inputs={inputs} droplets={droplets} />
 
