@@ -102,17 +102,34 @@ test('cycles of concentration sets the blowdown-to-evaporation ratio', () => {
 })
 
 test('Ruiz collection curve determines the theoretical d50 cutoff', () => {
+  const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'A' })
+
+  assert.equal(result.droplets.cutoffFound, true)
+  assert.ok(result.droplets.captureCutoffDiameter > 25)
+  assert.ok(result.droplets.captureCutoffDiameter < 200)
+  closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
+})
+
+test('drift mass flows follow circulating water, drift rate and the cut', () => {
   const result = solveTower({
     ...DEFAULT_INPUTS,
     eliminatorId: 'A',
-    dropletDiameterMin: 25,
-    dropletDiameterMax: 200,
+    circulatingWaterFlow: 100,
+    inletDriftRate: 0.5,
   })
+  closeTo(result.droplets.driftInlet, 0.5)
+  closeTo(
+    result.droplets.driftEscaping + result.droplets.driftCaptured,
+    result.droplets.driftInlet,
+  )
+  closeTo(result.droplets.driftEscaping, 0.5 * result.droplets.massEscaping)
+})
 
-  assert.ok(result.droplets.efficiencyAtMinimum < 0.5)
-  assert.ok(result.droplets.efficiencyAtMaximum >= 0.5)
-  assert.ok(result.droplets.captureCutoffDiameter > 25)
-  assert.ok(result.droplets.captureCutoffDiameter < 200)
+test('eliminators above 50 % capture at every size report no cutoff', () => {
+  const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'B' })
+
+  assert.equal(result.droplets.cutoffFound, false)
+  assert.ok(Number.isNaN(result.droplets.massEscaping))
 })
 
 test('invalid area, velocity, or cycles are reported without negative airflow', () => {

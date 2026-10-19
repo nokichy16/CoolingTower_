@@ -1,7 +1,7 @@
 import type { TowerResults } from './model'
 import { fmt, sig } from './format'
 
-export type StageId = 'plume' | 'droplets' | 'fan' | 'recovery'
+export type StageId = 'plume' | 'drift' | 'droplets' | 'fan' | 'recovery'
 
 export interface Metric {
   label: string
@@ -20,22 +20,9 @@ export interface StageInfo {
 }
 
 export function buildStages(r: TowerResults): StageInfo[] {
-  const hasPredictedRemainingRange = r.droplets.efficiencyAtMinimum < 0.5
-  const hasPredictedCapturedRange = r.droplets.efficiencyAtMaximum >= 0.5
-  const predictedRemainingRange =
-    hasPredictedRemainingRange
-      ? `${fmt(r.inputs.dropletDiameterMin, 0)}–${fmt(
-          r.droplets.captureCutoffDiameter,
-          0,
-        )}`
-      : 'None in selected range'
-  const predictedCapturedRange =
-    hasPredictedCapturedRange
-      ? `${fmt(r.droplets.captureCutoffDiameter, 0)}–${fmt(
-          r.inputs.dropletDiameterMax,
-          0,
-        )}`
-      : 'None in selected range'
+  const cut = r.droplets.cutoffFound
+  const pct = (fraction: number) => (cut ? fmt(fraction * 100, 1) : '—')
+  const kgs = (value: number) => (Number.isFinite(value) ? sig(value, 3) : '—')
 
   return [
     {
@@ -92,22 +79,52 @@ export function buildStages(r: TowerResults): StageInfo[] {
       ],
     },
     {
-      id: 'droplets',
+      id: 'drift',
       index: '2',
+      name: 'Drift droplets',
+      accent: '#d9a441',
+      primary: [
+        {
+          label: 'Drift entering eliminator',
+          value: kgs(r.droplets.driftInlet),
+          unit: 'kg/s',
+        },
+      ],
+      supporting: [],
+      details: [],
+    },
+    {
+      id: 'droplets',
+      index: '3',
       name: 'Drift eliminator',
       accent: '#c9b568',
       primary: [
         {
           label: 'Theoretical cutoff diameter (d50)',
-          value: fmt(r.droplets.captureCutoffDiameter, 0),
-          unit: 'µm',
+          value: cut ? fmt(r.droplets.captureCutoffDiameter, 0) : 'None',
+          unit: cut ? 'µm' : '',
         },
       ],
       supporting: [
         {
-          label: 'Predicted remaining range',
-          value: predictedRemainingRange,
-          unit: hasPredictedRemainingRange ? 'µm' : '',
+          label: 'Drift escaping',
+          value: kgs(r.droplets.driftEscaping),
+          unit: cut ? 'kg/s' : '',
+        },
+        {
+          label: 'Drift captured',
+          value: kgs(r.droplets.driftCaptured),
+          unit: cut ? 'kg/s' : '',
+        },
+        {
+          label: 'Inlet mass escaping (< d50)',
+          value: pct(r.droplets.massEscaping),
+          unit: cut ? '%' : '',
+        },
+        {
+          label: 'Inlet mass captured (> d50)',
+          value: pct(r.droplets.massCaptured),
+          unit: cut ? '%' : '',
         },
         {
           label: 'Pressure drop',
@@ -116,6 +133,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
         },
       ],
       details: [
+        {
+          label: 'Drift entering eliminator',
+          value: kgs(r.droplets.driftInlet),
+          unit: 'kg/s',
+        },
         {
           label: 'Reynolds number',
           value: fmt(r.eliminator.reynolds, 0),
@@ -126,16 +148,11 @@ export function buildStages(r: TowerResults): StageInfo[] {
           value: fmt(r.eliminator.pressureCoefficient, 2),
           unit: '',
         },
-        {
-          label: 'Predicted captured range',
-          value: predictedCapturedRange,
-          unit: hasPredictedCapturedRange ? 'µm' : '',
-        },
       ],
     },
     {
       id: 'fan',
-      index: '3',
+      index: '4',
       name: 'Fan',
       accent: '#9c83ff',
       primary: [
@@ -150,7 +167,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'recovery',
-      index: '4',
+      index: '5',
       name: 'Condensation recovery',
       accent: '#5ec8ff',
       primary: [

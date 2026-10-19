@@ -27,6 +27,29 @@ import {
   type EliminatorId,
   type RuizEliminatorResult,
 } from './eliminators.ts'
+import {
+  mainSpread,
+  RUIZ_2013_RUN1_FIT,
+  twoModeCumulative,
+  type DropletDistributionParams,
+} from './droplet-distribution.ts'
+
+export function distributionParams(
+  inputs: TowerInputs,
+): DropletDistributionParams {
+  return {
+    dMinUm: inputs.dropletDMin,
+    dMedMainUm: inputs.dropletDMedMain,
+    tailFraction: inputs.dropletTailFraction,
+    tailMedianUm: inputs.dropletTailMedian,
+    tailSpread: inputs.dropletTailSpread,
+    dMaxUm: inputs.dropletDMax,
+  }
+}
+
+/** Size range searched for the 50 % cutoff, µm. */
+export const CUTOFF_SEARCH_MIN = 1
+export const CUTOFF_SEARCH_MAX = 1000
 
 export interface SolveIssue {
   code:
@@ -51,10 +74,14 @@ export interface TowerInputs {
 
   // Liquid droplets / drift eliminator
   eliminatorId: EliminatorId
-  dropletDiameterMin: number // theoretical inlet range minimum, µm
-  dropletDiameterMax: number // theoretical inlet range maximum, µm
-  dropletCharacteristicDiameter: number // Rosin–Rammler dₑ, µm (63.2% undersize)
-  dropletSpread: number // Rosin–Rammler n, dimensionless
+  circulatingWaterFlow: number // kg/s water through the fill
+  inletDriftRate: number // % of circulating water carried as droplets into the eliminator
+  dropletDMin: number // 1 % of main-mode mass is smaller, µm
+  dropletDMedMain: number // main-mode mass median, µm
+  dropletTailFraction: number // mass fraction in the tail mode
+  dropletTailMedian: number // tail-mode mass median, µm
+  dropletTailSpread: number // tail-mode σg
+  dropletDMax: number // upper limit: no inlet droplets larger, µm
 
   // Vapour recovery
   coolingBelowDewPoint: number // °C temperature difference below plume dew point
@@ -88,9 +115,14 @@ export interface TowerResults {
      */
     fanAirPower: number // kW
     equivalentArea: number // m², same flow area as the prescribed plume
-    captureCutoffDiameter: number // theoretical d50, µm
-    efficiencyAtMinimum: number // fraction
-    efficiencyAtMaximum: number // fraction
+    captureCutoffDiameter: number // theoretical d50, µm (NaN if not found)
+    cutoffFound: boolean // false when ε stays above or below 50 % at all sizes
+    massEscaping: number // inlet mass fraction smaller than d50 (NaN if no cutoff)
+    massCaptured: number // inlet mass fraction larger than d50 (NaN if no cutoff)
+    mainSpread: number // main-mode σg derived from d_min and d_med
+    driftInlet: number // kg/s liquid drift entering the eliminator
+    driftEscaping: number // kg/s, NaN if no cutoff
+    driftCaptured: number // kg/s, NaN if no cutoff
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -188,52 +220,57 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     omega4,
   )
 
+  const distribution = distributionParams(inputs)
+  // Pressure loss depends only on Reynolds; the representative droplet size
+  // (inlet mass median) only sets the reported Stokes number.
   const eliminator = evaluateRuizEliminator(
     inputs.eliminatorId,
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    (inputs.dropletDiameterMin + inputs.dropletDiameterMax) / 2,
+    inputs.dropletDMedMain,
   )
-  const minimumDropletEvaluation = evaluateRuizEliminator(
-    inputs.eliminatorId,
-    rho4,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    inputs.dropletDiameterMin,
-  )
-  const maximumDropletEvaluation = evaluateRuizEliminator(
-    inputs.eliminatorId,
-    rho4,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    inputs.dropletDiameterMax,
-  )
-  const collectionRangeIssues = Array.from(
-    new Set([
-      ...minimumDropletEvaluation.collectionRangeIssues,
-      ...maximumDropletEvaluation.collectionRangeIssues,
-    ]),
-  )
-  const efficiencyAtMinimum = collectionEfficiencyAtDiameter(
+  const efficiencyAtSearchMin = collectionEfficiencyAtDiameter(
     inputs.eliminatorId,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDiameterMin,
+    CUTOFF_SEARCH_MIN,
   )
-  const efficiencyAtMaximum = collectionEfficiencyAtDiameter(
+  const efficiencyAtSearchMax = collectionEfficiencyAtDiameter(
     inputs.eliminatorId,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDiameterMax,
+    CUTOFF_SEARCH_MAX,
   )
-  const captureCutoffDiameter = theoreticalCutoffDiameter(
-    inputs.eliminatorId,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    inputs.dropletDiameterMin,
-    inputs.dropletDiameterMax,
-  )
+  const cutoffFound = efficiencyAtSearchMin < 0.5 && efficiencyAtSearchMax >= 0.5
+  const captureCutoffDiameter = cutoffFound
+    ? theoreticalCutoffDiameter(
+        inputs.eliminatorId,
+        evaluationVelocity,
+        inputs.plumeTemperature,
+        CUTOFF_SEARCH_MIN,
+        CUTOFF_SEARCH_MAX,
+      )
+    : Number.NaN
+  // Ideal sharp cut at d50: smaller droplets escape, larger are captured.
+  const massEscaping = cutoffFound
+    ? twoModeCumulative(captureCutoffDiameter, distribution)
+    : Number.NaN
+  const massCaptured = cutoffFound ? 1 - massEscaping : Number.NaN
+  // Liquid drift mass balance (kept separate from vapour recovery):
+  // ṁ_drift,in = ṁ_circ · drift rate / 100
+  const driftInlet =
+    Math.max(0, inputs.circulatingWaterFlow) *
+    (Math.max(0, inputs.inletDriftRate) / 100)
+  const collectionRangeIssues = cutoffFound
+    ? evaluateRuizEliminator(
+        inputs.eliminatorId,
+        rho4,
+        evaluationVelocity,
+        inputs.plumeTemperature,
+        captureCutoffDiameter,
+      ).collectionRangeIssues
+    : []
   const pressureDrop = velocityValid
     ? eliminator.pressureCoefficient *
       0.5 *
@@ -304,6 +341,17 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       )}. Pressure loss remains visible but is outside the paper-supported range.`,
     })
   }
+  if (!cutoffFound) {
+    issues.push({
+      code: 'ruiz-collection-extrapolation',
+      severity: 'warning',
+      title: 'No 50 % cutoff for this eliminator',
+      message:
+        efficiencyAtSearchMin >= 0.5
+          ? 'The Ruiz correlation predicts more than 50 % capture at every droplet size from 1 µm, so no d50 exists. Captured and escaping mass are not reported.'
+          : 'The Ruiz correlation predicts less than 50 % capture at every droplet size up to 1000 µm, so no d50 exists. Captured and escaping mass are not reported.',
+    })
+  }
   if (collectionRangeIssues.length > 0) {
     issues.push({
       code: 'ruiz-collection-extrapolation',
@@ -355,8 +403,13 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       fanAirPower,
       equivalentArea,
       captureCutoffDiameter,
-      efficiencyAtMinimum,
-      efficiencyAtMaximum,
+      cutoffFound,
+      massEscaping,
+      massCaptured,
+      mainSpread: mainSpread(distribution),
+      driftInlet,
+      driftEscaping: driftInlet * massEscaping,
+      driftCaptured: driftInlet * massCaptured,
     },
     recovery: {
       t: t5,
@@ -382,11 +435,16 @@ export const DEFAULT_INPUTS: TowerInputs = {
   flowArea: 46.55,
   plumeVelocity: 3,
 
-  eliminatorId: 'B',
-  dropletDiameterMin: 10,
-  dropletDiameterMax: 200,
-  dropletCharacteristicDiameter: 100, // placeholder, not measured data
-  dropletSpread: 2, // placeholder, not measured data
+  eliminatorId: 'A', // A has a d50 inside the fitted range at default conditions
+  circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
+  inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
+  // Fit to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
+  dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
+  dropletDMedMain: RUIZ_2013_RUN1_FIT.dMedMainUm,
+  dropletTailFraction: RUIZ_2013_RUN1_FIT.tailFraction,
+  dropletTailMedian: RUIZ_2013_RUN1_FIT.tailMedianUm,
+  dropletTailSpread: RUIZ_2013_RUN1_FIT.tailSpread,
+  dropletDMax: RUIZ_2013_RUN1_FIT.dMaxUm,
 
   coolingBelowDewPoint: 10,
   cyclesOfConcentration: 6,
