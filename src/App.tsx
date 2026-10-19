@@ -10,7 +10,7 @@ import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
 import TowerExplorer from './components/TowerExplorer'
 import KpiStrip from './components/KpiStrip'
-import CalculationSequence from './components/CalculationSequence'
+import StageResults from './components/StageResults'
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
@@ -82,7 +82,7 @@ export default function App() {
         </div>
 
         <main className="main">
-          <CalculationSequence r={results} />
+          <StageResults r={results} onSelect={setSelectedStage} />
         </main>
       </div>
     </div>

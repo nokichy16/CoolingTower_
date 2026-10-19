@@ -149,3 +149,42 @@ export function linearDiameters(
     (_, index) => minUm + ((maxUm - minUm) * index) / (count - 1),
   )
 }
+
+/** Diameter below which a mass fraction p of the distribution lies (bisection). */
+export function massQuantile(
+  fraction: number,
+  p: DropletDistributionParams,
+): number {
+  let lo = 0.01
+  let hi = p.dMaxUm
+  for (let i = 0; i < 80; i += 1) {
+    const mid = (lo + hi) / 2
+    if (twoModeCumulative(mid, p) < fraction) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+/**
+ * Sauter mean diameter from the mass distribution: D32 = 1 / ∫ f(d)/d dd,
+ * evaluated over fine size classes up to d_max (optionally up to a cut).
+ */
+export function sauterMeanDiameter(
+  p: DropletDistributionParams,
+  upToUm = p.dMaxUm,
+): number {
+  const top = Math.min(upToUm, p.dMaxUm)
+  const steps = 2000
+  const total = twoModeCumulative(top, p)
+  let sum = 0
+  let prevD = 0.05
+  let prevF = twoModeCumulative(prevD, p)
+  for (let i = 1; i <= steps; i += 1) {
+    const d = 0.05 * (top / 0.05) ** (i / steps)
+    const f = twoModeCumulative(d, p)
+    sum += (f - prevF) / Math.sqrt(d * prevD)
+    prevD = d
+    prevF = f
+  }
+  return sum > 0 ? total / sum : Number.NaN
+}

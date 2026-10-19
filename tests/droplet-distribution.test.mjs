@@ -66,3 +66,15 @@ test('invalid parameters return zero instead of NaN', () => {
   assert.equal(logNormalCumulative(50, 40, 1), 0)
   assert.equal(logNormalCumulative(-5, 40, 1.8), 0)
 })
+
+test('mass quantiles and Sauter mean are ordered and consistent', async () => {
+  const { massQuantile, sauterMeanDiameter, twoModeCumulative, RUIZ_2013_RUN1_FIT: p } =
+    await import('../src/lib/droplet-distribution.ts')
+  const d10 = massQuantile(0.1, p)
+  const d50 = massQuantile(0.5, p)
+  const d90 = massQuantile(0.9, p)
+  assert.ok(d10 < d50 && d50 < d90)
+  assert.ok(Math.abs(twoModeCumulative(d50, p) - 0.5) < 1e-6)
+  const d32 = sauterMeanDiameter(p)
+  assert.ok(d32 > 0 && d32 < d50)
+})
