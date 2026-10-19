@@ -9,7 +9,6 @@ import {
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
 import TowerExplorer from './components/TowerExplorer'
-import KpiStrip from './components/KpiStrip'
 import StageResults from './components/StageResults'
 
 export default function App() {
@@ -46,7 +45,6 @@ export default function App() {
         <div className="brand">
           <h1>Plume Water Recovery</h1>
         </div>
-        <KpiStrip r={results} onSelect={setSelectedStage} />
         {firstWarning && (
           <div className="header-warning" role="alert">
             <strong>{firstWarning.title}</strong>
