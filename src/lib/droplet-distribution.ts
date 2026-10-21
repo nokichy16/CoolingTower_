@@ -179,3 +179,50 @@ export function sauterMeanDiameter(
   }
   return sum > 0 ? total / sum : Number.NaN
 }
+
+/**
+ * Grade-efficiency split of the inlet distribution.
+ *
+ *   escaping fraction = ∫₀^d_max (1 − ε(d)) dF(d)
+ *   outlet F_out(d)   = ∫₀^d (1 − ε) dF / escaping fraction
+ *   outlet D₃₂        = ∫(1 − ε) dF / ∫(1 − ε)/d dF
+ *
+ * Evaluated over equal size classes with ε at the class midpoint.
+ */
+export interface EfficiencySplit {
+  escaping: number
+  diameters: number[] // class upper edges, µm
+  outletCumulative: number[] // F_out at each upper edge (0–1)
+  outletSauterMean: number // µm
+}
+
+export function efficiencySplit(
+  p: DropletDistributionParams,
+  efficiency: (diameterUm: number) => number,
+  classes = 600,
+): EfficiencySplit {
+  const step = p.dMaxUm / classes
+  const diameters: number[] = []
+  const running: number[] = []
+  let escaping = 0
+  let inverse = 0
+  let prevF = 0
+  for (let i = 1; i <= classes; i += 1) {
+    const d = i * step
+    const f = dropletCumulative(d, p)
+    const mid = d - step / 2
+    const eps = Math.min(1, Math.max(0, efficiency(mid)))
+    const passed = (1 - eps) * (f - prevF)
+    escaping += passed
+    inverse += passed / mid
+    diameters.push(d)
+    running.push(escaping)
+    prevF = f
+  }
+  return {
+    escaping,
+    diameters,
+    outletCumulative: running.map((x) => (escaping > 0 ? x / escaping : 0)),
+    outletSauterMean: inverse > 0 ? escaping / inverse : Number.NaN,
+  }
+}

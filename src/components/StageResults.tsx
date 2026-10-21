@@ -48,7 +48,6 @@ export default function StageResults({
   const d = r.droplets
   const cut = d.cutoffFound
   const p = distributionParams(i)
-  const dash = (ok: boolean, v: string) => (ok ? v : '—')
 
   const blocks: StageBlock[] = [
     {
@@ -99,9 +98,7 @@ export default function StageResults({
       index: '3',
       name: 'Drift eliminator',
       path: 'liquid',
-      headline: cut
-        ? `d₅₀ ${fmt(d.captureCutoffDiameter, 1)} µm · escaping ${sig(d.driftEscaping, 3)} kg/s`
-        : 'No 50 % cutoff',
+      headline: `Escaping ${sig(d.driftEscaping, 3)} kg/s (${fmt(100 * d.massEscaping, 1)} %)`,
       rows: [
         input('Eliminator', `${r.eliminator.spec.id} · ${r.eliminator.spec.type}`, ''),
         { label: 'Air viscosity μ', formula: 'Sutherland: μ = 1.458e-6·T^1.5 / (T + 110.4)', value: sig(r.eliminator.dynamicViscosity, 4), unit: 'Pa·s' },
@@ -110,17 +107,17 @@ export default function StageResults({
         { label: 'Pressure drop Δp', formula: 'Δp = Kp·½ρu²', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
         { label: 'Stokes number at d_med', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
         { label: 'Cutoff diameter d₅₀', formula: 'ε(St(d₅₀)) = 0.5', value: cut ? fmt(d.captureCutoffDiameter, 1) : 'None', unit: cut ? 'µm' : '' },
-        { label: 'Mass fraction escaping', formula: 'F(d₅₀)', value: dash(cut, fmt(100 * d.massEscaping, 1)), unit: cut ? '%' : '' },
-        { label: 'Mass fraction captured', formula: '1 − F(d₅₀)', value: dash(cut, fmt(100 * d.massCaptured, 1)), unit: cut ? '%' : '' },
-        { label: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·F(d₅₀)', value: dash(cut, sig(d.driftEscaping, 3)), unit: cut ? 'kg/s' : '' },
-        { label: 'Drift captured', formula: 'ṁ_cap = ṁ_drift,in·(1 − F(d₅₀))', value: dash(cut, sig(d.driftCaptured, 3)), unit: cut ? 'kg/s' : '' },
-        { label: 'Escaping Sauter mean D₃₂', formula: 'D₃₂ of droplets < d₅₀', value: dash(cut, fmt(sauterMeanDiameter(p, d.captureCutoffDiameter), 1)), unit: cut ? 'µm' : '' },
+        { label: 'Mass fraction escaping', formula: 'η_esc = ∫(1 − ε(d)) dF(d)', value: fmt(100 * d.massEscaping, 1), unit: '%' },
+        { label: 'Mass fraction captured', formula: '1 − η_esc = ∫ε(d) dF(d)', value: fmt(100 * d.massCaptured, 1), unit: '%' },
+        { label: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·η_esc', value: sig(d.driftEscaping, 3), unit: 'kg/s' },
+        { label: 'Drift captured', formula: 'ṁ_cap = ṁ_drift,in·(1 − η_esc)', value: sig(d.driftCaptured, 3), unit: 'kg/s' },
+        { label: 'Escaping Sauter mean D₃₂', formula: '∫(1 − ε) dF / ∫(1 − ε)/d dF', value: fmt(d.split.outletSauterMean, 1), unit: 'µm' },
       ],
       notes: [
         ...r.eliminator.pressureRangeIssues.map((t) => `Outside the Ruiz pressure-correlation range: ${t}.`),
         `Ruiz tested ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax} m/s and droplets ≥ ${RUIZ_LIMITS.dropletDiameterMin} µm.`,
         ...(cut ? [] : ['The Ruiz correlation stays above 50 % capture at all sizes, so no d₅₀ exists.']),
-        'Ideal sharp cut at d₅₀.',
+        'Every size is partly captured, by ε(d); d₅₀ is for information only.',
       ],
     },
     {

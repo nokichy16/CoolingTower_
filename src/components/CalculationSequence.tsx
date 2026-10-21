@@ -35,9 +35,9 @@ export default function CalculationSequence({ r }: { r: TowerResults }) {
     { step: 'Drift entering eliminator', formula: 'ṁ_drift,in = ṁ_circ·D_in / 100', value: sig(d.driftInlet, 3), unit: 'kg/s' },
     { step: 'Spread', formula: 'σg = (d_med / d_min)^(1/2.326)', value: fmt(d.spread, 2), unit: '' },
     { step: 'Cutoff diameter', formula: 'd₅₀ : ε(St(d₅₀)) = 0.5  (Ruiz 2019)', value: cut ? fmt(d.captureCutoffDiameter, 1) : 'None', unit: cut ? 'µm' : '' },
-    { step: 'Mass fraction escaping', formula: 'F(d₅₀), log-normal, cut at d_max', value: cut ? fmt(100 * d.massEscaping, 1) : '—', unit: cut ? '%' : '' },
-    { step: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·F(d₅₀)', value: cut ? sig(d.driftEscaping, 3) : '—', unit: cut ? 'kg/s' : '' },
-    { step: 'Drift captured', formula: 'ṁ_cap = ṁ_drift,in·(1 − F(d₅₀))', value: cut ? sig(d.driftCaptured, 3) : '—', unit: cut ? 'kg/s' : '' },
+    { step: 'Mass fraction escaping', formula: 'η_esc = ∫(1 − ε) dF', value: fmt(100 * d.massEscaping, 1), unit: '%' },
+    { step: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·η_esc', value: sig(d.driftEscaping, 3), unit: 'kg/s' },
+    { step: 'Drift captured', formula: 'ṁ_cap = ṁ_drift,in·(1 − η_esc)', value: sig(d.driftCaptured, 3), unit: 'kg/s' },
     { step: 'Blowdown / evaporation', formula: 'B/E = 1 / (CoC − 1)', value: fmt(100 * r.waterBalance.blowdownToEvaporationRatio, 1), unit: '%' },
   ]
 
