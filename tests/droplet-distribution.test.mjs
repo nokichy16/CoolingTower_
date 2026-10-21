@@ -5,10 +5,10 @@ import {
   countHistogram,
   erf,
   logNormalCumulative,
-  mainSpread,
+  spread,
   RUIZ_2013_RUN1_FIT,
   RUIZ_2013_RUN1_POINTS,
-  twoModeCumulative,
+  dropletCumulative,
 } from '../src/lib/droplet-distribution.ts'
 
 test('erf matches reference values', () => {
@@ -37,21 +37,21 @@ test('cumulative fraction is monotonic and bounded', () => {
   }
 })
 
-test('two-mode curve reaches exactly 100 % at d_max', () => {
+test('curve reaches exactly 100 % at d_max', () => {
   const p = RUIZ_2013_RUN1_FIT
-  assert.equal(twoModeCumulative(p.dMaxUm, p), 1)
-  assert.ok(twoModeCumulative(p.dMaxUm - 1, p) < 1)
+  assert.equal(dropletCumulative(p.dMaxUm, p), 1)
+  assert.ok(dropletCumulative(p.dMaxUm - 1, p) < 1)
 })
 
-test('d_min is the 1 % point of the main mode', () => {
+test('d_min is the 1 % point', () => {
   const p = RUIZ_2013_RUN1_FIT
-  const f = logNormalCumulative(p.dMinUm, p.dMedMainUm, mainSpread(p))
+  const f = logNormalCumulative(p.dMinUm, p.dMedUm, spread(p))
   assert.ok(Math.abs(f - 0.01) < 1e-6)
 })
 
-test('default fit follows the Ruiz run 1 tail within 2 %', () => {
-  for (const [d, y] of RUIZ_2013_RUN1_POINTS.filter(([d]) => d >= 76)) {
-    assert.ok(Math.abs(twoModeCumulative(d, RUIZ_2013_RUN1_FIT) - y) < 0.02)
+test('default fit follows all Ruiz run 1 points within 7 %', () => {
+  for (const [d, y] of RUIZ_2013_RUN1_POINTS) {
+    assert.ok(Math.abs(dropletCumulative(d, RUIZ_2013_RUN1_FIT) - y) < 0.07)
   }
 })
 
@@ -68,13 +68,13 @@ test('invalid parameters return zero instead of NaN', () => {
 })
 
 test('mass quantiles and Sauter mean are ordered and consistent', async () => {
-  const { massQuantile, sauterMeanDiameter, twoModeCumulative, RUIZ_2013_RUN1_FIT: p } =
+  const { massQuantile, sauterMeanDiameter, dropletCumulative, RUIZ_2013_RUN1_FIT: p } =
     await import('../src/lib/droplet-distribution.ts')
   const d10 = massQuantile(0.1, p)
   const d50 = massQuantile(0.5, p)
   const d90 = massQuantile(0.9, p)
   assert.ok(d10 < d50 && d50 < d90)
-  assert.ok(Math.abs(twoModeCumulative(d50, p) - 0.5) < 1e-6)
+  assert.ok(Math.abs(dropletCumulative(d50, p) - 0.5) < 1e-6)
   const d32 = sauterMeanDiameter(p)
   assert.ok(d32 > 0 && d32 < d50)
 })

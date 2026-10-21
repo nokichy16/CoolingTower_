@@ -24,7 +24,7 @@ const BIN_UM = 5
 /**
  * Inlet drift droplets (graph 1): relative number of droplets per 5 µm size
  * class, in the style of Ruiz et al. (2013) Fig. 8. The shape comes from the
- * two-mode mass distribution set by the inputs.
+ * log-normal mass distribution set by the inputs.
  */
 export default function DropletDistribution({
   inputs,
@@ -84,73 +84,37 @@ export default function DropletDistribution({
             unit="µm"
             value={inputs.dropletDMin}
             min={1}
-            max={Math.max(1, inputs.dropletDMedMain - 1)}
+            max={Math.max(1, inputs.dropletDMed - 1)}
             step={0.5}
             digits={1}
             onChange={(value) => onChange({ dropletDMin: value })}
           />
           <Field
-            label="Main-mode median"
+            label="Mass median"
             sym="d_med"
             unit="µm"
-            value={inputs.dropletDMedMain}
+            value={inputs.dropletDMed}
             min={inputs.dropletDMin + 1}
             max={200}
             step={0.5}
             digits={1}
-            onChange={(value) => onChange({ dropletDMedMain: value })}
+            onChange={(value) => onChange({ dropletDMed: value })}
           />
           <Field
             label="Largest droplets (100 %)"
             sym="d_max"
             unit="µm"
             value={inputs.dropletDMax}
-            min={Math.ceil(inputs.dropletDMedMain + 10)}
+            min={Math.ceil(inputs.dropletDMed + 10)}
             max={1000}
             step={10}
             digits={0}
             onChange={(value) => onChange({ dropletDMax: value })}
           />
-          <details className="advanced">
-            <summary>Advanced: large-droplet tail</summary>
-          <Field
-            label="Tail mass fraction"
-            sym="w"
-            unit="%"
-            value={inputs.dropletTailFraction * 100}
-            min={0}
-            max={40}
-            step={0.5}
-            digits={1}
-            onChange={(value) => onChange({ dropletTailFraction: value / 100 })}
-          />
-          <Field
-            label="Tail median"
-            sym="d_tail"
-            unit="µm"
-            value={inputs.dropletTailMedian}
-            min={20}
-            max={Math.max(20, inputs.dropletDMax)}
-            step={5}
-            digits={0}
-            onChange={(value) => onChange({ dropletTailMedian: value })}
-          />
-          <Field
-            label="Tail spread"
-            sym="σg,tail"
-            unit=""
-            value={inputs.dropletTailSpread}
-            min={1.1}
-            max={3}
-            step={0.05}
-            digits={2}
-            onChange={(value) => onChange({ dropletTailSpread: value })}
-          />
-          </details>
           <dl className="droplet-derived">
             <div>
-              <dt>Main-mode spread σg</dt>
-              <dd>{fmt(droplets.mainSpread, 2)}</dd>
+              <dt>Spread σg</dt>
+              <dd>{fmt(droplets.spread, 2)}</dd>
             </div>
           </dl>
         </div>
@@ -208,9 +172,10 @@ export default function DropletDistribution({
             </BarChart>
           </ResponsiveContainer>
           <p className="card-note">
-            Two log-normal modes by mass, cut at d_max. Defaults: fit to Ruiz et
-            al. (2013) Fig. 9(a), run 1, measured at the tower exit. The inlet
-            shape is therefore an assumption.
+            One log-normal by mass, cut at d_max. Defaults: least-squares fit to
+            Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit, so
+            the inlet shape is an assumption. Fit error is up to about 6.5 %, and
+            the fit has less mass above 100 µm than Ruiz measured.
           </p>
         </div>
       </div>

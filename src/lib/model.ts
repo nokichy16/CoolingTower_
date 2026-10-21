@@ -28,9 +28,9 @@ import {
   type RuizEliminatorResult,
 } from './eliminators.ts'
 import {
-  mainSpread,
+  spread,
   RUIZ_2013_RUN1_FIT,
-  twoModeCumulative,
+  dropletCumulative,
   type DropletDistributionParams,
 } from './droplet-distribution.ts'
 
@@ -39,10 +39,7 @@ export function distributionParams(
 ): DropletDistributionParams {
   return {
     dMinUm: inputs.dropletDMin,
-    dMedMainUm: inputs.dropletDMedMain,
-    tailFraction: inputs.dropletTailFraction,
-    tailMedianUm: inputs.dropletTailMedian,
-    tailSpread: inputs.dropletTailSpread,
+    dMedUm: inputs.dropletDMed,
     dMaxUm: inputs.dropletDMax,
   }
 }
@@ -76,11 +73,8 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
-  dropletDMin: number // 1 % of main-mode mass is smaller, µm
-  dropletDMedMain: number // main-mode mass median, µm
-  dropletTailFraction: number // mass fraction in the tail mode
-  dropletTailMedian: number // tail-mode mass median, µm
-  dropletTailSpread: number // tail-mode σg
+  dropletDMin: number // 1 % of mass is smaller, µm
+  dropletDMed: number // mass median, µm
   dropletDMax: number // upper limit: no inlet droplets larger, µm
 
   // Vapour recovery
@@ -119,7 +113,7 @@ export interface TowerResults {
     cutoffFound: boolean // false when ε stays above or below 50 % at all sizes
     massEscaping: number // inlet mass fraction smaller than d50 (NaN if no cutoff)
     massCaptured: number // inlet mass fraction larger than d50 (NaN if no cutoff)
-    mainSpread: number // main-mode σg derived from d_min and d_med
+    spread: number // σg derived from d_min and d_med
     driftInlet: number // kg/s liquid drift entering the eliminator
     driftEscaping: number // kg/s, NaN if no cutoff
     driftCaptured: number // kg/s, NaN if no cutoff
@@ -228,7 +222,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDMedMain,
+    inputs.dropletDMed,
   )
   const efficiencyAtSearchMin = collectionEfficiencyAtDiameter(
     inputs.eliminatorId,
@@ -254,7 +248,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     : Number.NaN
   // Ideal sharp cut at d50: smaller droplets escape, larger are captured.
   const massEscaping = cutoffFound
-    ? twoModeCumulative(captureCutoffDiameter, distribution)
+    ? dropletCumulative(captureCutoffDiameter, distribution)
     : Number.NaN
   const massCaptured = cutoffFound ? 1 - massEscaping : Number.NaN
   // Liquid drift mass balance (kept separate from vapour recovery):
@@ -406,7 +400,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       cutoffFound,
       massEscaping,
       massCaptured,
-      mainSpread: mainSpread(distribution),
+      spread: spread(distribution),
       driftInlet,
       driftEscaping: driftInlet * massEscaping,
       driftCaptured: driftInlet * massCaptured,
@@ -438,12 +432,9 @@ export const DEFAULT_INPUTS: TowerInputs = {
   eliminatorId: 'A', // A has a d50 inside the fitted range at default conditions
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
-  // Fit to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
+  // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
   dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
-  dropletDMedMain: RUIZ_2013_RUN1_FIT.dMedMainUm,
-  dropletTailFraction: RUIZ_2013_RUN1_FIT.tailFraction,
-  dropletTailMedian: RUIZ_2013_RUN1_FIT.tailMedianUm,
-  dropletTailSpread: RUIZ_2013_RUN1_FIT.tailSpread,
+  dropletDMed: RUIZ_2013_RUN1_FIT.dMedUm,
   dropletDMax: RUIZ_2013_RUN1_FIT.dMaxUm,
 
   coolingBelowDewPoint: 10,

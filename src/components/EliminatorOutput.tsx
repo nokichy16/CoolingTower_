@@ -13,7 +13,7 @@ import {
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import {
   RUIZ_2013_RUN1_POINTS,
-  twoModeCumulative,
+  dropletCumulative,
 } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
@@ -38,9 +38,9 @@ export default function EliminatorOutput({
   const step = p.dMaxUm / 300
   const curve = Array.from({ length: 301 }, (_, i) => {
     const d = Math.max(0.5, i * step)
-    const inlet = twoModeCumulative(d, p)
+    const inlet = dropletCumulative(d, p)
     const outlet = cutoffFound
-      ? Math.min(1, twoModeCumulative(Math.min(d, d50), p) / massEscaping)
+      ? Math.min(1, dropletCumulative(Math.min(d, d50), p) / massEscaping)
       : undefined
     return {
       d,
