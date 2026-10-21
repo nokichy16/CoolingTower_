@@ -28,10 +28,11 @@ import {
   type RuizEliminatorResult,
 } from './eliminators.ts'
 import {
-  mainSpread,
+  spread,
   RUIZ_2013_RUN1_FIT,
-  twoModeCumulative,
+  efficiencySplit,
   type DropletDistributionParams,
+  type EfficiencySplit,
 } from './droplet-distribution.ts'
 
 export function distributionParams(
@@ -39,10 +40,7 @@ export function distributionParams(
 ): DropletDistributionParams {
   return {
     dMinUm: inputs.dropletDMin,
-    dMedMainUm: inputs.dropletDMedMain,
-    tailFraction: inputs.dropletTailFraction,
-    tailMedianUm: inputs.dropletTailMedian,
-    tailSpread: inputs.dropletTailSpread,
+    dMedUm: inputs.dropletDMed,
     dMaxUm: inputs.dropletDMax,
   }
 }
@@ -76,11 +74,8 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
-  dropletDMin: number // 1 % of main-mode mass is smaller, µm
-  dropletDMedMain: number // main-mode mass median, µm
-  dropletTailFraction: number // mass fraction in the tail mode
-  dropletTailMedian: number // tail-mode mass median, µm
-  dropletTailSpread: number // tail-mode σg
+  dropletDMin: number // 1 % of mass is smaller, µm
+  dropletDMed: number // mass median, µm
   dropletDMax: number // upper limit: no inlet droplets larger, µm
 
   // Vapour recovery
@@ -117,12 +112,13 @@ export interface TowerResults {
     equivalentArea: number // m², same flow area as the prescribed plume
     captureCutoffDiameter: number // theoretical d50, µm (NaN if not found)
     cutoffFound: boolean // false when ε stays above or below 50 % at all sizes
-    massEscaping: number // inlet mass fraction smaller than d50 (NaN if no cutoff)
-    massCaptured: number // inlet mass fraction larger than d50 (NaN if no cutoff)
-    mainSpread: number // main-mode σg derived from d_min and d_med
+    massEscaping: number // ∫(1 − ε) dF, inlet mass fraction that escapes
+    massCaptured: number // ∫ε dF
+    split: EfficiencySplit // outlet curve and outlet D32
+    spread: number // σg derived from d_min and d_med
     driftInlet: number // kg/s liquid drift entering the eliminator
-    driftEscaping: number // kg/s, NaN if no cutoff
-    driftCaptured: number // kg/s, NaN if no cutoff
+    driftEscaping: number // kg/s
+    driftCaptured: number // kg/s
   }
   recovery: {
     t: number // °C recovery outlet / coil target
@@ -228,7 +224,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDMedMain,
+    inputs.dropletDMed,
   )
   const efficiencyAtSearchMin = collectionEfficiencyAtDiameter(
     inputs.eliminatorId,
@@ -252,11 +248,18 @@ export function solveTower(inputs: TowerInputs): TowerResults {
         CUTOFF_SEARCH_MAX,
       )
     : Number.NaN
-  // Ideal sharp cut at d50: smaller droplets escape, larger are captured.
-  const massEscaping = cutoffFound
-    ? twoModeCumulative(captureCutoffDiameter, distribution)
-    : Number.NaN
-  const massCaptured = cutoffFound ? 1 - massEscaping : Number.NaN
+  // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
+  // d50 is reported for information only.
+  const split = efficiencySplit(distribution, (d) =>
+    collectionEfficiencyAtDiameter(
+      inputs.eliminatorId,
+      evaluationVelocity,
+      inputs.plumeTemperature,
+      d,
+    ),
+  )
+  const massEscaping = split.escaping
+  const massCaptured = 1 - massEscaping
   // Liquid drift mass balance (kept separate from vapour recovery):
   // ṁ_drift,in = ṁ_circ · drift rate / 100
   const driftInlet =
@@ -348,8 +351,8 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       title: 'No 50 % cutoff for this eliminator',
       message:
         efficiencyAtSearchMin >= 0.5
-          ? 'The Ruiz correlation predicts more than 50 % capture at every droplet size from 1 µm, so no d50 exists. Captured and escaping mass are not reported.'
-          : 'The Ruiz correlation predicts less than 50 % capture at every droplet size up to 1000 µm, so no d50 exists. Captured and escaping mass are not reported.',
+          ? 'The Ruiz correlation predicts more than 50 % capture at every droplet size from 1 µm, so no d50 exists. Drift is still calculated from ε(d) at every size.'
+          : 'The Ruiz correlation predicts less than 50 % capture at every droplet size up to 1000 µm, so no d50 exists. Drift is still calculated from ε(d) at every size.',
     })
   }
   if (collectionRangeIssues.length > 0) {
@@ -359,7 +362,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       title: 'Droplet prediction is extrapolated',
       message: `${collectionRangeIssues.join(
         '; ',
-      )}. The predicted cutoff remains visible but is outside the paper-supported range.`,
+      )}. The result remains visible but is outside the paper-supported range.`,
     })
   }
   if (requestedT5 < 0) {
@@ -406,7 +409,8 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       cutoffFound,
       massEscaping,
       massCaptured,
-      mainSpread: mainSpread(distribution),
+      split,
+      spread: spread(distribution),
       driftInlet,
       driftEscaping: driftInlet * massEscaping,
       driftCaptured: driftInlet * massCaptured,
@@ -438,12 +442,9 @@ export const DEFAULT_INPUTS: TowerInputs = {
   eliminatorId: 'A', // A has a d50 inside the fitted range at default conditions
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
-  // Fit to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
+  // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
   dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
-  dropletDMedMain: RUIZ_2013_RUN1_FIT.dMedMainUm,
-  dropletTailFraction: RUIZ_2013_RUN1_FIT.tailFraction,
-  dropletTailMedian: RUIZ_2013_RUN1_FIT.tailMedianUm,
-  dropletTailSpread: RUIZ_2013_RUN1_FIT.tailSpread,
+  dropletDMed: RUIZ_2013_RUN1_FIT.dMedUm,
   dropletDMax: RUIZ_2013_RUN1_FIT.dMaxUm,
 
   coolingBelowDewPoint: 10,

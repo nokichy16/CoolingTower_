@@ -21,7 +21,7 @@ export interface StageInfo {
 
 export function buildStages(r: TowerResults): StageInfo[] {
   const cut = r.droplets.cutoffFound
-  const pct = (fraction: number) => (cut ? fmt(fraction * 100, 1) : '—')
+  const pct = (fraction: number) => fmt(fraction * 100, 1)
   const kgs = (value: number) => (Number.isFinite(value) ? sig(value, 3) : '—')
 
   return [
@@ -109,22 +109,22 @@ export function buildStages(r: TowerResults): StageInfo[] {
         {
           label: 'Drift escaping',
           value: kgs(r.droplets.driftEscaping),
-          unit: cut ? 'kg/s' : '',
+          unit: 'kg/s',
         },
         {
           label: 'Drift captured',
           value: kgs(r.droplets.driftCaptured),
-          unit: cut ? 'kg/s' : '',
+          unit: 'kg/s',
         },
         {
-          label: 'Inlet mass escaping (< d50)',
+          label: 'Inlet mass escaping',
           value: pct(r.droplets.massEscaping),
-          unit: cut ? '%' : '',
+          unit: '%',
         },
         {
-          label: 'Inlet mass captured (> d50)',
+          label: 'Inlet mass captured',
           value: pct(r.droplets.massCaptured),
-          unit: cut ? '%' : '',
+          unit: '%',
         },
         {
           label: 'Pressure drop',

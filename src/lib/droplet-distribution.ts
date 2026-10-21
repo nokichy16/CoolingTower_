@@ -8,33 +8,27 @@
  * d_med is the mass median diameter (50 % of the mass is smaller) and σg is
  * the geometric standard deviation (σg = 1 is a single size; larger is wider).
  *
- * Users enter d10 and d90 (10 % and 90 % of the mass is smaller); d_med and
- * σg follow from them.
+ * Users enter d_min (1 % of the mass is smaller) and d_med; σg follows.
  *
  * Ruiz et al. (2013), Atmospheric Environment 69:170–181, found the
  * log-normal function fitted measured cooling-tower drift better than
- * Rosin–Rammler. Their test run 1 gives the default values below. Those
+ * Rosin–Rammler. A fit to their test run 1 gives the default values below. Those
  * measurements were taken at the tower exit, so using them as an eliminator
  * inlet distribution is an assumption.
  */
 
 /**
- * Two-mode inlet distribution, truncated at d_max.
+ * Inlet distribution: one log-normal by mass, truncated at d_max.
  *
- *   F_raw(d) = (1 − w)·LN(d; d_med, σg) + w·LN(d; d_tail, σg,tail)
- *   F(d)     = F_raw(d) / F_raw(d_max)   for d < d_max,   F(d) = 1 for d ≥ d_max
+ *   F(d) = LN(d; d_med, σg) / LN(d_max; d_med, σg)   for d < d_max,
+ *   F(d) = 1                                           for d ≥ d_max
  *
- * The main mode gives the steep rise; the tail mode (mass fraction w) gives
- * the long, flat end seen in measured drift. σg of the main mode follows from
- * d_min, the diameter where 1 % of the main-mode mass is smaller:
+ * σg follows from d_min, the diameter where 1 % of the mass is smaller:
  *   σg = (d_med / d_min)^(1 / z99).
  */
 export interface DropletDistributionParams {
-  dMinUm: number // 1 % of main-mode mass is smaller
-  dMedMainUm: number // main-mode mass median
-  tailFraction: number // w, mass fraction in the tail mode
-  tailMedianUm: number
-  tailSpread: number // σg of the tail mode
+  dMinUm: number // 1 % of mass is smaller
+  dMedUm: number // mass median
   dMaxUm: number // hard upper limit: 100 % of mass is smaller
 }
 
@@ -42,16 +36,14 @@ export interface DropletDistributionParams {
 export const Z99 = 2.3263479
 
 /**
- * Defaults: a fit by eye to Ruiz et al. (2013) Fig. 9(a), test run 1, which
- * was measured at the tower exit (after the eliminator). Used here as an
- * assumed inlet shape.
+ * Defaults: least-squares fit of one log-normal (d_med = 35 µm, σg = 1.74)
+ * to Ruiz et al. (2013) Fig. 9(a), test run 1, which was measured at the
+ * tower exit (after the eliminator). Used here as an assumed inlet shape.
+ * Largest error about 6.5 % (small sizes); the fit under-predicts the tail.
  */
 export const RUIZ_2013_RUN1_FIT: DropletDistributionParams = {
-  dMinUm: 11,
-  dMedMainUm: 30.5,
-  tailFraction: 0.135,
-  tailMedianUm: 100,
-  tailSpread: 2,
+  dMinUm: 9.6,
+  dMedUm: 35,
   dMaxUm: 300,
 }
 
@@ -66,22 +58,21 @@ export const RUIZ_2013_RUN1_POINTS: ReadonlyArray<readonly [number, number]> = [
   [280, 0.985],
 ]
 
-export function mainSpread(p: DropletDistributionParams): number {
-  return (p.dMedMainUm / p.dMinUm) ** (1 / Z99)
+export function spread(p: DropletDistributionParams): number {
+  return (p.dMedUm / p.dMinUm) ** (1 / Z99)
 }
 
-export function twoModeCumulative(
+export function dropletCumulative(
   diameterUm: number,
   p: DropletDistributionParams,
 ): number {
   if (!(diameterUm > 0)) return 0
   if (diameterUm >= p.dMaxUm) return 1
-  const sg = mainSpread(p)
-  const raw = (d: number) =>
-    (1 - p.tailFraction) * logNormalCumulative(d, p.dMedMainUm, sg) +
-    p.tailFraction * logNormalCumulative(d, p.tailMedianUm, p.tailSpread)
-  const top = raw(p.dMaxUm)
-  return top > 0 ? Math.min(1, raw(diameterUm) / top) : 0
+  const sg = spread(p)
+  const top = logNormalCumulative(p.dMaxUm, p.dMedUm, sg)
+  return top > 0
+    ? Math.min(1, logNormalCumulative(diameterUm, p.dMedUm, sg) / top)
+    : 0
 }
 
 /**
@@ -96,7 +87,7 @@ export function countHistogram(
   for (let a = 0; a < p.dMaxUm; a += binUm) {
     const b = Math.min(a + binUm, p.dMaxUm)
     const mid = (a + b) / 2
-    const mass = twoModeCumulative(b, p) - twoModeCumulative(a, p)
+    const mass = dropletCumulative(b, p) - dropletCumulative(a, p)
     bins.push({ mid, count: mass / mid ** 3 })
   }
   const peak = Math.max(...bins.map((x) => x.count))
@@ -159,7 +150,7 @@ export function massQuantile(
   let hi = p.dMaxUm
   for (let i = 0; i < 80; i += 1) {
     const mid = (lo + hi) / 2
-    if (twoModeCumulative(mid, p) < fraction) lo = mid
+    if (dropletCumulative(mid, p) < fraction) lo = mid
     else hi = mid
   }
   return (lo + hi) / 2
@@ -175,16 +166,63 @@ export function sauterMeanDiameter(
 ): number {
   const top = Math.min(upToUm, p.dMaxUm)
   const steps = 2000
-  const total = twoModeCumulative(top, p)
+  const total = dropletCumulative(top, p)
   let sum = 0
   let prevD = 0.05
-  let prevF = twoModeCumulative(prevD, p)
+  let prevF = dropletCumulative(prevD, p)
   for (let i = 1; i <= steps; i += 1) {
     const d = 0.05 * (top / 0.05) ** (i / steps)
-    const f = twoModeCumulative(d, p)
+    const f = dropletCumulative(d, p)
     sum += (f - prevF) / Math.sqrt(d * prevD)
     prevD = d
     prevF = f
   }
   return sum > 0 ? total / sum : Number.NaN
+}
+
+/**
+ * Grade-efficiency split of the inlet distribution.
+ *
+ *   escaping fraction = ∫₀^d_max (1 − ε(d)) dF(d)
+ *   outlet F_out(d)   = ∫₀^d (1 − ε) dF / escaping fraction
+ *   outlet D₃₂        = ∫(1 − ε) dF / ∫(1 − ε)/d dF
+ *
+ * Evaluated over equal size classes with ε at the class midpoint.
+ */
+export interface EfficiencySplit {
+  escaping: number
+  diameters: number[] // class upper edges, µm
+  outletCumulative: number[] // F_out at each upper edge (0–1)
+  outletSauterMean: number // µm
+}
+
+export function efficiencySplit(
+  p: DropletDistributionParams,
+  efficiency: (diameterUm: number) => number,
+  classes = 600,
+): EfficiencySplit {
+  const step = p.dMaxUm / classes
+  const diameters: number[] = []
+  const running: number[] = []
+  let escaping = 0
+  let inverse = 0
+  let prevF = 0
+  for (let i = 1; i <= classes; i += 1) {
+    const d = i * step
+    const f = dropletCumulative(d, p)
+    const mid = d - step / 2
+    const eps = Math.min(1, Math.max(0, efficiency(mid)))
+    const passed = (1 - eps) * (f - prevF)
+    escaping += passed
+    inverse += passed / mid
+    diameters.push(d)
+    running.push(escaping)
+    prevF = f
+  }
+  return {
+    escaping,
+    diameters,
+    outletCumulative: running.map((x) => (escaping > 0 ? x / escaping : 0)),
+    outletSauterMean: inverse > 0 ? escaping / inverse : Number.NaN,
+  }
 }

@@ -125,11 +125,19 @@ test('drift mass flows follow circulating water, drift rate and the cut', () => 
   closeTo(result.droplets.driftEscaping, 0.5 * result.droplets.massEscaping)
 })
 
-test('eliminators above 50 % capture at every size report no cutoff', () => {
+test('eliminators with no d50 still report drift from the full ε(d) curve', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'B' })
 
   assert.equal(result.droplets.cutoffFound, false)
-  assert.ok(Number.isNaN(result.droplets.massEscaping))
+  assert.ok(result.droplets.massEscaping > 0 && result.droplets.massEscaping < 1)
+  closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
+})
+
+test('escaping fraction equals the integral of (1 − ε) over the inlet distribution', () => {
+  const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'A' })
+  const { split, massEscaping } = result.droplets
+  closeTo(split.outletCumulative.at(-1), 1)
+  assert.ok(massEscaping > 0.3 && massEscaping < 0.7)
 })
 
 test('invalid area, velocity, or cycles are reported without negative airflow', () => {

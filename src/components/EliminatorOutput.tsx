@@ -2,7 +2,6 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -13,8 +12,9 @@ import {
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import {
   RUIZ_2013_RUN1_POINTS,
-  twoModeCumulative,
+  dropletCumulative,
 } from '../lib/droplet-distribution'
+import { collectionEfficiencyAtDiameter } from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
@@ -25,29 +25,35 @@ interface EliminatorOutputProps {
 
 /**
  * Drift eliminator output (graph 2): cumulative mass of the inlet droplets
- * and of the droplets that escape an ideal sharp cut at d50, in the style of
- * Ruiz et al. (2013) Fig. 9. Ruiz run 1 points are outlet measurements.
+ * and of the droplets that escape, F_out(d) = ∫₀^d (1 − ε) dF / ∫(1 − ε) dF,
+ * in the style of Ruiz et al. (2013) Fig. 9, plus the capture efficiency
+ * ε(d). Ruiz run 1 points are outlet measurements.
  */
 export default function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
   const p = distributionParams(inputs)
-  const { cutoffFound, captureCutoffDiameter: d50, massEscaping, massCaptured } =
+  const { cutoffFound, captureCutoffDiameter: d50, massEscaping, massCaptured, split } =
     droplets
-  const step = p.dMaxUm / 300
-  const curve = Array.from({ length: 301 }, (_, i) => {
-    const d = Math.max(0.5, i * step)
-    const inlet = twoModeCumulative(d, p)
-    const outlet = cutoffFound
-      ? Math.min(1, twoModeCumulative(Math.min(d, d50), p) / massEscaping)
-      : undefined
-    return {
-      d,
-      inlet: 100 * inlet,
-      outlet: outlet === undefined ? undefined : 100 * outlet,
-    }
-  })
+  const curve = split.diameters
+    .filter((_, i) => i % 2 === 1)
+    .map((d) => {
+      const i = split.diameters.indexOf(d)
+      return {
+        d,
+        inlet: 100 * dropletCumulative(d, p),
+        outlet: 100 * split.outletCumulative[i],
+        eps:
+          100 *
+          collectionEfficiencyAtDiameter(
+            inputs.eliminatorId,
+            Math.max(inputs.plumeVelocity, 1e-6),
+            inputs.plumeTemperature,
+            d,
+          ),
+      }
+    })
   const points = RUIZ_2013_RUN1_POINTS.filter(([d]) => d <= p.dMaxUm).map(
     ([d, y]) => ({ d, ruiz: 100 * y }),
   )
@@ -55,7 +61,6 @@ export default function EliminatorOutput({
     { length: Math.floor(p.dMaxUm / 50) + 1 },
     (_, i) => i * 50,
   )
-  const escapingPct = 100 * massEscaping
 
   return (
     <section className="eliminator-output" aria-labelledby="eliminator-output-title">
@@ -65,6 +70,7 @@ export default function EliminatorOutput({
       <div className="chart-legend-row">
         <span><i style={{ background: '#137f70' }} />Inlet</span>
         <span><i style={{ background: '#2a78d6' }} />Outlet (escaped droplets, rescaled to 100 %)</span>
+        <span><i style={{ background: '#6250d6' }} />Capture efficiency ε(d)</span>
         <span><i className="is-dot" style={{ borderColor: '#eb6834' }} />Ruiz 2013 run 1, tower exit</span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
@@ -95,7 +101,7 @@ export default function EliminatorOutput({
             stroke="#aaa49a"
             width={44}
             label={{
-              value: 'Mass < d  (%)',
+              value: 'Mass < d  or  ε  (%)',
               angle: -90,
               position: 'insideLeft',
               offset: 14,
@@ -113,36 +119,23 @@ export default function EliminatorOutput({
             }}
             formatter={(value: number, name: string) => [
               `${fmt(value, 1)} %`,
-              name === 'inlet' ? 'Inlet' : name === 'outlet' ? 'Outlet' : 'Ruiz 2013',
+              name === 'inlet'
+                ? 'Inlet'
+                : name === 'outlet'
+                  ? 'Outlet'
+                  : name === 'eps'
+                    ? 'Capture ε'
+                    : 'Ruiz 2013',
             ]}
             labelFormatter={(value) => `${fmt(Number(value), 0)} µm`}
           />
-          {cutoffFound && (
-            <>
-              <ReferenceLine
-                x={d50}
-                stroke="#b8641a"
-                strokeDasharray="4 3"
-                label={{ value: 'd₅₀', position: 'top', fill: '#b8641a', fontSize: 13.5 }}
-              />
-              <ReferenceDot
-                x={d50}
-                y={escapingPct}
-                r={3.5}
-                fill="#b8641a"
-                stroke="none"
-                label={{
-                  value: `Escapes ${fmt(escapingPct, 1)} %, captured ${fmt(
-                    100 * massCaptured,
-                    1,
-                  )} %`,
-                  position: 'right',
-                  offset: 8,
-                  fill: '#57524a',
-                  fontSize: 13.5,
-                }}
-              />
-            </>
+          {cutoffFound && d50 <= p.dMaxUm && (
+            <ReferenceLine
+              x={d50}
+              stroke="#b8641a"
+              strokeDasharray="4 3"
+              label={{ value: 'd₅₀', position: 'top', fill: '#b8641a', fontSize: 13.5 }}
+            />
           )}
           <Line
             dataKey="inlet"
@@ -152,17 +145,24 @@ export default function EliminatorOutput({
             dot={false}
             isAnimationActive={false}
           />
-          {cutoffFound && (
-            <Line
-              dataKey="outlet"
-              type="monotone"
-              stroke="#2a78d6"
-              strokeWidth={2.2}
-              strokeDasharray="6 4"
-              dot={false}
-              isAnimationActive={false}
-            />
-          )}
+          <Line
+            dataKey="outlet"
+            type="monotone"
+            stroke="#2a78d6"
+            strokeWidth={2.2}
+            strokeDasharray="6 4"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            dataKey="eps"
+            type="monotone"
+            stroke="#6250d6"
+            strokeWidth={1.6}
+            strokeDasharray="2 3"
+            dot={false}
+            isAnimationActive={false}
+          />
           <Scatter
             data={points}
             dataKey="ruiz"
@@ -173,34 +173,30 @@ export default function EliminatorOutput({
           />
         </ComposedChart>
       </ResponsiveContainer>
-      {!cutoffFound && (
-        <p className="droplet-warning" role="status">
-          No 50 % cutoff for this eliminator: the Ruiz correlation stays above
-          50 % capture at all sizes. The outlet curve is not shown.
-        </p>
-      )}
-      {cutoffFound && (
-        <dl className="droplet-derived drift-flows">
-          <div>
-            <dt>Drift entering</dt>
-            <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
-          </div>
-          <div>
-            <dt>Drift escaping</dt>
-            <dd>{fmt(droplets.driftEscaping, 3)} kg/s</dd>
-          </div>
-          <div>
-            <dt>Drift captured</dt>
-            <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
-          </div>
-        </dl>
-      )}
+      <dl className="droplet-derived drift-flows">
+        <div>
+          <dt>Drift entering</dt>
+          <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
+        </div>
+        <div>
+          <dt>Drift escaping ({fmt(100 * massEscaping, 1)} %)</dt>
+          <dd>{fmt(droplets.driftEscaping, 3)} kg/s</dd>
+        </div>
+        <div>
+          <dt>Drift captured ({fmt(100 * massCaptured, 1)} %)</dt>
+          <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
+        </div>
+        <div>
+          <dt>Cutoff diameter d₅₀</dt>
+          <dd>{cutoffFound ? `${fmt(d50, 1)} µm` : 'None (ε > 50 % at all sizes)'}</dd>
+        </div>
+      </dl>
       <p className="card-note">
-        Ideal sharp cut: droplets smaller than d₅₀ escape, larger droplets are
-        captured on the vanes. Drift (kg/s) = circulating water × inlet drift
-        rate × mass fraction; the inlet drift rate is an assumption. Ruiz
-        points are outlet measurements, so they include large droplets that a
-        sharp cut would remove.
+        Each droplet size is partly captured, by ε(d) from the Ruiz et al.
+        (2019) fit for the selected eliminator. Escaping fraction = ∫(1 − ε) dF.
+        Drift (kg/s) = circulating water × inlet drift rate × that fraction;
+        the inlet drift rate is an assumption. Ruiz 2013 points are outlet
+        measurements from one tower.
       </p>
     </section>
   )
