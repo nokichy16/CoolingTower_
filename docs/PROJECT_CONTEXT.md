@@ -1,6 +1,6 @@
 # Plume Water-Recovery Webapp: Project Context and History
 
-Last updated: 2026-09-20
+Last updated: 2026-10-22
 
 ## Why this file exists
 
@@ -21,6 +21,7 @@ cooling-tower exhaust plume. Its intended stage order is:
 
 ```text
 prescribed plume state
+-> drift droplets at the eliminator inlet
 -> liquid-droplet / drift-eliminator analysis
 -> ideal fan air-power requirement
 -> water-vapour condensation recovery
@@ -66,14 +67,54 @@ Water vapour and liquid drift droplets are different physical paths:
 Their results must not be added together or described as the same form of
 recovery.
 
-### 3. Drift eliminator
+### 3. Drift droplets and drift eliminator
 
-The selected Ruiz eliminator A-F is evaluated using its Reynolds-dependent
-pressure correlation. The Stokes number and Ruiz collection correlation are
-evaluated across the selected minimum and maximum droplet sizes. The interface
-reports the theoretical 50% collection diameter, d50, and simplified predicted
-captured and remaining ranges. These are screening predictions, not a liquid-
-drift mass balance or an exact physical separation.
+Liquid drift entering the eliminator (inputs, both assumptions):
+
+```text
+m_drift,in = m_circ * D_in / 100
+```
+
+Inlet droplet sizes are one log-normal by mass, truncated at d_max:
+
+```text
+LN(d; d_med, sg) = 0.5 * [1 + erf( ln(d/d_med) / (sqrt(2) * ln sg) )]
+F(d)  = LN(d) / LN(d_max)        for d < d_max,  F = 1 above
+sg    = (d_med / d_min)^(1 / 2.3263)   (d_min = 1 % mass point)
+```
+
+Defaults are a least-squares fit to Ruiz et al. (2013) Fig. 9(a), test run 1:
+d_med = 35 um, sg = 1.74 (d_min = 9.6 um), d_max = 300 um. Ruiz measured at
+the tower exit (after the eliminator), so using this shape at the eliminator
+inlet is an assumption. Fit error is up to about 6.5 %, and the fit has less
+mass above 100 um than Ruiz measured. A two-mode fit was tried and removed.
+
+Capture uses the Ruiz et al. (2019) single-size fits at every droplet size:
+
+```text
+St    = rho_w * u * d^2 / (18 * mu * L)
+eps   = 1 - a * exp(-St^2 * (1 - exp(b / St)))   (vane, honeycomb)
+eps   = 1 - a * exp(b * St)                       (wire mesh)
+eta_esc = integral over 0..d_max of (1 - eps(d)) dF(d)
+m_escaping = m_drift,in * eta_esc
+m_captured = m_drift,in * (1 - eta_esc)
+```
+
+The integral is evaluated over 600 equal size classes with eps at each class
+midpoint. The outlet curve is the running integral divided by eta_esc. The
+d50 (eps = 0.5) is reported for information only; it is not used in the drift
+result. B-E have eps > 0.5 at all sizes, so they have no d50.
+
+Approved assumptions and limits (user decisions, Oct 2026):
+
+- The Ruiz fits are used as published at every size, including St below the
+  tested 0.2-2 range. The fits do not go to eps = 0 for very small droplets,
+  so small-droplet capture is likely overstated. The app does not state this;
+  the user documents it separately.
+- No re-entrainment model. Options (Souders-Brown onset warning, a
+  re-entrainment fraction input) are pending the user's research.
+- Inlet drift rate D_in and the inlet distribution are assumptions until
+  measured; the user plans visual experiments.
 
 ### 4. Fan result
 
@@ -124,8 +165,8 @@ m_emitted = (1 - efficiency_used) * m_drift,in
   information, or a clearly stated design assumption.
 - Nozzle diameter, water drenching density, and the Qu and Li/Wang droplet-
   source regression were rejected from this accepted direction.
-- The current theoretical droplet calculation does not request a drift rate or
-  calculate liquid-drift mass flow.
+- Circulating-water flow and inlet drift rate are now inputs (Oct 2026). The
+  drift rate is labelled as an assumption in the interface.
 
 This accepted direction is implemented in the current source.
 
@@ -146,7 +187,8 @@ B / E = 1 / (CoC - 1)
 ```
 
 Evaporation remains an externally known quantity, so no absolute blowdown,
-drift-mass, makeup-water or recirculation rate is calculated.
+makeup-water or recirculation rate is calculated. Liquid drift mass is
+calculated in the drift stage (section 3).
 This is the approved current source direction.
 
 ## Current implementation states
@@ -213,7 +255,12 @@ discard it, revise it, or approve it.
 | 2026-08-13 | `c1ab59b` | Added the psychrometric process chart and deployed it through GitHub Pages. | Deployed history |
 | After `c1ab59b` | Local working tree | Removed repeated UI values, created documentation artifacts, and added the unresolved Qu and Li/Wang drift-source experiment. | Not committed, pushed, or deployed |
 | 2026-08-23 | Current coordinated source change | Added the unified area-and-velocity flow basis, minimal blowdown ratio, model tests, and streamlined interface and charts. | Approved for `main`; live deployment requires verification |
-| 2026-09-20 | Local predictive droplet update | Replaced user-selected efficiency and drift-rate controls with Ruiz diameter-by-diameter evaluation and a theoretical d50 cutoff. | Locally implemented; verification and deployment required |
+| 2026-09-20 | `f4294d1` | Replaced user-selected efficiency and drift-rate controls with Ruiz diameter-by-diameter evaluation and a theoretical d50 cutoff. | Deployed history |
+| 2026-10-17 | PR #2, #3 | Inlet droplet distribution graph, wider inlet layout, graph clean-up. | Deployed history |
+| 2026-10-18 | PR #5 | Redesign: stage tabs (plume and airflow, drift droplets, eliminator, fan, recovery), two-mode inlet distribution, circulating-water and inlet-drift-rate inputs, inlet count and inlet/outlet cumulative graphs, fan power chart, "All calculated values" section. | Deployed history |
+| 2026-10-18 | PR #6, #7 | Larger text and graphs; eliminator picker as one selectable list. | Deployed history |
+| 2026-10-21 | PR #8 | Single log-normal inlet; sharp d50 cut replaced by the grade-efficiency integral. | Deployed |
+| 2026-10-22 | Tidy-up | Removed unused CalculationSequence and KPI code; updated this file. | See git log |
 
 Earlier commit `a8a119e` contained a cycles-derived water balance. That model is
 historical and is not part of the current direct-plume boundary. If a future
@@ -238,13 +285,20 @@ asking the user to specify cycles independently.
   process-path data.
 - `src/lib/eliminators.ts`: Ruiz A-F geometries, pressure correlations,
   collection correlations, and supported-range checks.
+- `src/lib/droplet-distribution.ts`: log-normal inlet distribution, count
+  histogram, mass quantiles, Sauter mean, and the grade-efficiency split.
 - `src/lib/model.ts`: input types, model assembly, calculated results, warnings,
   and defaults.
 - `src/lib/stages.ts`: values displayed at the plume, eliminator, fan, and
   recovery stations.
-- `src/components/Controls.tsx`: user inputs and stage-specific explanations.
+- `src/components/Controls.tsx`: stage tabs, user inputs, eliminator picker.
+- `src/components/DropletDistribution.tsx`: drift inputs and inlet count graph.
+- `src/components/EliminatorOutput.tsx`: inlet/outlet cumulative graph, eps(d)
+  and drift flows.
+- `src/components/FanChart.tsx`: ideal fan air power against face velocity.
+- `src/components/StageResults.tsx`: "All calculated values", every input and
+  calculated value with its formula, by stage.
 - `src/components/PsychrometricChart.tsx`: chart presentation.
-- `src/components/ResultPanel.tsx`: recovery sweep and result graphs.
 - `src/components/TowerGraphic.tsx`: cooling-tower cutaway visual.
 - `docs/build_webapp_documentation.py`: generator for the local Word
   documentation artifact. Its statements must be checked against the chosen
@@ -257,7 +311,9 @@ asking the user to specify cycles independently.
 - No fill heat and mass-transfer model.
 - No inlet-air or atmospheric plume-dispersion model.
 - No coupled fan curve or full tower pressure balance.
-- No measured droplet-size distribution.
+- No measured inlet droplet-size distribution; the default is fitted to
+  outlet data from one tower (Ruiz 2013).
+- No re-entrainment model.
 - No equipment effectiveness, condensate capture loss, fouling, freezing,
   bypass, COP, or electrical-energy model for condensation recovery.
 - Ruiz A-F are tested specimens and empirical branches, not generic efficiency
