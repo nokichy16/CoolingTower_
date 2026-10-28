@@ -159,12 +159,6 @@ export default function EliminatorOutput({
           <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
         </div>
       </dl>
-      <p className="card-note">
-        Each droplet size is partly captured, by ε(d) from the Ruiz et al.
-        (2019) fit for the selected eliminator. Escaping fraction = ∫(1 − ε) dF.
-        Drift (kg/s) = circulating water × inlet drift rate × that fraction;
-        the inlet drift rate is an assumption.
-      </p>
     </section>
   )
 }
