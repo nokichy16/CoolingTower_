@@ -67,12 +67,12 @@ export default function App() {
               onSelect={setSelectedStage}
             />
             {selectedStage === 'droplets' && (
-              <section className="side-panel">
+              <div className="side-panel">
                 <EliminatorPicker
-                  selected={inputs.eliminatorId}
+                  inputs={inputs}
                   onSelect={(id) => patch({ eliminatorId: id })}
                 />
-              </section>
+              </div>
             )}
             {selectedStage === 'fan' && (
               <FanTable
