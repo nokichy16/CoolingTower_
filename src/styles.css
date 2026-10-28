@@ -1809,3 +1809,4 @@ input[type='range']::-moz-range-thumb {
 .fan-table tbody tr { cursor: pointer; }
 .fan-table tbody tr:hover { background: rgba(19, 127, 112, 0.06); }
 .fan-table tbody tr.is-selected { background: rgba(19, 127, 112, 0.14); }
+.stage-input-panel > .stage-graph:first-child { margin-top: 0; padding-top: 0; border-top: 0; }

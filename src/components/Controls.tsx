@@ -261,10 +261,6 @@ export default function Controls({
 
         {selectedStage === 'fan' && (
           <>
-            <div className="no-stage-inputs">
-              No independent inputs. Velocity comes from stage 1 (inlet); the
-              eliminator comes from stage 2.
-            </div>
             <FanChart
               r={r}
               onSelect={(id) => onChange({ eliminatorId: id })}

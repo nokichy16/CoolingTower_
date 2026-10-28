@@ -75,7 +75,7 @@ export default function FanChart({
         ))}
       </div>
       <ResponsiveContainer width="100%" height={440}>
-        <LineChart data={data} margin={{ top: 14, right: 40, bottom: 8, left: 0 }}>
+        <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
             dataKey="u"
@@ -128,22 +128,6 @@ export default function FanChart({
               strokeOpacity={id === selected ? 1 : 0.75}
               dot={false}
               isAnimationActive={false}
-              label={(props: { x?: number; y?: number; index?: number }) =>
-                props.index === data.length - 1 ? (
-                  <text
-                    key={`end-${id}`}
-                    x={(props.x ?? 0) + 6}
-                    y={(props.y ?? 0) + 4}
-                    fontSize={13}
-                    fontWeight={id === selected ? 700 : 500}
-                    fill={ELIMINATOR_COLORS[id]}
-                  >
-                    {id}
-                  </text>
-                ) : (
-                  <g key={`n-${id}-${props.index}`} />
-                )
-              }
             />
           ))}
           {velocity >= 0.5 && velocity <= 6 && (
@@ -157,21 +141,15 @@ export default function FanChart({
               fill={ELIMINATOR_COLORS[selected]}
               stroke="#fff"
               strokeWidth={2}
-              label={{
-                value: `${selected}: ${fmt(r.droplets.fanAirPower, 1)} kW at ${fmt(velocity, 1)} m/s`,
-                position: 'left',
-                offset: 10,
-                fill: '#57524a',
-                fontSize: 13.5,
-              }}
             />
           )}
         </LineChart>
       </ResponsiveContainer>
       <p className="card-note">
-        Δp = Kp(Re)·½ρu² from Ruiz et al. (2019); P = A·u·Δp. Ideal air power
-        for the eliminator only, no fan or motor efficiency. Ruiz tested
-        {` ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax}`} m/s.
+        No inputs here: velocity is from stage 1, the eliminator from stage 2.
+        P = A·u·Δp, Δp = Kp(Re)·½ρu² (Ruiz et al., 2019). Ideal air power for
+        the eliminator only. Ruiz tested {RUIZ_LIMITS.velocityMin}–
+        {RUIZ_LIMITS.velocityMax} m/s.
       </p>
     </section>
   )
