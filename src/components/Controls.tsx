@@ -38,13 +38,25 @@ const STAGE_META: Record<
   }
 > = {
   plume: { index: '1', name: 'Plume & airflow', path: 'air' },
-  drift: { index: '2', name: 'Drift droplets', path: 'liquid' },
-  droplets: { index: '3', name: 'Drift eliminator', path: 'liquid' },
-  fan: { index: '4', name: 'Fan', path: 'air' },
-  recovery: { index: '5', name: 'Condensation recovery', path: 'air' },
+  drift: { index: '1', name: 'Drift droplets', path: 'liquid' },
+  droplets: { index: '2', name: 'Drift eliminator', path: 'liquid' },
+  fan: { index: '3', name: 'Fan', path: 'air' },
+  recovery: { index: '4', name: 'Condensation recovery', path: 'air' },
 }
 
-const STAGE_ORDER: StageId[] = ['plume', 'drift', 'droplets', 'fan', 'recovery']
+/** Top-level stages; the inlet has two sub-stages. */
+const STAGE_GROUPS: {
+  key: string
+  index: string
+  name: string
+  path: 'air' | 'liquid'
+  stages: StageId[]
+}[] = [
+  { key: 'inlet', index: '1', name: 'Inlet', path: 'air', stages: ['plume', 'drift'] },
+  { key: 'droplets', index: '2', name: 'Drift eliminator', path: 'liquid', stages: ['droplets'] },
+  { key: 'fan', index: '3', name: 'Fan', path: 'air', stages: ['fan'] },
+  { key: 'recovery', index: '4', name: 'Condensation recovery', path: 'air', stages: ['recovery'] },
+]
 
 export default function Controls({
   inputs,
@@ -60,6 +72,8 @@ export default function Controls({
 }: ControlsProps) {
   const droplets = r.droplets
   const stage = STAGE_META[selectedStage]
+  const group =
+    STAGE_GROUPS.find((g) => g.stages.includes(selectedStage)) ?? STAGE_GROUPS[0]
   const selectedEliminator = ELIMINATORS[inputs.eliminatorId]
   const set =
     (key: keyof TowerInputs) =>
@@ -71,7 +85,8 @@ export default function Controls({
       <div className="controls-head">
         <div>
           <span className="controls-kicker">
-            Stage {stage.index} ·{' '}
+            Stage {stage.index}
+            {group.stages.length > 1 ? ` · ${group.name}` : ''} ·{' '}
             {stage.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
           </span>
           <h2>{stage.name}</h2>
@@ -82,21 +97,41 @@ export default function Controls({
       </div>
 
       <nav className="stage-tabs" aria-label="Stages">
-        {STAGE_ORDER.map((id) => (
-          <button
-            type="button"
-            key={id}
-            className={`stage-tab is-${STAGE_META[id].path}${
-              id === selectedStage ? ' is-selected' : ''
-            }`}
-            aria-pressed={id === selectedStage}
-            onClick={() => onSelectStage(id)}
-          >
-            <span>{STAGE_META[id].index}</span>
-            {STAGE_META[id].name}
-          </button>
-        ))}
+        {STAGE_GROUPS.map((g) => {
+          const on = g.key === group.key
+          return (
+            <button
+              type="button"
+              key={g.key}
+              className={`stage-tab is-${g.path}${on ? ' is-selected' : ''}`}
+              aria-pressed={on}
+              onClick={() => {
+                if (!on) onSelectStage(g.stages[0])
+              }}
+            >
+              <span>{g.index}</span>
+              {g.name}
+            </button>
+          )
+        })}
       </nav>
+      {group.stages.length > 1 && (
+        <nav className="stage-subtabs" aria-label={`${group.name} sections`}>
+          {group.stages.map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={`stage-subtab is-${STAGE_META[id].path}${
+                id === selectedStage ? ' is-selected' : ''
+              }`}
+              aria-pressed={id === selectedStage}
+              onClick={() => onSelectStage(id)}
+            >
+              {STAGE_META[id].name}
+            </button>
+          ))}
+        </nav>
+      )}
 
       <div className="stage-input-panel" key={selectedStage}>
         {selectedStage === 'plume' && (
@@ -227,8 +262,8 @@ export default function Controls({
         {selectedStage === 'fan' && (
           <>
             <div className="no-stage-inputs">
-              No independent inputs. Velocity comes from stage 1; the
-              eliminator comes from stage 3.
+              No independent inputs. Velocity comes from stage 1 (inlet); the
+              eliminator comes from stage 2.
             </div>
             <FanChart r={r} />
           </>
