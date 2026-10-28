@@ -29,7 +29,7 @@ export default function EliminatorOutput({
   droplets,
 }: EliminatorOutputProps) {
   const p = distributionParams(inputs)
-  const { massEscaping, massCaptured, split } = droplets
+  const { split } = droplets
   const curve = split.diameters
     .filter((_, i) => i % 2 === 1)
     .map((d) => {
@@ -145,20 +145,6 @@ export default function EliminatorOutput({
           />
         </ComposedChart>
       </ResponsiveContainer>
-      <dl className="droplet-derived drift-flows">
-        <div>
-          <dt>Drift entering</dt>
-          <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
-        </div>
-        <div>
-          <dt>Drift escaping ({fmt(100 * massEscaping, 1)} %)</dt>
-          <dd>{fmt(droplets.driftEscaping, 3)} kg/s</dd>
-        </div>
-        <div>
-          <dt>Drift captured ({fmt(100 * massCaptured, 1)} %)</dt>
-          <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
-        </div>
-      </dl>
     </section>
   )
 }
