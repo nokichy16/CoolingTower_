@@ -9,33 +9,69 @@ import {
   YAxis,
 } from 'recharts'
 import type { TowerResults } from '../lib/model'
-import { evaluateRuizEliminator, RUIZ_LIMITS } from '../lib/eliminators'
+import {
+  ELIMINATORS,
+  evaluateRuizEliminator,
+  RUIZ_LIMITS,
+  type EliminatorId,
+} from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
+const IDS = Object.keys(ELIMINATORS) as EliminatorId[]
+const COLORS: Record<EliminatorId, string> = {
+  A: '#2a78d6',
+  B: '#137f70',
+  C: '#6250d6',
+  D: '#b8641a',
+  E: '#c0397a',
+  F: '#6b7a1f',
+}
+
 /**
- * Eliminator pressure drop and ideal fan air power against face velocity,
- * Δp = Kp(Re)·½ρu² and P = A·u·Δp, for the selected eliminator and plume
- * state. The shaded validity range is the Ruiz velocity range.
+ * Ideal fan air power against face velocity for all Ruiz eliminators A–F,
+ * P = A·u·Δp with Δp = Kp(Re)·½ρu², at the current plume state. The selected
+ * eliminator is drawn bold with a dot at the current velocity. Click a legend
+ * item to select that eliminator.
  */
-export default function FanChart({ r }: { r: TowerResults }) {
+export default function FanChart({
+  r,
+  onSelect,
+}: {
+  r: TowerResults
+  onSelect?: (id: EliminatorId) => void
+}) {
   const { rho, t, flowArea, velocity } = r.plume
-  const id = r.eliminator.spec.id
+  const selected = r.eliminator.spec.id
   const data = Array.from({ length: 56 }, (_, i) => {
     const u = 0.5 + i * 0.1
-    const kp = evaluateRuizEliminator(id, rho, u, t, 50).pressureCoefficient
-    const dp = kp * 0.5 * rho * u * u
-    return { u: Number(u.toFixed(2)), dp, power: (flowArea * u * dp) / 1000 }
+    const row: Record<string, number> = { u: Number(u.toFixed(2)) }
+    for (const id of IDS) {
+      const kp = evaluateRuizEliminator(id, rho, u, t, 50).pressureCoefficient
+      row[id] = (flowArea * u * kp * 0.5 * rho * u * u) / 1000
+    }
+    return row
   })
 
   return (
     <section className="stage-graph" aria-labelledby="fan-chart-title">
       <h3 className="input-group-title" id="fan-chart-title">
-        Eliminator pressure drop and fan air power
+        Ideal fan air power, eliminators A–F
       </h3>
-      <div className="chart-legend-row">
-        <span><i style={{ background: '#6250d6' }} />Ideal fan air power (kW)</span>
-        <span><i className="is-dot is-filled" style={{ background: '#b8641a' }} />Current velocity</span>
+      <div className="chart-legend-row" role="radiogroup" aria-label="Eliminator">
+        {IDS.map((id) => (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={id === selected}
+            key={id}
+            className={`legend-pick${id === selected ? ' is-selected' : ''}`}
+            onClick={() => onSelect?.(id)}
+          >
+            <i style={{ background: COLORS[id] }} />
+            {id} · {ELIMINATORS[id].type}
+          </button>
+        ))}
       </div>
       <ResponsiveContainer width="100%" height={440}>
         <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: -6 }}>
@@ -76,30 +112,32 @@ export default function FanChart({ r }: { r: TowerResults }) {
               color: '#252525',
               fontSize: 13.5,
             }}
-            formatter={(value: number, _name, item) => [
-              `${fmt(value, 1)} kW  (Δp ${fmt(item.payload.dp, 1)} Pa)`,
-              'Fan air power',
-            ]}
+            formatter={(value: number, name: string) => [`${fmt(value, 2)} kW`, name]}
             labelFormatter={(u) => `u = ${fmt(Number(u), 1)} m/s`}
+            itemSorter={(item) => -(item.value as number)}
           />
-          <Line
-            dataKey="power"
-            type="monotone"
-            stroke="#6250d6"
-            strokeWidth={2.2}
-            dot={false}
-            isAnimationActive={false}
-          />
+          {IDS.map((id) => (
+            <Line
+              key={id}
+              dataKey={id}
+              type="monotone"
+              stroke={COLORS[id]}
+              strokeWidth={id === selected ? 3 : 1.4}
+              strokeOpacity={id === selected ? 1 : 0.7}
+              dot={false}
+              isAnimationActive={false}
+            />
+          ))}
           {velocity >= 0.5 && velocity <= 6 && (
             <ReferenceDot
               x={velocity}
               y={r.droplets.fanAirPower}
               r={5}
-              fill="#b8641a"
+              fill={COLORS[selected]}
               stroke="#fff"
               strokeWidth={2}
               label={{
-                value: `${fmt(r.droplets.fanAirPower, 1)} kW at ${fmt(velocity, 1)} m/s`,
+                value: `${selected}: ${fmt(r.droplets.fanAirPower, 1)} kW at ${fmt(velocity, 1)} m/s`,
                 position: 'left',
                 offset: 10,
                 fill: '#57524a',
@@ -112,7 +150,8 @@ export default function FanChart({ r }: { r: TowerResults }) {
       <p className="card-note">
         Δp = Kp(Re)·½ρu² from Ruiz et al. (2019); P = A·u·Δp. Ideal air power
         for the eliminator only, no fan or motor efficiency. Ruiz tested
-        {` ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax}`} m/s.
+        {` ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax}`} m/s. Click a
+        legend item to select that eliminator.
       </p>
     </section>
   )

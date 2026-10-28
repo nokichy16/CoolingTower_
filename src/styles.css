@@ -1781,3 +1781,18 @@ input[type='range']::-moz-range-thumb {
 .stage-subtab:hover { border-color: var(--text); }
 .stage-subtab.is-selected { background: rgba(255, 159, 69, 0.16); border-color: #ff9f45; font-weight: 600; }
 .stage-subtab.is-liquid.is-selected { background: rgba(201, 164, 65, 0.18); border-color: #c9a441; }
+
+.legend-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.legend-pick:hover { border-color: var(--line); }
+.legend-pick.is-selected { border-color: var(--text); font-weight: 700; }
