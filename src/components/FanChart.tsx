@@ -3,6 +3,7 @@ import {
   Line,
   LineChart,
   ReferenceDot,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,7 +20,7 @@ import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
 const IDS = Object.keys(ELIMINATORS) as EliminatorId[]
-const COLORS: Record<EliminatorId, string> = {
+export const ELIMINATOR_COLORS: Record<EliminatorId, string> = {
   A: '#2a78d6',
   B: '#137f70',
   C: '#6250d6',
@@ -68,13 +69,13 @@ export default function FanChart({
             className={`legend-pick${id === selected ? ' is-selected' : ''}`}
             onClick={() => onSelect?.(id)}
           >
-            <i style={{ background: COLORS[id] }} />
+            <i style={{ background: ELIMINATOR_COLORS[id] }} />
             {id} · {ELIMINATORS[id].type}
           </button>
         ))}
       </div>
       <ResponsiveContainer width="100%" height={440}>
-        <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: -6 }}>
+        <LineChart data={data} margin={{ top: 14, right: 40, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
             dataKey="u"
@@ -96,10 +97,11 @@ export default function FanChart({
             stroke="#aaa49a"
             width={58}
             label={{
-              value: 'kW',
+              value: 'Fan air power  (kW)',
               angle: -90,
               position: 'insideLeft',
               offset: 16,
+              style: { textAnchor: 'middle' },
               fill: '#4c4943',
               fontSize: 12.5,
             }}
@@ -121,19 +123,38 @@ export default function FanChart({
               key={id}
               dataKey={id}
               type="monotone"
-              stroke={COLORS[id]}
-              strokeWidth={id === selected ? 3 : 1.4}
-              strokeOpacity={id === selected ? 1 : 0.7}
+              stroke={ELIMINATOR_COLORS[id]}
+              strokeWidth={id === selected ? 3.2 : 2}
+              strokeOpacity={id === selected ? 1 : 0.75}
               dot={false}
               isAnimationActive={false}
+              label={(props: { x?: number; y?: number; index?: number }) =>
+                props.index === data.length - 1 ? (
+                  <text
+                    key={`end-${id}`}
+                    x={(props.x ?? 0) + 6}
+                    y={(props.y ?? 0) + 4}
+                    fontSize={13}
+                    fontWeight={id === selected ? 700 : 500}
+                    fill={ELIMINATOR_COLORS[id]}
+                  >
+                    {id}
+                  </text>
+                ) : (
+                  <g key={`n-${id}-${props.index}`} />
+                )
+              }
             />
           ))}
+          {velocity >= 0.5 && velocity <= 6 && (
+            <ReferenceLine x={velocity} stroke="#8a857c" strokeDasharray="4 3" />
+          )}
           {velocity >= 0.5 && velocity <= 6 && (
             <ReferenceDot
               x={velocity}
               y={r.droplets.fanAirPower}
               r={5}
-              fill={COLORS[selected]}
+              fill={ELIMINATOR_COLORS[selected]}
               stroke="#fff"
               strokeWidth={2}
               label={{
