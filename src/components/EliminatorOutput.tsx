@@ -59,9 +59,9 @@ export default function EliminatorOutput({
         Drift eliminator output
       </h3>
       <div className="chart-legend-row">
-        <span><i style={{ background: '#137f70' }} />Inlet</span>
-        <span><i style={{ background: '#2a78d6' }} />Outlet (escaped droplets, rescaled to 100 %)</span>
-        <span><i style={{ background: '#6250d6' }} />Capture efficiency ε(d)</span>
+        <span><i className="is-dash" style={{ color: '#137f70' }} />Inlet</span>
+        <span><i className="is-line" style={{ color: '#2a78d6' }} />Outlet (escaped droplets, rescaled to 100 %)</span>
+        <span><i className="is-dash is-dotted" style={{ color: '#6250d6' }} />Capture efficiency ε(d)</span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
         <ComposedChart
@@ -122,6 +122,7 @@ export default function EliminatorOutput({
             type="monotone"
             stroke="#137f70"
             strokeWidth={2.2}
+            strokeDasharray="6 4"
             dot={false}
             isAnimationActive={false}
           />
@@ -129,8 +130,7 @@ export default function EliminatorOutput({
             dataKey="outlet"
             type="monotone"
             stroke="#2a78d6"
-            strokeWidth={2.2}
-            strokeDasharray="6 4"
+            strokeWidth={2.6}
             dot={false}
             isAnimationActive={false}
           />
