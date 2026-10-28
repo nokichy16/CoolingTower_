@@ -80,7 +80,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'drift',
-      index: '2',
+      index: '1',
       name: 'Drift droplets',
       accent: '#d9a441',
       primary: [
@@ -95,7 +95,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'droplets',
-      index: '3',
+      index: '2',
       name: 'Drift eliminator',
       accent: '#c9b568',
       primary: [
@@ -152,7 +152,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'fan',
-      index: '4',
+      index: '3',
       name: 'Fan',
       accent: '#9c83ff',
       primary: [
@@ -167,7 +167,7 @@ export function buildStages(r: TowerResults): StageInfo[] {
     },
     {
       id: 'recovery',
-      index: '5',
+      index: '4',
       name: 'Condensation recovery',
       accent: '#5ec8ff',
       primary: [

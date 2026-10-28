@@ -53,7 +53,7 @@ export default function StageResults({
     {
       id: 'plume',
       index: '1',
-      name: 'Plume & airflow',
+      name: 'Inlet · Plume & airflow',
       path: 'air',
       headline: `ṁ_da ${fmt(r.plume.airMassFlow, 1)} kg/s · T_dew ${fmt(r.plume.dewPoint, 1)} °C`,
       rows: [
@@ -74,8 +74,8 @@ export default function StageResults({
     },
     {
       id: 'drift',
-      index: '2',
-      name: 'Drift droplets',
+      index: '1',
+      name: 'Inlet · Drift droplets',
       path: 'liquid',
       headline: `ṁ_drift,in ${sig(d.driftInlet, 3)} kg/s · D₃₂ ${fmt(sauterMeanDiameter(p), 1)} µm`,
       rows: [
@@ -95,7 +95,7 @@ export default function StageResults({
     },
     {
       id: 'droplets',
-      index: '3',
+      index: '2',
       name: 'Drift eliminator',
       path: 'liquid',
       headline: `Escaping ${sig(d.driftEscaping, 3)} kg/s (${fmt(100 * d.massEscaping, 1)} %)`,
@@ -122,20 +122,20 @@ export default function StageResults({
     },
     {
       id: 'fan',
-      index: '4',
+      index: '3',
       name: 'Fan',
       path: 'air',
       headline: `${fmt(d.fanAirPower, 1)} kW ideal air power`,
       rows: [
-        { label: 'Volumetric flow V̇', formula: 'from stage 1', value: fmt(r.plume.vDot, 1), unit: 'm³/s' },
-        { label: 'Eliminator pressure drop Δp', formula: 'from stage 3', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
+        { label: 'Volumetric flow V̇', formula: 'from stage 1 (inlet)', value: fmt(r.plume.vDot, 1), unit: 'm³/s' },
+        { label: 'Eliminator pressure drop Δp', formula: 'from stage 2', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
         { label: 'Ideal fan air power', formula: 'P = V̇·Δp', value: fmt(d.fanAirPower, 2), unit: 'kW' },
       ],
       notes: ['Eliminator loss only; no fan, motor or drive efficiency.'],
     },
     {
       id: 'recovery',
-      index: '5',
+      index: '4',
       name: 'Condensation recovery',
       path: 'air',
       headline: `${fmt(r.recovery.mDotCond, 2)} kg/s · ${r.recovery.feasible ? fmt(r.recovery.e, 0) : '—'} kJ/kg`,

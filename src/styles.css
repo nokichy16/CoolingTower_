@@ -1758,3 +1758,26 @@ input[type='range']::-moz-range-thumb {
   border-radius: 50%;
 }
 .is-selected .picker-dot { border-color: #137f70; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 8px #137f70; }
+
+/* Inlet sub-stages */
+.stage-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 14px;
+  padding: 6px 0 0 18px;
+  border-left: 2px solid var(--line);
+}
+.stage-subtab {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.stage-subtab:hover { border-color: var(--text); }
+.stage-subtab.is-selected { background: rgba(255, 159, 69, 0.16); border-color: #ff9f45; font-weight: 600; }
+.stage-subtab.is-liquid.is-selected { background: rgba(201, 164, 65, 0.18); border-color: #c9a441; }
