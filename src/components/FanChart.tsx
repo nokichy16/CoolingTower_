@@ -44,8 +44,14 @@ export default function FanChart({
 }) {
   const { rho, t, flowArea, velocity } = r.plume
   const selected = r.eliminator.spec.id
-  const data = Array.from({ length: 56 }, (_, i) => {
-    const u = 0.5 + i * 0.1
+  // Axis covers 0.5–6 m/s, extended to include the current velocity.
+  const rawMax = Math.max(6, velocity * 1.15)
+  const tickStep = rawMax <= 6 ? 1 : rawMax <= 15 ? 2 : rawMax <= 40 ? 5 : 10
+  const uMax = Math.ceil(rawMax / tickStep) * tickStep
+  const xTicks = [0.5, ...Array.from({ length: uMax / tickStep }, (_, i) => (i + 1) * tickStep)]
+  const steps = 120
+  const data = Array.from({ length: steps + 1 }, (_, i) => {
+    const u = 0.5 + (i * (uMax - 0.5)) / steps
     const row: Record<string, number> = { u: Number(u.toFixed(2)) }
     for (const id of IDS) {
       const kp = evaluateRuizEliminator(id, rho, u, t, 50).pressureCoefficient
@@ -80,8 +86,8 @@ export default function FanChart({
           <XAxis
             dataKey="u"
             type="number"
-            domain={[0.5, 6]}
-            ticks={[0.5, 1, 2, 3, 4, 5, 6]}
+            domain={[0.5, uMax]}
+            ticks={xTicks}
             tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
             label={{
@@ -95,7 +101,8 @@ export default function FanChart({
           <YAxis
             tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
-            width={58}
+            width={72}
+            tickFormatter={(v: number) => fmt(v, 0)}
             label={{
               value: 'Fan air power  (kW)',
               angle: -90,
@@ -130,10 +137,10 @@ export default function FanChart({
               isAnimationActive={false}
             />
           ))}
-          {velocity >= 0.5 && velocity <= 6 && (
+          {velocity >= 0.5 && (
             <ReferenceLine x={velocity} stroke="#8a857c" strokeDasharray="4 3" />
           )}
-          {velocity >= 0.5 && velocity <= 6 && (
+          {velocity >= 0.5 && (
             <ReferenceDot
               x={velocity}
               y={r.droplets.fanAirPower}

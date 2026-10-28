@@ -157,7 +157,6 @@ export default function StageResults({
     <section className="stage-results" aria-labelledby="stage-results-title">
       <div className="output-section-head">
         <h2 id="stage-results-title">All calculated values</h2>
-        <span>Rows tagged “input” are set by you; every other row is calculated</span>
       </div>
 
       <div className="stage-result-grid">
