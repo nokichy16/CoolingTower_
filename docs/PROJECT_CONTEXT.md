@@ -102,8 +102,8 @@ m_captured = m_drift,in * (1 - eta_esc)
 
 The integral is evaluated over 600 equal size classes with eps at each class
 midpoint. The outlet curve is the running integral divided by eta_esc. The
-d50 (eps = 0.5) is reported for information only; it is not used in the drift
-result. B-E have eps > 0.5 at all sizes, so they have no d50.
+d50 cutoff and the Ruiz 2013 comparison points were removed from the app
+(Oct 2026); neither is used in the drift result.
 
 Approved assumptions and limits (user decisions, Oct 2026):
 

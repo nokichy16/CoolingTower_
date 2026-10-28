@@ -20,7 +20,6 @@ export interface StageInfo {
 }
 
 export function buildStages(r: TowerResults): StageInfo[] {
-  const cut = r.droplets.cutoffFound
   const pct = (fraction: number) => fmt(fraction * 100, 1)
   const kgs = (value: number) => (Number.isFinite(value) ? sig(value, 3) : '—')
 
@@ -100,17 +99,12 @@ export function buildStages(r: TowerResults): StageInfo[] {
       accent: '#c9b568',
       primary: [
         {
-          label: 'Theoretical cutoff diameter (d50)',
-          value: cut ? fmt(r.droplets.captureCutoffDiameter, 0) : 'None',
-          unit: cut ? 'µm' : '',
-        },
-      ],
-      supporting: [
-        {
           label: 'Drift escaping',
           value: kgs(r.droplets.driftEscaping),
           unit: 'kg/s',
         },
+      ],
+      supporting: [
         {
           label: 'Drift captured',
           value: kgs(r.droplets.driftCaptured),

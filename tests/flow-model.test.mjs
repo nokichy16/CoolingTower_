@@ -101,16 +101,12 @@ test('cycles of concentration sets the blowdown-to-evaporation ratio', () => {
   closeTo(result.waterBalance.blowdownToEvaporationRatio, 1 / 5)
 })
 
-test('Ruiz collection curve determines the theoretical d50 cutoff', () => {
+test('escaping and captured fractions close the mass balance', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'A' })
-
-  assert.equal(result.droplets.cutoffFound, true)
-  assert.ok(result.droplets.captureCutoffDiameter > 25)
-  assert.ok(result.droplets.captureCutoffDiameter < 200)
   closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
 })
 
-test('drift mass flows follow circulating water, drift rate and the cut', () => {
+test('drift mass flows follow circulating water, drift rate and capture', () => {
   const result = solveTower({
     ...DEFAULT_INPUTS,
     eliminatorId: 'A',
@@ -125,10 +121,9 @@ test('drift mass flows follow circulating water, drift rate and the cut', () => 
   closeTo(result.droplets.driftEscaping, 0.5 * result.droplets.massEscaping)
 })
 
-test('eliminators with no d50 still report drift from the full ε(d) curve', () => {
+test('every eliminator reports drift from the full ε(d) curve', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'B' })
 
-  assert.equal(result.droplets.cutoffFound, false)
   assert.ok(result.droplets.massEscaping > 0 && result.droplets.massEscaping < 1)
   closeTo(result.droplets.massEscaping + result.droplets.massCaptured, 1)
 })

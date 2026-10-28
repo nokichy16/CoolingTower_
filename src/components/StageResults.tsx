@@ -46,7 +46,6 @@ export default function StageResults({
 }) {
   const i = r.inputs
   const d = r.droplets
-  const cut = d.cutoffFound
   const p = distributionParams(i)
 
   const blocks: StageBlock[] = [
@@ -81,7 +80,7 @@ export default function StageResults({
       rows: [
         input('Circulating water ṁ_circ', fmt(i.circulatingWaterFlow, 0), 'kg/s'),
         input('Inlet drift rate D_in', fmt(i.inletDriftRate, 2), '%'),
-        input('d_min (1 % of main mode)', fmt(i.dropletDMin, 1), 'µm'),
+        input('d_min (1 % of mass)', fmt(i.dropletDMin, 1), 'µm'),
         input('Mass median d_med', fmt(i.dropletDMed, 1), 'µm'),
         input('d_max (100 %)', fmt(i.dropletDMax, 0), 'µm'),
         { label: 'Drift entering eliminator', formula: 'ṁ_drift,in = ṁ_circ·D_in / 100', value: sig(d.driftInlet, 3), unit: 'kg/s' },
@@ -106,7 +105,6 @@ export default function StageResults({
         { label: 'Loss coefficient Kp', formula: 'Kp = f(Re, geometry)  (Ruiz 2019)', value: fmt(r.eliminator.pressureCoefficient, 2), unit: '' },
         { label: 'Pressure drop Δp', formula: 'Δp = Kp·½ρu²', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
         { label: 'Stokes number at d_med', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
-        { label: 'Cutoff diameter d₅₀', formula: 'ε(St(d₅₀)) = 0.5', value: cut ? fmt(d.captureCutoffDiameter, 1) : 'None', unit: cut ? 'µm' : '' },
         { label: 'Mass fraction escaping', formula: 'η_esc = ∫(1 − ε(d)) dF(d)', value: fmt(100 * d.massEscaping, 1), unit: '%' },
         { label: 'Mass fraction captured', formula: '1 − η_esc = ∫ε(d) dF(d)', value: fmt(100 * d.massCaptured, 1), unit: '%' },
         { label: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·η_esc', value: sig(d.driftEscaping, 3), unit: 'kg/s' },
@@ -116,8 +114,7 @@ export default function StageResults({
       notes: [
         ...r.eliminator.pressureRangeIssues.map((t) => `Outside the Ruiz pressure-correlation range: ${t}.`),
         `Ruiz tested ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax} m/s and droplets ≥ ${RUIZ_LIMITS.dropletDiameterMin} µm.`,
-        ...(cut ? [] : ['The Ruiz correlation stays above 50 % capture at all sizes, so no d₅₀ exists.']),
-        'Every size is partly captured, by ε(d); d₅₀ is for information only.',
+        'Every size is partly captured, by ε(d).',
       ],
     },
     {

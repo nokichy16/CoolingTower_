@@ -11,6 +11,7 @@ import Controls from './components/Controls'
 import TowerExplorer from './components/TowerExplorer'
 import StageResults from './components/StageResults'
 import FanTable from './components/FanTable'
+import EliminatorPicker from './components/EliminatorPicker'
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
@@ -65,6 +66,14 @@ export default function App() {
               selected={selectedStage}
               onSelect={setSelectedStage}
             />
+            {selectedStage === 'droplets' && (
+              <section className="side-panel">
+                <EliminatorPicker
+                  selected={inputs.eliminatorId}
+                  onSelect={(id) => patch({ eliminatorId: id })}
+                />
+              </section>
+            )}
             {selectedStage === 'fan' && (
               <FanTable
                 inputs={inputs}
