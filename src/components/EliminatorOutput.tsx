@@ -2,18 +2,13 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  ReferenceLine,
   ResponsiveContainer,
-  Scatter,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
-import {
-  RUIZ_2013_RUN1_POINTS,
-  dropletCumulative,
-} from '../lib/droplet-distribution'
+import { dropletCumulative } from '../lib/droplet-distribution'
 import { collectionEfficiencyAtDiameter } from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
@@ -27,15 +22,14 @@ interface EliminatorOutputProps {
  * Drift eliminator output (graph 2): cumulative mass of the inlet droplets
  * and of the droplets that escape, F_out(d) = ∫₀^d (1 − ε) dF / ∫(1 − ε) dF,
  * in the style of Ruiz et al. (2013) Fig. 9, plus the capture efficiency
- * ε(d). Ruiz run 1 points are outlet measurements.
+ * ε(d).
  */
 export default function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
   const p = distributionParams(inputs)
-  const { cutoffFound, captureCutoffDiameter: d50, massEscaping, massCaptured, split } =
-    droplets
+  const { split } = droplets
   const curve = split.diameters
     .filter((_, i) => i % 2 === 1)
     .map((d) => {
@@ -54,9 +48,6 @@ export default function EliminatorOutput({
           ),
       }
     })
-  const points = RUIZ_2013_RUN1_POINTS.filter(([d]) => d <= p.dMaxUm).map(
-    ([d, y]) => ({ d, ruiz: 100 * y }),
-  )
   const xTicks = Array.from(
     { length: Math.floor(p.dMaxUm / 50) + 1 },
     (_, i) => i * 50,
@@ -71,7 +62,6 @@ export default function EliminatorOutput({
         <span><i style={{ background: '#137f70' }} />Inlet</span>
         <span><i style={{ background: '#2a78d6' }} />Outlet (escaped droplets, rescaled to 100 %)</span>
         <span><i style={{ background: '#6250d6' }} />Capture efficiency ε(d)</span>
-        <span><i className="is-dot" style={{ borderColor: '#eb6834' }} />Ruiz 2013 run 1, tower exit</span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
         <ComposedChart
@@ -123,20 +113,10 @@ export default function EliminatorOutput({
                 ? 'Inlet'
                 : name === 'outlet'
                   ? 'Outlet'
-                  : name === 'eps'
-                    ? 'Capture ε'
-                    : 'Ruiz 2013',
+                  : 'Capture ε',
             ]}
             labelFormatter={(value) => `${fmt(Number(value), 0)} µm`}
           />
-          {cutoffFound && d50 <= p.dMaxUm && (
-            <ReferenceLine
-              x={d50}
-              stroke="#b8641a"
-              strokeDasharray="4 3"
-              label={{ value: 'd₅₀', position: 'top', fill: '#b8641a', fontSize: 13.5 }}
-            />
-          )}
           <Line
             dataKey="inlet"
             type="monotone"
@@ -163,41 +143,8 @@ export default function EliminatorOutput({
             dot={false}
             isAnimationActive={false}
           />
-          <Scatter
-            data={points}
-            dataKey="ruiz"
-            fill="none"
-            stroke="#eb6834"
-            shape="circle"
-            isAnimationActive={false}
-          />
         </ComposedChart>
       </ResponsiveContainer>
-      <dl className="droplet-derived drift-flows">
-        <div>
-          <dt>Drift entering</dt>
-          <dd>{fmt(droplets.driftInlet, 3)} kg/s</dd>
-        </div>
-        <div>
-          <dt>Drift escaping ({fmt(100 * massEscaping, 1)} %)</dt>
-          <dd>{fmt(droplets.driftEscaping, 3)} kg/s</dd>
-        </div>
-        <div>
-          <dt>Drift captured ({fmt(100 * massCaptured, 1)} %)</dt>
-          <dd>{fmt(droplets.driftCaptured, 3)} kg/s</dd>
-        </div>
-        <div>
-          <dt>Cutoff diameter d₅₀</dt>
-          <dd>{cutoffFound ? `${fmt(d50, 1)} µm` : 'None (ε > 50 % at all sizes)'}</dd>
-        </div>
-      </dl>
-      <p className="card-note">
-        Each droplet size is partly captured, by ε(d) from the Ruiz et al.
-        (2019) fit for the selected eliminator. Escaping fraction = ∫(1 − ε) dF.
-        Drift (kg/s) = circulating water × inlet drift rate × that fraction;
-        the inlet drift rate is an assumption. Ruiz 2013 points are outlet
-        measurements from one tower.
-      </p>
     </section>
   )
 }

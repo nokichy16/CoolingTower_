@@ -5,9 +5,8 @@
  *   Kp = f(Re, geometry)
  *   Δp = Kp · ½ρv²
  *
- * Collection efficiency is evaluated by droplet diameter. The application
- * reports a theoretical d50 cutoff within the selected diameter range; it does
- * not convert that prediction into a circulating-water drift mass flow.
+ * Collection efficiency is evaluated by droplet diameter; the model integrates
+ * (1 − ε(d)) over the inlet droplet distribution.
  */
 
 export type EliminatorId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'

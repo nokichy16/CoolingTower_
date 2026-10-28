@@ -45,10 +45,6 @@ export function distributionParams(
   }
 }
 
-/** Size range searched for the 50 % cutoff, µm. */
-export const CUTOFF_SEARCH_MIN = 1
-export const CUTOFF_SEARCH_MAX = 1000
-
 export interface SolveIssue {
   code:
     | 'ruiz-pressure-extrapolation'
@@ -110,8 +106,6 @@ export interface TowerResults {
      */
     fanAirPower: number // kW
     equivalentArea: number // m², same flow area as the prescribed plume
-    captureCutoffDiameter: number // theoretical d50, µm (NaN if not found)
-    cutoffFound: boolean // false when ε stays above or below 50 % at all sizes
     massEscaping: number // ∫(1 − ε) dF, inlet mass fraction that escapes
     massCaptured: number // ∫ε dF
     split: EfficiencySplit // outlet curve and outlet D32
@@ -143,46 +137,6 @@ export function dryAirMassFlowFromVelocity(
   omega: number,
 ): number {
   return (rho * flowArea * velocity) / (1 + omega)
-}
-
-export function theoreticalCutoffDiameter(
-  eliminatorId: EliminatorId,
-  velocity: number,
-  tAir: number,
-  diameterMin: number,
-  diameterMax: number,
-  targetEfficiency = 0.5,
-): number {
-  const efficiencyAtMinimum = collectionEfficiencyAtDiameter(
-    eliminatorId,
-    velocity,
-    tAir,
-    diameterMin,
-  )
-  const efficiencyAtMaximum = collectionEfficiencyAtDiameter(
-    eliminatorId,
-    velocity,
-    tAir,
-    diameterMax,
-  )
-
-  if (efficiencyAtMinimum >= targetEfficiency) return diameterMin
-  if (efficiencyAtMaximum < targetEfficiency) return diameterMax
-
-  let low = diameterMin
-  let high = diameterMax
-  for (let iteration = 0; iteration < 60; iteration += 1) {
-    const midpoint = (low + high) / 2
-    const efficiency = collectionEfficiencyAtDiameter(
-      eliminatorId,
-      velocity,
-      tAir,
-      midpoint,
-    )
-    if (efficiency >= targetEfficiency) high = midpoint
-    else low = midpoint
-  }
-  return (low + high) / 2
 }
 
 export function velocityFromDryAirMassFlow(
@@ -226,30 +180,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     inputs.plumeTemperature,
     inputs.dropletDMed,
   )
-  const efficiencyAtSearchMin = collectionEfficiencyAtDiameter(
-    inputs.eliminatorId,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    CUTOFF_SEARCH_MIN,
-  )
-  const efficiencyAtSearchMax = collectionEfficiencyAtDiameter(
-    inputs.eliminatorId,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    CUTOFF_SEARCH_MAX,
-  )
-  const cutoffFound = efficiencyAtSearchMin < 0.5 && efficiencyAtSearchMax >= 0.5
-  const captureCutoffDiameter = cutoffFound
-    ? theoreticalCutoffDiameter(
-        inputs.eliminatorId,
-        evaluationVelocity,
-        inputs.plumeTemperature,
-        CUTOFF_SEARCH_MIN,
-        CUTOFF_SEARCH_MAX,
-      )
-    : Number.NaN
   // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
-  // d50 is reported for information only.
   const split = efficiencySplit(distribution, (d) =>
     collectionEfficiencyAtDiameter(
       inputs.eliminatorId,
@@ -265,15 +196,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const driftInlet =
     Math.max(0, inputs.circulatingWaterFlow) *
     (Math.max(0, inputs.inletDriftRate) / 100)
-  const collectionRangeIssues = cutoffFound
-    ? evaluateRuizEliminator(
-        inputs.eliminatorId,
-        rho4,
-        evaluationVelocity,
-        inputs.plumeTemperature,
-        captureCutoffDiameter,
-      ).collectionRangeIssues
-    : []
+  const collectionRangeIssues = eliminator.collectionRangeIssues
   const pressureDrop = velocityValid
     ? eliminator.pressureCoefficient *
       0.5 *
@@ -344,17 +267,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       )}. Pressure loss remains visible but is outside the paper-supported range.`,
     })
   }
-  if (!cutoffFound) {
-    issues.push({
-      code: 'ruiz-collection-extrapolation',
-      severity: 'warning',
-      title: 'No 50 % cutoff for this eliminator',
-      message:
-        efficiencyAtSearchMin >= 0.5
-          ? 'The Ruiz correlation predicts more than 50 % capture at every droplet size from 1 µm, so no d50 exists. Drift is still calculated from ε(d) at every size.'
-          : 'The Ruiz correlation predicts less than 50 % capture at every droplet size up to 1000 µm, so no d50 exists. Drift is still calculated from ε(d) at every size.',
-    })
-  }
   if (collectionRangeIssues.length > 0) {
     issues.push({
       code: 'ruiz-collection-extrapolation',
@@ -405,8 +317,6 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       pressureDrop,
       fanAirPower,
       equivalentArea,
-      captureCutoffDiameter,
-      cutoffFound,
       massEscaping,
       massCaptured,
       split,
@@ -439,7 +349,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   flowArea: 46.55,
   plumeVelocity: 3,
 
-  eliminatorId: 'A', // A has a d50 inside the fitted range at default conditions
+  eliminatorId: 'A',
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit

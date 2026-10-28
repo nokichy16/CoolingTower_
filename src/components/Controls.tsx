@@ -1,20 +1,11 @@
 import type { TowerInputs, TowerResults } from '../lib/model'
 import type { StageId } from '../lib/stages'
-import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
 import Field from './Field'
 import DropletDistribution from './DropletDistribution'
 import EliminatorOutput from './EliminatorOutput'
 import FanChart from './FanChart'
 import PsychrometricChart from './PsychrometricChart'
 
-const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
-  A: 'Vane · 50 mm gap · 150 mm height · 54.3° direction change',
-  B: 'Vane · 32 mm gap · 150 mm height · 89.4° direction change',
-  C: 'Vane · 25 mm gap · 150 mm height · 36.3° direction change',
-  D: 'Honeycomb · 15 mm hydraulic diameter · 165 mm height',
-  E: 'Wire mesh · 34.79 mm characteristic length · 165 mm height · 45° direction change',
-  F: 'Wire mesh · 34.79 mm characteristic length · 165 mm height · 135° direction change',
-}
 
 interface ControlsProps {
   inputs: TowerInputs
@@ -74,7 +65,6 @@ export default function Controls({
   const stage = STAGE_META[selectedStage]
   const group =
     STAGE_GROUPS.find((g) => g.stages.includes(selectedStage)) ?? STAGE_GROUPS[0]
-  const selectedEliminator = ELIMINATORS[inputs.eliminatorId]
   const set =
     (key: keyof TowerInputs) =>
     (value: number) =>
@@ -225,47 +215,16 @@ export default function Controls({
 
         {selectedStage === 'droplets' && (
           <>
-            <fieldset className="eliminator-picker">
-              <legend className="field-label">
-                Tested eliminator <span className="field-sym">A–F</span>
-              </legend>
-              <p className="eliminator-picker-note">
-                Select a design. The letters identify tested Ruiz
-                configurations, not performance rankings.
-              </p>
-              <div className="eliminator-picker-list" role="radiogroup">
-                {Object.values(ELIMINATORS).map((spec) => {
-                  const on = spec.id === selectedEliminator.id
-                  return (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      className={on ? 'is-selected' : ''}
-                      key={spec.id}
-                      onClick={() => onChange({ eliminatorId: spec.id as EliminatorId })}
-                    >
-                      <span className="picker-dot" aria-hidden="true" />
-                      <strong>{spec.id}</strong>
-                      <span>{ELIMINATOR_DESCRIPTIONS[spec.id]}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </fieldset>
-
             <EliminatorOutput inputs={inputs} droplets={droplets} />
-
           </>
         )}
 
         {selectedStage === 'fan' && (
           <>
-            <div className="no-stage-inputs">
-              No independent inputs. Velocity comes from stage 1 (inlet); the
-              eliminator comes from stage 2.
-            </div>
-            <FanChart r={r} />
+            <FanChart
+              r={r}
+              onSelect={(id) => onChange({ eliminatorId: id })}
+            />
           </>
         )}
 

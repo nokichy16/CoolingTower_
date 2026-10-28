@@ -87,12 +87,7 @@ export default function TowerGraphic({
       },
       droplets: {
         name: 'Drift eliminator',
-        reading: r.droplets.cutoffFound
-          ? `d50 ${metricReading(
-              byId.droplets.primary[0].value,
-              byId.droplets.primary[0].unit,
-            )}`
-          : 'No d50 cutoff',
+        reading: `Escaping ${(100 * r.droplets.massEscaping).toFixed(1)} %`,
         control: 'droplets',
         accent: byId.droplets.accent,
       },
