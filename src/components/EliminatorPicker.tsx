@@ -24,6 +24,7 @@ export default function EliminatorPicker({
   inputs: TowerInputs
   onSelect: (id: EliminatorId) => void
 }) {
+  const driftInlet = useMemo(() => solveTower(inputs).droplets.driftInlet, [inputs])
   const rows = useMemo(
     () =>
       (Object.keys(ELIMINATORS) as EliminatorId[]).map((id) => {
@@ -45,8 +46,9 @@ export default function EliminatorPicker({
         Tested eliminator A–F
       </h3>
       <p className="eliminator-picker-note">
-        Select a row. The letters identify tested Ruiz configurations, not
-        rankings. Values use the current inlet.
+        Drift entering: <strong>{sig(driftInlet, 3)} kg/s</strong> (same for
+        all). Select a row. Letters identify tested Ruiz configurations, not
+        rankings.
       </p>
       <table>
         <thead>
