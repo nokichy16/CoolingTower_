@@ -69,10 +69,6 @@ export default function FanTable({
           })}
         </tbody>
       </table>
-      <p className="card-note">
-        Click a row to select that eliminator. Drift escaping = ∫(1 − ε) dF with
-        the current inlet droplets.
-      </p>
     </section>
   )
 }

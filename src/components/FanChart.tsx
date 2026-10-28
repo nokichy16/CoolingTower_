@@ -171,8 +171,7 @@ export default function FanChart({
       <p className="card-note">
         Δp = Kp(Re)·½ρu² from Ruiz et al. (2019); P = A·u·Δp. Ideal air power
         for the eliminator only, no fan or motor efficiency. Ruiz tested
-        {` ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax}`} m/s. Click a
-        legend item to select that eliminator.
+        {` ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax}`} m/s.
       </p>
     </section>
   )
