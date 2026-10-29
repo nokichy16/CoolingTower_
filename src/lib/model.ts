@@ -31,6 +31,7 @@ import {
   spread,
   RUIZ_2013_RUN1_FIT,
   efficiencySplit,
+  paramsFromSauterMean,
   type DropletDistributionParams,
   type EfficiencySplit,
 } from './droplet-distribution.ts'
@@ -38,11 +39,11 @@ import {
 export function distributionParams(
   inputs: TowerInputs,
 ): DropletDistributionParams {
-  return {
-    dMinUm: inputs.dropletDMin,
-    dMedUm: inputs.dropletDMed,
-    dMaxUm: inputs.dropletDMax,
-  }
+  return paramsFromSauterMean(
+    inputs.dropletDMin,
+    inputs.dropletD32,
+    inputs.dropletDMax,
+  )
 }
 
 export interface SolveIssue {
@@ -71,7 +72,7 @@ export interface TowerInputs {
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
   dropletDMin: number // 1 % of mass is smaller, µm
-  dropletDMed: number // mass median, µm
+  dropletD32: number // Sauter mean diameter D32, µm
   dropletDMax: number // upper limit: no inlet droplets larger, µm
 
   // Vapour recovery
@@ -178,7 +179,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDMed,
+    distribution.dMedUm,
   )
   // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
   const split = efficiencySplit(distribution, (d) =>
@@ -354,7 +355,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
   dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
-  dropletDMed: RUIZ_2013_RUN1_FIT.dMedUm,
+  dropletD32: 30, // ≈ D32 of the one-log-normal fit to Ruiz (2013) run 1
   dropletDMax: RUIZ_2013_RUN1_FIT.dMaxUm,
 
   coolingBelowDewPoint: 10,

@@ -78,3 +78,14 @@ test('mass quantiles and Sauter mean are ordered and consistent', async () => {
   const d32 = sauterMeanDiameter(p)
   assert.ok(d32 > 0 && d32 < d50)
 })
+
+test('D32 input: truncated D32 matches and d_min stays the 1 % point', async () => {
+  const { paramsFromSauterMean, sauterMeanDiameter, spread, logNormalCumulative } =
+    await import('../src/lib/droplet-distribution.ts')
+  for (const [dMin, d32, dMax] of [[9.6, 30, 300], [5, 20, 100], [20, 60, 500]]) {
+    const p = paramsFromSauterMean(dMin, d32, dMax)
+    assert.ok(Math.abs(sauterMeanDiameter(p) - d32) < 0.01 * d32)
+    assert.ok(Math.abs(logNormalCumulative(dMin, p.dMedUm, spread(p)) - 0.01) < 1e-6)
+    assert.ok(p.dMedUm > d32)
+  }
+})

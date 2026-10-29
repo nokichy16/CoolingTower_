@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
-import { countHistogram } from '../lib/droplet-distribution'
+import { countHistogram, MAX_D32_TO_DMIN } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
@@ -84,28 +84,28 @@ export default function DropletDistribution({
             unit="µm"
             value={inputs.dropletDMin}
             min={1}
-            max={Math.max(1, inputs.dropletDMed - 1)}
+            max={Math.max(1, inputs.dropletD32 - 1)}
             step={0.5}
             digits={1}
             onChange={(value) => onChange({ dropletDMin: value })}
           />
           <Field
-            label="Mass median"
-            sym="d_med"
+            label="Sauter mean"
+            sym="D₃₂"
             unit="µm"
-            value={inputs.dropletDMed}
+            value={inputs.dropletD32}
             min={inputs.dropletDMin + 1}
-            max={200}
+            max={Math.min(200, Math.floor(inputs.dropletDMin * MAX_D32_TO_DMIN))}
             step={0.5}
             digits={1}
-            onChange={(value) => onChange({ dropletDMed: value })}
+            onChange={(value) => onChange({ dropletD32: value })}
           />
           <Field
             label="Largest droplets (100 %)"
             sym="d_max"
             unit="µm"
             value={inputs.dropletDMax}
-            min={Math.ceil(inputs.dropletDMed + 10)}
+            min={Math.ceil(p.dMedUm + 10)}
             max={1000}
             step={10}
             digits={0}
@@ -115,6 +115,10 @@ export default function DropletDistribution({
             <div>
               <dt>Spread σg</dt>
               <dd>{fmt(droplets.spread, 2)}</dd>
+            </div>
+            <div>
+              <dt>Mass median d_med</dt>
+              <dd>{fmt(p.dMedUm, 1)} µm</dd>
             </div>
           </dl>
         </div>
@@ -172,10 +176,9 @@ export default function DropletDistribution({
             </BarChart>
           </ResponsiveContainer>
           <p className="card-note">
-            One log-normal by mass, cut at d_max. Defaults: least-squares fit to
-            Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit, so
-            the inlet shape is an assumption. Fit error is up to about 6.5 %, and
-            the fit has less mass above 100 µm than Ruiz measured.
+            One log-normal by mass, cut at d_max, set by d_min, D₃₂ and d_max.
+            Defaults match a fit to Ruiz et al. (2013) run 1 (tower exit), so the
+            inlet shape is an assumption.
           </p>
         </div>
       </div>

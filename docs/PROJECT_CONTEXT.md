@@ -83,8 +83,12 @@ F(d)  = LN(d) / LN(d_max)        for d < d_max,  F = 1 above
 sg    = (d_med / d_min)^(1 / 2.3263)   (d_min = 1 % mass point)
 ```
 
-Defaults are a least-squares fit to Ruiz et al. (2013) Fig. 9(a), test run 1:
-d_med = 35 um, sg = 1.74 (d_min = 9.6 um), d_max = 300 um. Ruiz measured at
+Inputs are d_min (1 % mass point), the Sauter mean D32 and d_max. With
+s = ln sg (Hatch-Choate, mass-based log-normal): D32 = d_med * exp(-s^2/2) and
+d_min = d_med * exp(-2.3263 s), so s = 2.3263 - sqrt(2.3263^2 - 2 ln(D32/d_min)).
+The untruncated D32 target is corrected so the truncated D32 matches the input.
+Defaults (d_min 9.6, D32 30, d_max 300 um) reproduce the least-squares fit to
+Ruiz et al. (2013) Fig. 9(a), test run 1: d_med = 35 um, sg = 1.74. Ruiz measured at
 the tower exit (after the eliminator), so using this shape at the eliminator
 inlet is an assumption. Fit error is up to about 6.5 %, and the fit has less
 mass above 100 um than Ruiz measured. A two-mode fit was tried and removed.

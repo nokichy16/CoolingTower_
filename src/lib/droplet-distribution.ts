@@ -226,3 +226,35 @@ export function efficiencySplit(
     outletSauterMean: inverse > 0 ? escaping / inverse : Number.NaN,
   }
 }
+
+/** Largest D₃₂ / d_min ratio a log-normal with a 1 % point at d_min allows. */
+export const MAX_D32_TO_DMIN = Math.exp((Z99 * Z99) / 2) * 0.999
+
+/**
+ * Log-normal parameters from d_min (1 % mass point), the Sauter mean D₃₂ and
+ * d_max. With s = ln σg (Hatch–Choate, mass-based log-normal):
+ *   D₃₂ = d_med · exp(−s²/2),   d_min = d_med · exp(−z99·s)
+ *   → s²/2 − z99·s + ln(D₃₂/d_min) = 0,  s = z99 − √(z99² − 2·ln(D₃₂/d_min))
+ * The cut at d_max changes D₃₂ slightly, so the untruncated target is
+ * corrected a few times until the truncated D₃₂ matches the input.
+ */
+export function paramsFromSauterMean(
+  dMinUm: number,
+  d32Um: number,
+  dMaxUm: number,
+): DropletDistributionParams {
+  const solve = (target: number): DropletDistributionParams => {
+    const ratio = Math.min(Math.max(target / dMinUm, 1.0001), MAX_D32_TO_DMIN)
+    const s = Z99 - Math.sqrt(Z99 * Z99 - 2 * Math.log(ratio))
+    return { dMinUm, dMedUm: dMinUm * ratio * Math.exp((s * s) / 2), dMaxUm }
+  }
+  let target = d32Um
+  let p = solve(target)
+  for (let i = 0; i < 8; i += 1) {
+    const actual = sauterMeanDiameter(p)
+    if (!(actual > 0) || Math.abs(actual - d32Um) < 1e-4 * d32Um) break
+    target *= d32Um / actual
+    p = solve(target)
+  }
+  return p
+}
