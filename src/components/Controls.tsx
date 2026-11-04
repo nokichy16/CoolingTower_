@@ -228,11 +228,7 @@ export default function Controls({
 
         {selectedStage === 'fan' && (
           <>
-            <FanChart
-              r={r}
-              inputs={inputs}
-              onSelect={(id) => onChange({ eliminatorId: id })}
-            />
+            <FanChart r={r} inputs={inputs} />
           </>
         )}
 

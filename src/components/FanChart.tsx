@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -35,28 +36,31 @@ export const ELIMINATOR_COLORS: Record<SelectionId, string> = {
 /**
  * Ideal fan air power against face velocity for all Ruiz eliminators A–F,
  * P = A·u·Δp with Δp = Kp(Re)·½ρu², at the current plume state. The selected
- * eliminator is drawn bold with a dot at the current velocity. Click a legend
- * item to select that eliminator.
+ * eliminator is drawn bold. The legend filters the view: All, or one line
+ * with its dot at the current velocity.
  */
 export default function FanChart({
   r,
   inputs,
-  onSelect,
 }: {
   r: TowerResults
   inputs: TowerInputs
-  onSelect?: (id: SelectionId) => void
 }) {
+  const [view, setView] = useState<'all' | SelectionId>('all')
   const specs = Object.fromEntries(
     IDS.map((id) => [id, resolveSpec(id, inputs.customEliminator)]),
   ) as Record<SelectionId, ReturnType<typeof resolveSpec>>
   const { rho, t, flowArea, velocity } = r.plume
-  const selected = r.eliminator.spec.id
+  const selected = r.eliminator.spec.id as SelectionId
+  const shown = view === 'all' ? IDS : [view]
+  const dotId = view === 'all' ? selected : view
   // Axis covers 0.5–6 m/s, extended to include the current velocity.
   const rawMax = Math.max(6, velocity * 1.15)
   const tickStep = rawMax <= 6 ? 1 : rawMax <= 15 ? 2 : rawMax <= 40 ? 5 : 10
   const uMax = Math.ceil(rawMax / tickStep) * tickStep
   const xTicks = [0.5, ...Array.from({ length: uMax / tickStep }, (_, i) => (i + 1) * tickStep)]
+  const dotKp = evaluateRuizEliminator(specs[dotId], rho, velocity, t, 50).pressureCoefficient
+  const dotPower = (flowArea * velocity * dotKp * 0.5 * rho * velocity * velocity) / 1000
   const steps = 120
   const data = Array.from({ length: steps + 1 }, (_, i) => {
     const u = 0.5 + (i * (uMax - 0.5)) / steps
@@ -71,17 +75,26 @@ export default function FanChart({
   return (
     <section className="stage-graph" aria-labelledby="fan-chart-title">
       <h3 className="input-group-title" id="fan-chart-title">
-        Ideal fan air power, eliminators A–F and custom
+        Ideal fan air power{view === 'all' ? ', eliminators A–F and custom' : ` · ${selectionName(view)}`}
       </h3>
-      <div className="chart-legend-row" role="radiogroup" aria-label="Eliminator">
+      <div className="chart-legend-row" role="radiogroup" aria-label="Show">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={view === 'all'}
+          className={`legend-pick${view === 'all' ? ' is-selected' : ''}`}
+          onClick={() => setView('all')}
+        >
+          All
+        </button>
         {IDS.map((id) => (
           <button
             type="button"
             role="radio"
-            aria-checked={id === selected}
+            aria-checked={view === id}
             key={id}
-            className={`legend-pick${id === selected ? ' is-selected' : ''}`}
-            onClick={() => onSelect?.(id)}
+            className={`legend-pick${view === id ? ' is-selected' : ''}`}
+            onClick={() => setView(id)}
           >
             <i style={{ background: ELIMINATOR_COLORS[id] }} />
             {selectionName(id)} · {specs[id].type}
@@ -133,14 +146,14 @@ export default function FanChart({
             labelFormatter={(u) => `u = ${fmt(Number(u), 1)} m/s`}
             itemSorter={(item) => -(item.value as number)}
           />
-          {IDS.map((id) => (
+          {shown.map((id) => (
             <Line
               key={id}
               dataKey={id}
               type="monotone"
               stroke={ELIMINATOR_COLORS[id]}
-              strokeWidth={id === selected ? 3.2 : 2}
-              strokeOpacity={id === selected ? 1 : 0.75}
+              strokeWidth={id === selected || view !== 'all' ? 3.2 : 2}
+              strokeOpacity={id === selected || view !== 'all' ? 1 : 0.75}
               dot={false}
               isAnimationActive={false}
             />
@@ -151,9 +164,9 @@ export default function FanChart({
           {velocity >= 0.5 && (
             <ReferenceDot
               x={velocity}
-              y={r.droplets.fanAirPower}
+              y={dotPower}
               r={5}
-              fill={ELIMINATOR_COLORS[selected as SelectionId]}
+              fill={ELIMINATOR_COLORS[dotId]}
               stroke="#fff"
               strokeWidth={2}
             />
