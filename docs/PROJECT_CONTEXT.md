@@ -75,19 +75,23 @@ Liquid drift entering the eliminator (inputs, both assumptions):
 m_drift,in = m_circ * D_in / 100
 ```
 
-Inlet droplet sizes are one log-normal by mass, truncated at d_max:
+Inlet droplet sizes are one log-normal by mass, truncated at d_max. Inputs
+are the mass-weighted mean diameter E and the standard deviation sigma of
+ln d (user decision, Nov 2026):
 
 ```text
-LN(d; d_med, sg) = 0.5 * [1 + erf( ln(d/d_med) / (sqrt(2) * ln sg) )]
-F(d)  = LN(d) / LN(d_max)        for d < d_max,  F = 1 above
-sg    = (d_med / d_min)^(1 / 2.3263)   (d_min = 1 % mass point)
+f(d)  = 1/(d sigma sqrt(2 pi)) * exp(-(ln d - mu)^2 / (2 sigma^2))
+F(d)  = 0.5 * [1 + erf( (ln d - mu) / (sqrt(2) sigma) )] / F_raw(d_max)
+mu    = ln E - sigma^2 / 2          (E = exp(mu + sigma^2/2))
+d_med = e^mu,  d_min (1 % point) = e^(mu - 2.3263 sigma)
 ```
 
-Defaults are a least-squares fit to Ruiz et al. (2013) Fig. 9(a), test run 1:
-d_med = 35 um, sg = 1.74 (d_min = 9.6 um), d_max = 300 um. Ruiz measured at
-the tower exit (after the eliminator), so using this shape at the eliminator
-inlet is an assumption. Fit error is up to about 6.5 %, and the fit has less
-mass above 100 um than Ruiz measured. A two-mode fit was tried and removed.
+The untruncated mean is corrected so the truncated mean matches E. Defaults
+(E = 40.8 um, sigma = 0.555, d_max = 300 um) reproduce the least-squares fit
+to Ruiz et al. (2013) Fig. 9(a), test run 1 (d_med = 35 um). Ruiz measured at
+the tower exit, so using this shape at the eliminator inlet is an assumption.
+Run 1 is asymmetric in ln d (sigma 0.36 below the median, 0.67 above), so one
+sigma is a compromise; fit error is up to about 6.5 %.
 
 Capture uses the Ruiz et al. (2019) single-size fits at every droplet size:
 
@@ -104,6 +108,14 @@ The integral is evaluated over 600 equal size classes with eps at each class
 midpoint. The outlet curve is the running integral divided by eta_esc. The
 d50 cutoff and the Ruiz 2013 comparison points were removed from the app
 (Oct 2026); neither is used in the drift result.
+
+Custom eliminator (Nov 2026): a seventh option uses the same Ruiz (2019)
+correlations with user geometry, limited to what the correlations contain:
+vane gap b and height h (Kp and eps depend on b/h); honeycomb cell size
+(Re and St only; the shape constants come from the single 15 mm test);
+wire mesh characteristic length and turn angle 45 or 135 degrees only (eps
+was fitted only at those angles, so no interpolation). Out-of-range warnings
+apply as for A-F.
 
 Approved assumptions and limits (user decisions, Oct 2026):
 

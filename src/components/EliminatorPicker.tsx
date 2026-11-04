@@ -1,6 +1,13 @@
 import { useMemo } from 'react'
 import { solveTower, type TowerInputs } from '../lib/model'
-import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
+import {
+  describeSpec,
+  resolveSpec,
+  SELECTIONS,
+  selectionName,
+  type EliminatorId,
+  type SelectionId,
+} from '../lib/eliminators'
 import { fmt, sig } from '../lib/format'
 
 export const ELIMINATOR_DESCRIPTIONS: Record<EliminatorId, string> = {
@@ -22,19 +29,18 @@ export default function EliminatorPicker({
   onSelect,
 }: {
   inputs: TowerInputs
-  onSelect: (id: EliminatorId) => void
+  onSelect: (id: SelectionId) => void
 }) {
   const driftInlet = useMemo(() => solveTower(inputs).droplets.driftInlet, [inputs])
   const rows = useMemo(
     () =>
-      (Object.keys(ELIMINATORS) as EliminatorId[]).map((id) => {
+      SELECTIONS.map((id) => {
         const d = solveTower({ ...inputs, eliminatorId: id }).droplets
         return {
           id,
           escaping: 100 * d.massEscaping,
           driftEscaping: d.driftEscaping,
           driftCaptured: d.driftCaptured,
-          d32: d.split.outletSauterMean,
         }
       }),
     [inputs],
@@ -43,7 +49,7 @@ export default function EliminatorPicker({
   return (
     <section className="eliminator-table" aria-labelledby="eliminator-table-title">
       <h3 className="input-group-title" id="eliminator-table-title">
-        Tested eliminator A–F
+        Eliminator A–F or custom
       </h3>
       <p className="eliminator-picker-note">
         Drift entering: <strong>{sig(driftInlet, 3)} kg/s</strong> (same for
@@ -57,7 +63,6 @@ export default function EliminatorPicker({
             <th scope="col" className="num">Escaping (%)</th>
             <th scope="col" className="num">Drift out (kg/s)</th>
             <th scope="col" className="num">Captured (kg/s)</th>
-            <th scope="col" className="num">Outlet D₃₂ (µm)</th>
           </tr>
         </thead>
         <tbody role="radiogroup" aria-label="Eliminator">
@@ -83,10 +88,12 @@ export default function EliminatorPicker({
                   <span className="picker-dot" aria-hidden="true" />
                   <span className="elim-name">
                     <strong>
-                      {row.id} · {ELIMINATORS[row.id].type}
+                      {selectionName(row.id)} · {resolveSpec(row.id, inputs.customEliminator).type}
                     </strong>
                     <small>
-                      {ELIMINATOR_DESCRIPTIONS[row.id].split(' · ').slice(1).join(' · ')}
+                      {row.id === 'custom'
+                        ? describeSpec(resolveSpec('custom', inputs.customEliminator))
+                        : ELIMINATOR_DESCRIPTIONS[row.id as EliminatorId].split(' · ').slice(1).join(' · ')}
                     </small>
                   </span>
                   </div>
@@ -94,7 +101,6 @@ export default function EliminatorPicker({
                 <td className="num">{fmt(row.escaping, 1)}</td>
                 <td className="num">{sig(row.driftEscaping, 3)}</td>
                 <td className="num">{sig(row.driftCaptured, 3)}</td>
-                <td className="num">{fmt(row.d32, 1)}</td>
               </tr>
             )
           })}

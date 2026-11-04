@@ -8,7 +8,11 @@ import {
   YAxis,
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
-import { countHistogram } from '../lib/droplet-distribution'
+import {
+  countHistogram,
+  paramsFromMeanSigma,
+  sigmaFromMinimum,
+} from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
@@ -79,33 +83,50 @@ export default function DropletDistribution({
             </div>
           </dl>
           <Field
+            label="Mean diameter (by mass)"
+            sym="E"
+            unit="µm"
+            value={inputs.dropletMean}
+            min={2}
+            max={300}
+            step={0.5}
+            digits={1}
+            onChange={(value) => onChange({ dropletMean: value })}
+          />
+          <Field
+            label="Standard deviation of ln d"
+            sym="σ"
+            unit=""
+            value={inputs.dropletSigma}
+            min={0.05}
+            max={1.5}
+            step={0.005}
+            digits={3}
+            onChange={(value) => onChange({ dropletSigma: value })}
+          />
+          <Field
             label="Smallest droplets (1 %)"
             sym="d_min"
             unit="µm"
-            value={inputs.dropletDMin}
-            min={1}
-            max={Math.max(1, inputs.dropletDMed - 1)}
-            step={0.5}
+            value={Number(p.dMinUm.toFixed(1))}
+            min={Math.max(0.5, Number(paramsFromMeanSigma(inputs.dropletMean, 1.5, inputs.dropletDMax).dMinUm.toFixed(1)))}
+            max={Number(paramsFromMeanSigma(inputs.dropletMean, 0.05, inputs.dropletDMax).dMinUm.toFixed(1))}
+            step={0.1}
             digits={1}
-            onChange={(value) => onChange({ dropletDMin: value })}
-          />
-          <Field
-            label="Mass median"
-            sym="d_med"
-            unit="µm"
-            value={inputs.dropletDMed}
-            min={inputs.dropletDMin + 1}
-            max={200}
-            step={0.5}
-            digits={1}
-            onChange={(value) => onChange({ dropletDMed: value })}
+            onChange={(value) =>
+              onChange({
+                dropletSigma: Number(
+                  sigmaFromMinimum(value, inputs.dropletMean, inputs.dropletDMax).toFixed(4),
+                ),
+              })
+            }
           />
           <Field
             label="Largest droplets (100 %)"
             sym="d_max"
             unit="µm"
             value={inputs.dropletDMax}
-            min={Math.ceil(inputs.dropletDMed + 10)}
+            min={Math.ceil(p.dMedUm + 10)}
             max={1000}
             step={10}
             digits={0}
@@ -113,9 +134,10 @@ export default function DropletDistribution({
           />
           <dl className="droplet-derived">
             <div>
-              <dt>Spread σg</dt>
-              <dd>{fmt(droplets.spread, 2)}</dd>
+              <dt>Median d_med = e^μ</dt>
+              <dd>{fmt(p.dMedUm, 1)} µm</dd>
             </div>
+
           </dl>
         </div>
 
@@ -171,12 +193,6 @@ export default function DropletDistribution({
               <Bar dataKey="count" fill="#137f70" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
-          <p className="card-note">
-            One log-normal by mass, cut at d_max. Defaults: least-squares fit to
-            Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit, so
-            the inlet shape is an assumption. Fit error is up to about 6.5 %, and
-            the fit has less mass above 100 µm than Ruiz measured.
-          </p>
         </div>
       </div>
     </section>

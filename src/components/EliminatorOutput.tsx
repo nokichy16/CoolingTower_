@@ -9,7 +9,7 @@ import {
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import { dropletCumulative } from '../lib/droplet-distribution'
-import { collectionEfficiencyAtDiameter } from '../lib/eliminators'
+import { collectionEfficiencyAtDiameter, resolveSpec } from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
@@ -41,7 +41,7 @@ export default function EliminatorOutput({
         eps:
           100 *
           collectionEfficiencyAtDiameter(
-            inputs.eliminatorId,
+            resolveSpec(inputs.eliminatorId, inputs.customEliminator),
             Math.max(inputs.plumeVelocity, 1e-6),
             inputs.plumeTemperature,
             d,

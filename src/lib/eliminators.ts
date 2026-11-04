@@ -10,10 +10,12 @@
  */
 
 export type EliminatorId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
+/** A tested Ruiz eliminator, or a custom geometry using the same correlations. */
+export type SelectionId = EliminatorId | 'custom'
 export type EliminatorType = 'vane' | 'honeycomb' | 'wire-mesh'
 
 export interface EliminatorSpec {
-  id: EliminatorId
+  id: SelectionId
   type: EliminatorType
   characteristicLength: number // b for vanes, hydraulic diameter otherwise (m)
   height: number // L (m)
@@ -86,6 +88,71 @@ export const ELIMINATORS: Record<EliminatorId, EliminatorSpec> = {
   },
 }
 
+/**
+ * Custom eliminator geometry. Only parameters that appear in the Ruiz (2019)
+ * correlations can be changed:
+ * - vane: gap b and height h (Kp and ε both depend on b/h);
+ * - honeycomb: cell (hydraulic) diameter, via Re and St only;
+ * - wire mesh: characteristic length, and turn angle 45° or 135° (ε was
+ *   fitted only at those two angles, so no interpolation).
+ */
+export interface CustomEliminator {
+  type: EliminatorType
+  vaneGapMm: number
+  vaneHeightMm: number
+  cellMm: number
+  meshLengthMm: number
+  meshAngleDeg: 45 | 135
+}
+
+export const DEFAULT_CUSTOM_ELIMINATOR: CustomEliminator = {
+  type: 'vane',
+  vaneGapMm: 40,
+  vaneHeightMm: 150,
+  cellMm: 15,
+  meshLengthMm: 34.79,
+  meshAngleDeg: 45,
+}
+
+export function customSpec(c: CustomEliminator): EliminatorSpec {
+  if (c.type === 'vane') {
+    return {
+      id: 'custom',
+      type: 'vane',
+      characteristicLength: c.vaneGapMm / 1000,
+      height: c.vaneHeightMm / 1000,
+      theta: Math.PI / 3,
+      measuredPressureCoefficient: Number.NaN,
+    }
+  }
+  if (c.type === 'honeycomb') {
+    return {
+      id: 'custom',
+      type: 'honeycomb',
+      characteristicLength: c.cellMm / 1000,
+      height: 0.165,
+      theta: Math.PI,
+      measuredPressureCoefficient: Number.NaN,
+    }
+  }
+  return {
+    id: 'custom',
+    type: 'wire-mesh',
+    characteristicLength: c.meshLengthMm / 1000,
+    height: 0.165,
+    theta: (c.meshAngleDeg * Math.PI) / 180,
+    measuredPressureCoefficient: Number.NaN,
+  }
+}
+
+export function resolveSpec(
+  id: SelectionId | EliminatorSpec,
+  custom: CustomEliminator = DEFAULT_CUSTOM_ELIMINATOR,
+): EliminatorSpec {
+  if (typeof id !== 'string') return id
+  return id === 'custom' ? customSpec(custom) : ELIMINATORS[id]
+}
+
 export interface RuizEliminatorResult {
   spec: EliminatorSpec
   velocity: number
@@ -130,8 +197,10 @@ export function collectionEfficiency(
   stokes: number,
 ): number {
   if (spec.type === 'wire-mesh') {
-    const alpha = spec.id === 'E' ? 0.113 : 0.718
-    const beta = spec.id === 'E' ? -3.96 : -6.02
+    // Fitted separately for θ = 45° (E) and 135° (F); no interpolation.
+    const small = spec.theta <= Math.PI / 2
+    const alpha = small ? 0.113 : 0.718
+    const beta = small ? -3.96 : -6.02
     return 1 - alpha * Math.exp(beta * stokes)
   }
 
@@ -162,12 +231,12 @@ export function stokesNumber(
 }
 
 export function collectionEfficiencyAtDiameter(
-  id: EliminatorId,
+  id: SelectionId | EliminatorSpec,
   velocity: number,
   tAir: number,
   dropletDiameterUm: number,
 ): number {
-  const spec = ELIMINATORS[id]
+  const spec = resolveSpec(id)
   const dynamicViscosity = airDynamicViscosity(tAir)
   const stokes = stokesNumber(
     spec,
@@ -179,13 +248,13 @@ export function collectionEfficiencyAtDiameter(
 }
 
 export function evaluateRuizEliminator(
-  id: EliminatorId,
+  id: SelectionId | EliminatorSpec,
   rhoAir: number,
   velocity: number,
   tAir: number,
   dropletDiameterUm: number,
 ): RuizEliminatorResult {
-  const spec = ELIMINATORS[id]
+  const spec = resolveSpec(id)
   const dynamicViscosity = airDynamicViscosity(tAir)
   const reynolds =
     (rhoAir * velocity * spec.characteristicLength) / dynamicViscosity
@@ -239,8 +308,8 @@ export function evaluateRuizEliminator(
     if (
       outside(
         pitchRatio,
-        RUIZ_LIMITS.pitchRatioMin,
-        RUIZ_LIMITS.pitchRatioMax,
+        RUIZ_LIMITS.pitchRatioMin - 1e-9,
+        RUIZ_LIMITS.pitchRatioMax + 1e-9,
       )
     ) {
       const issue = `b/L ${pitchRatio.toFixed(3)} is outside 1/6–1/3`
@@ -257,6 +326,12 @@ export function evaluateRuizEliminator(
     )
   }
 
+  if (spec.type === 'honeycomb' && Math.abs(spec.characteristicLength - 0.015) > 1e-6) {
+    const issue = `honeycomb cell ${(spec.characteristicLength * 1000).toFixed(1)} mm differs from the one tested design (15 mm)`
+    pressureRangeIssues.push(issue)
+    collectionRangeIssues.push(issue)
+  }
+
   return {
     spec,
     velocity,
@@ -270,4 +345,20 @@ export function evaluateRuizEliminator(
     pressureSupported: pressureRangeIssues.length === 0,
     collectionSupported: collectionRangeIssues.length === 0,
   }
+}
+
+/** All selectable eliminators: the six tested designs plus the custom one. */
+export const SELECTIONS: SelectionId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'custom']
+
+export function selectionName(id: SelectionId): string {
+  return id === 'custom' ? 'Custom' : id
+}
+
+export function describeSpec(spec: EliminatorSpec): string {
+  const mm = (m: number) => `${Number((m * 1000).toFixed(2))} mm`
+  if (spec.type === 'vane') {
+    return `${mm(spec.characteristicLength)} gap · ${mm(spec.height)} height · b/h ${(spec.characteristicLength / spec.height).toFixed(3)}`
+  }
+  if (spec.type === 'honeycomb') return `${mm(spec.characteristicLength)} hydraulic diameter`
+  return `${mm(spec.characteristicLength)} characteristic length · ${Math.round((spec.theta * 180) / Math.PI)}° turn`
 }

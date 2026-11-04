@@ -4,6 +4,7 @@ import Field from './Field'
 import DropletDistribution from './DropletDistribution'
 import EliminatorOutput from './EliminatorOutput'
 import FanChart from './FanChart'
+import CustomEliminatorEditor from './CustomEliminatorEditor'
 import PsychrometricChart from './PsychrometricChart'
 
 
@@ -215,16 +216,19 @@ export default function Controls({
 
         {selectedStage === 'droplets' && (
           <>
+            {inputs.eliminatorId === 'custom' && (
+              <CustomEliminatorEditor
+                value={inputs.customEliminator}
+                onChange={(next) => onChange({ customEliminator: next })}
+              />
+            )}
             <EliminatorOutput inputs={inputs} droplets={droplets} />
           </>
         )}
 
         {selectedStage === 'fan' && (
           <>
-            <FanChart
-              r={r}
-              onSelect={(id) => onChange({ eliminatorId: id })}
-            />
+            <FanChart r={r} inputs={inputs} />
           </>
         )}
 

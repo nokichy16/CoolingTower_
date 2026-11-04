@@ -78,3 +78,23 @@ test('mass quantiles and Sauter mean are ordered and consistent', async () => {
   const d32 = sauterMeanDiameter(p)
   assert.ok(d32 > 0 && d32 < d50)
 })
+
+test('mean and σ input: truncated mass mean matches and σ is kept', async () => {
+  const { paramsFromMeanSigma, massMeanDiameter, spread } =
+    await import('../src/lib/droplet-distribution.ts')
+  for (const [mean, sigma, dMax] of [[40.8, 0.555, 300], [20, 0.3, 100], [80, 0.8, 600]]) {
+    const p = paramsFromMeanSigma(mean, sigma, dMax)
+    assert.ok(Math.abs(massMeanDiameter(p) - mean) < 0.01 * mean)
+    assert.ok(Math.abs(Math.log(spread(p)) - sigma) < 1e-9)
+    assert.ok(p.dMedUm < mean)
+  }
+})
+
+test('d_min input gives back the σ that produced it', async () => {
+  const { paramsFromMeanSigma, sigmaFromMinimum } =
+    await import('../src/lib/droplet-distribution.ts')
+  for (const sigma of [0.2, 0.555, 0.9]) {
+    const p = paramsFromMeanSigma(40.8, sigma, 300)
+    assert.ok(Math.abs(sigmaFromMinimum(p.dMinUm, 40.8, 300) - sigma) < 1e-4)
+  }
+})

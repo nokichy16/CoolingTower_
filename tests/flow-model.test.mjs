@@ -155,3 +155,28 @@ test('invalid area, velocity, or cycles are reported without negative airflow', 
     )
   }
 })
+
+test('custom eliminator with a tested geometry reproduces that design', () => {
+  const cases = [
+    ['A', { type: 'vane', vaneGapMm: 50, vaneHeightMm: 150 }],
+    ['D', { type: 'honeycomb', cellMm: 15 }],
+    ['F', { type: 'wire-mesh', meshLengthMm: 34.79, meshAngleDeg: 135 }],
+  ]
+  for (const [id, geometry] of cases) {
+    const tested = solveTower({ ...DEFAULT_INPUTS, eliminatorId: id })
+    const custom = solveTower({
+      ...DEFAULT_INPUTS,
+      eliminatorId: 'custom',
+      customEliminator: { ...DEFAULT_INPUTS.customEliminator, ...geometry },
+    })
+    closeTo(custom.droplets.pressureDrop, tested.droplets.pressureDrop, 1e-9)
+    closeTo(custom.droplets.massEscaping, tested.droplets.massEscaping, 1e-9)
+  }
+})
+
+test('tested vanes A-C are inside the Ruiz b/h range (no rounding warning)', () => {
+  for (const id of ['A', 'B', 'C']) {
+    const r = solveTower({ ...DEFAULT_INPUTS, eliminatorId: id })
+    assert.ok(!r.eliminator.pressureRangeIssues.some((t) => t.includes('b/L')))
+  }
+})

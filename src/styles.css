@@ -1831,3 +1831,8 @@ input[type='range']::-moz-range-thumb {
 .stage-input-panel > .eliminator-output:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .chart-legend-row i.is-line { width: 14px; height: 0; border-radius: 0; border-top: 3px solid; background: transparent; vertical-align: 3px; }
 .chart-legend-row i.is-dash.is-dotted { border-top-style: dotted; }
+
+.custom-eliminator { margin-bottom: 4px; }
+.custom-eliminator .custom-type { padding-left: 0; border-left: 0; margin: 0 0 10px; }
+.custom-eliminator .custom-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 22px; }
+.custom-eliminator .field .stage-subtabs { padding-left: 0; border-left: 0; margin: 6px 0 0; }
