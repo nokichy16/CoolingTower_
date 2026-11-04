@@ -197,11 +197,6 @@ export default function DropletDistribution({
               <Bar dataKey="count" fill="#137f70" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
-          <p className="card-note">
-            Log-normal by mass, f(d) = 1/(dσ√2π)·exp(−(ln d − μ)²/2σ²), with
-            μ = ln E − σ²/2, cut at d_max. Defaults match a fit to Ruiz et al.
-            (2013) run 1 (tower exit), so the inlet shape is an assumption.
-          </p>
         </div>
       </div>
     </section>
