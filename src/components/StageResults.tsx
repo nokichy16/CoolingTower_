@@ -86,7 +86,7 @@ export default function StageResults({
         { label: 'Drift entering eliminator', formula: 'ṁ_drift,in = ṁ_circ·D_in / 100', value: sig(d.driftInlet, 3), unit: 'kg/s' },
         { label: 'Log mean μ', formula: 'μ = ln E − σ²/2  (corrected for cut at d_max)', value: fmt(Math.log(p.dMedUm), 3), unit: '' },
         { label: 'Median d_med', formula: 'd_med = e^μ', value: fmt(p.dMedUm, 1), unit: 'µm' },
-        { label: 'Smallest d_min (1 %)', formula: 'd_min = e^(μ − 2.326σ)', value: fmt(p.dMinUm, 1), unit: 'µm' },
+        { label: 'Smallest d_min (1 %), linked', formula: 'd_min = e^(μ − 2.326σ)', value: fmt(p.dMinUm, 1), unit: 'µm' },
         { label: 'Inlet d₁₀ (mass)', formula: 'F(d₁₀) = 0.10', value: fmt(massQuantile(0.1, p), 1), unit: 'µm' },
         { label: 'Inlet mass median', formula: 'F(d) = 0.50', value: fmt(massQuantile(0.5, p), 1), unit: 'µm' },
         { label: 'Inlet d₉₀ (mass)', formula: 'F(d₉₀) = 0.90', value: fmt(massQuantile(0.9, p), 1), unit: 'µm' },

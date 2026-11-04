@@ -270,3 +270,26 @@ export function paramsFromMeanSigma(
   }
   return p
 }
+
+/**
+ * σ that puts the 1 % mass point at d_min for a given mean E and d_max
+ * (inverse of paramsFromMeanSigma). Untruncated, this is the positive root of
+ * σ²/2 + 2.326σ + ln(d_min/E) = 0; bisection includes the d_max correction.
+ */
+export function sigmaFromMinimum(
+  dMinUm: number,
+  meanUm: number,
+  dMaxUm: number,
+): number {
+  let lo = 0.01
+  let hi = 1.5
+  const dMinAt = (s: number) => paramsFromMeanSigma(meanUm, s, dMaxUm).dMinUm
+  if (dMinUm >= dMinAt(lo)) return lo
+  if (dMinUm <= dMinAt(hi)) return hi
+  for (let i = 0; i < 40; i += 1) {
+    const mid = (lo + hi) / 2
+    if (dMinAt(mid) > dMinUm) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}

@@ -8,7 +8,12 @@ import {
   YAxis,
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
-import { countHistogram, sauterMeanDiameter } from '../lib/droplet-distribution'
+import {
+  countHistogram,
+  paramsFromMeanSigma,
+  sauterMeanDiameter,
+  sigmaFromMinimum,
+} from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
 
@@ -101,6 +106,23 @@ export default function DropletDistribution({
             onChange={(value) => onChange({ dropletSigma: value })}
           />
           <Field
+            label="Smallest droplets (1 %)"
+            sym="d_min"
+            unit="µm"
+            value={Number(p.dMinUm.toFixed(1))}
+            min={Math.max(0.5, Number(paramsFromMeanSigma(inputs.dropletMean, 1.5, inputs.dropletDMax).dMinUm.toFixed(1)))}
+            max={Number(paramsFromMeanSigma(inputs.dropletMean, 0.05, inputs.dropletDMax).dMinUm.toFixed(1))}
+            step={0.1}
+            digits={1}
+            onChange={(value) =>
+              onChange({
+                dropletSigma: Number(
+                  sigmaFromMinimum(value, inputs.dropletMean, inputs.dropletDMax).toFixed(4),
+                ),
+              })
+            }
+          />
+          <Field
             label="Largest droplets (100 %)"
             sym="d_max"
             unit="µm"
@@ -115,10 +137,6 @@ export default function DropletDistribution({
             <div>
               <dt>Median d_med = e^μ</dt>
               <dd>{fmt(p.dMedUm, 1)} µm</dd>
-            </div>
-            <div>
-              <dt>Smallest (1 %) d_min</dt>
-              <dd>{fmt(p.dMinUm, 1)} µm</dd>
             </div>
             <div>
               <dt>Sauter mean D₃₂</dt>

@@ -89,3 +89,12 @@ test('mean and σ input: truncated mass mean matches and σ is kept', async () =
     assert.ok(p.dMedUm < mean)
   }
 })
+
+test('d_min input gives back the σ that produced it', async () => {
+  const { paramsFromMeanSigma, sigmaFromMinimum } =
+    await import('../src/lib/droplet-distribution.ts')
+  for (const sigma of [0.2, 0.555, 0.9]) {
+    const p = paramsFromMeanSigma(40.8, sigma, 300)
+    assert.ok(Math.abs(sigmaFromMinimum(p.dMinUm, 40.8, 300) - sigma) < 1e-4)
+  }
+})
