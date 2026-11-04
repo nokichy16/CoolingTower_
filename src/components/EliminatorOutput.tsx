@@ -1,4 +1,5 @@
 import {
+  Bar,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -9,8 +10,7 @@ import {
 } from 'recharts'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import { dropletCumulative } from '../lib/droplet-distribution'
-import { collectionEfficiencyAtDiameter, resolveSpec } from '../lib/eliminators'
-import { fmt } from '../lib/format'
+import { fmt, sig } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
 interface EliminatorOutputProps {
@@ -18,36 +18,42 @@ interface EliminatorOutputProps {
   droplets: TowerResults['droplets']
 }
 
+const BIN_UM = 5
+
 /**
- * Drift eliminator output (graph 2): cumulative mass of the inlet droplets
- * and of the droplets that escape, F_out(d) = ∫₀^d (1 − ε) dF / ∫(1 − ε) dF,
- * in the style of Ruiz et al. (2013) Fig. 9, plus the capture efficiency
- * ε(d).
+ * Drift eliminator output: relative number of droplets per 5 µm size class
+ * entering (light) and escaping (solid) the eliminator, with the capture
+ * efficiency ε(d) on the right axis.
+ *   escaping mass in a class = (1 − ε(d_mid)) · inlet mass in the class
+ *   count ∝ mass / d_mid³, scaled so the inlet peak is 1
  */
 export default function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
   const p = distributionParams(inputs)
-  const { split } = droplets
-  const curve = split.diameters
-    .filter((_, i) => i % 2 === 1)
-    .map((d) => {
-      const i = split.diameters.indexOf(d)
-      return {
-        d,
-        inlet: 100 * dropletCumulative(d, p),
-        outlet: 100 * split.outletCumulative[i],
-        eps:
-          100 *
-          collectionEfficiencyAtDiameter(
-            resolveSpec(inputs.eliminatorId, inputs.customEliminator),
-            Math.max(inputs.plumeVelocity, 1e-6),
-            inputs.plumeTemperature,
-            d,
-          ),
-      }
+  const bins: {
+    mid: number
+    inlet: number
+    escaping: number
+    eps: number
+    escKgs: number
+  }[] = []
+  for (let a = 0; a < p.dMaxUm; a += BIN_UM) {
+    const b = Math.min(a + BIN_UM, p.dMaxUm)
+    const mid = (a + b) / 2
+    const mass = dropletCumulative(b, p) - dropletCumulative(a, p)
+    const eps = droplets.efficiency(mid)
+    bins.push({
+      mid,
+      inlet: mass / mid ** 3,
+      escaping: ((1 - eps) * mass) / mid ** 3,
+      eps: 100 * eps,
+      escKgs: droplets.driftInlet * (1 - eps) * mass,
     })
+  }
+  const peak = Math.max(...bins.map((x) => x.inlet)) || 1
+  const data = bins.map((x) => ({ ...x, inlet: x.inlet / peak, escaping: x.escaping / peak }))
   const xTicks = Array.from(
     { length: Math.floor(p.dMaxUm / 50) + 1 },
     (_, i) => i * 50,
@@ -59,18 +65,20 @@ export default function EliminatorOutput({
         Drift eliminator output
       </h3>
       <div className="chart-legend-row">
-        <span><i className="is-dash" style={{ color: '#137f70' }} />Inlet</span>
-        <span><i className="is-line" style={{ color: '#2a78d6' }} />Outlet (escaped droplets, rescaled to 100 %)</span>
-        <span><i className="is-dash is-dotted" style={{ color: '#6250d6' }} />Capture efficiency ε(d)</span>
+        <span><i style={{ background: 'rgba(19, 127, 112, 0.28)' }} />Inlet droplets</span>
+        <span><i style={{ background: '#2a78d6' }} />Escaping droplets</span>
+        <span><i className="is-dash is-dotted" style={{ color: '#6250d6' }} />Capture efficiency ε(d), right axis</span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
         <ComposedChart
-          data={curve}
-          margin={{ top: 22, right: 14, bottom: 8, left: -6 }}
+          data={data}
+          margin={{ top: 16, right: 4, bottom: 8, left: -6 }}
+          barGap="-100%"
+          barCategoryGap={0}
         >
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
-            dataKey="d"
+            dataKey="mid"
             type="number"
             domain={[0, p.dMaxUm]}
             ticks={xTicks}
@@ -85,19 +93,31 @@ export default function EliminatorOutput({
             }}
           />
           <YAxis
-            domain={[0, 100]}
-            ticks={[0, 20, 40, 60, 80, 100]}
+            yAxisId="n"
+            domain={[0, 1]}
+            ticks={[0, 0.25, 0.5, 0.75, 1]}
             tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
-            width={44}
+            width={56}
             label={{
-              value: 'Mass < d  or  ε  (%)',
+              value: 'Relative count',
               angle: -90,
               position: 'insideLeft',
-              offset: 14,
+              offset: 16,
               fill: '#4c4943',
               fontSize: 12.5,
+              style: { textAnchor: 'middle' },
             }}
+          />
+          <YAxis
+            yAxisId="e"
+            orientation="right"
+            domain={[0, 100]}
+            ticks={[0, 25, 50, 75, 100]}
+            tick={{ fill: '#6250d6', fontSize: 12.5 }}
+            stroke="#aaa49a"
+            width={44}
+            unit="%"
           />
           <Tooltip
             contentStyle={{
@@ -107,38 +127,25 @@ export default function EliminatorOutput({
               color: '#252525',
               fontSize: 13.5,
             }}
-            formatter={(value: number, name: string) => [
-              `${fmt(value, 1)} %`,
-              name === 'inlet'
-                ? 'Inlet'
-                : name === 'outlet'
-                  ? 'Outlet'
-                  : 'Capture ε',
-            ]}
-            labelFormatter={(value) => `${fmt(Number(value), 0)} µm`}
+            formatter={(value: number, name: string, item) =>
+              name === 'eps'
+                ? [`${fmt(value, 1)} %`, 'Capture ε']
+                : name === 'escaping'
+                  ? [`${fmt(value, 3)}  (${sig(item.payload.escKgs, 3)} kg/s)`, 'Escaping']
+                  : [fmt(value, 3), 'Inlet']
+            }
+            labelFormatter={(mid) =>
+              `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(Number(mid) + BIN_UM / 2, 0)} µm`
+            }
           />
+          <Bar yAxisId="n" dataKey="inlet" fill="rgba(19, 127, 112, 0.28)" isAnimationActive={false} />
+          <Bar yAxisId="n" dataKey="escaping" fill="#2a78d6" isAnimationActive={false} />
           <Line
-            dataKey="inlet"
-            type="monotone"
-            stroke="#137f70"
-            strokeWidth={2.2}
-            strokeDasharray="6 4"
-            dot={false}
-            isAnimationActive={false}
-          />
-          <Line
-            dataKey="outlet"
-            type="monotone"
-            stroke="#2a78d6"
-            strokeWidth={2.6}
-            dot={false}
-            isAnimationActive={false}
-          />
-          <Line
+            yAxisId="e"
             dataKey="eps"
             type="monotone"
             stroke="#6250d6"
-            strokeWidth={1.6}
+            strokeWidth={2}
             strokeDasharray="2 3"
             dot={false}
             isAnimationActive={false}

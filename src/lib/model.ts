@@ -26,8 +26,10 @@ import {
   evaluateRuizEliminator,
   type EliminatorSpec,
   type SelectionId,
-  type CustomEliminator,
-  DEFAULT_CUSTOM_ELIMINATOR,
+  type CustomPerformance,
+  DEFAULT_CUSTOM_PERFORMANCE,
+  customEfficiency,
+  airDynamicViscosity,
   resolveSpec,
   type RuizEliminatorResult,
 } from './eliminators.ts'
@@ -73,7 +75,7 @@ export interface TowerInputs {
 
   // Liquid droplets / drift eliminator
   eliminatorId: SelectionId
-  customEliminator: CustomEliminator
+  customPerformance: CustomPerformance
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
   dropletMean: number // mass-weighted mean diameter E = exp(μ + σ²/2), µm
@@ -115,6 +117,7 @@ export interface TowerResults {
     massEscaping: number // ∫(1 − ε) dF, inlet mass fraction that escapes
     massCaptured: number // ∫ε dF
     split: EfficiencySplit // outlet curve and outlet D32
+    efficiency: (dUm: number) => number // ε(d) used for the selected eliminator
     sigma: number // σ, standard deviation of ln d
     driftInlet: number // kg/s liquid drift entering the eliminator
     driftEscaping: number // kg/s
@@ -179,26 +182,43 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const distribution = distributionParams(inputs)
   // Pressure loss depends only on Reynolds; the representative droplet size
   // (inlet mass median) only sets the reported Stokes number.
-  const eliminatorSpec: EliminatorSpec = resolveSpec(
-    inputs.eliminatorId,
-    inputs.customEliminator,
-  )
-  const eliminator = evaluateRuizEliminator(
-    eliminatorSpec,
-    rho4,
-    evaluationVelocity,
-    inputs.plumeTemperature,
-    distribution.dMedUm,
-  )
-  // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
-  const split = efficiencySplit(distribution, (d) =>
-    collectionEfficiencyAtDiameter(
-      eliminatorSpec,
-      evaluationVelocity,
-      inputs.plumeTemperature,
-      d,
-    ),
-  )
+  const eliminatorSpec: EliminatorSpec = resolveSpec(inputs.eliminatorId)
+  const isCustom = inputs.eliminatorId === 'custom'
+  const custom = inputs.customPerformance
+  const eliminator: RuizEliminatorResult = isCustom
+    ? {
+        spec: eliminatorSpec,
+        velocity: evaluationVelocity,
+        dynamicViscosity: airDynamicViscosity(inputs.plumeTemperature),
+        reynolds: Number.NaN,
+        stokes: Number.NaN,
+        // Equivalent loss coefficient of the chosen Δp at this velocity
+        pressureCoefficient:
+          custom.pressureDropPa / (0.5 * rho4 * evaluationVelocity ** 2),
+        collectionEfficiency: customEfficiency(distribution.dMedUm, custom),
+        pressureRangeIssues: [],
+        collectionRangeIssues: [],
+        pressureSupported: true,
+        collectionSupported: true,
+      }
+    : evaluateRuizEliminator(
+        eliminatorSpec,
+        rho4,
+        evaluationVelocity,
+        inputs.plumeTemperature,
+        distribution.dMedUm,
+      )
+  // Grade efficiency: every size is partly captured, by ε(d).
+  const efficiency = (d: number) =>
+    isCustom
+      ? customEfficiency(d, custom)
+      : collectionEfficiencyAtDiameter(
+          eliminatorSpec,
+          evaluationVelocity,
+          inputs.plumeTemperature,
+          d,
+        )
+  const split = efficiencySplit(distribution, efficiency)
   const massEscaping = split.escaping
   const massCaptured = 1 - massEscaping
   // Liquid drift mass balance (kept separate from vapour recovery):
@@ -207,12 +227,11 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     Math.max(0, inputs.circulatingWaterFlow) *
     (Math.max(0, inputs.inletDriftRate) / 100)
   const collectionRangeIssues = eliminator.collectionRangeIssues
-  const pressureDrop = velocityValid
-    ? eliminator.pressureCoefficient *
-      0.5 *
-      rho4 *
-      eliminatorFaceVelocity ** 2
-    : 0
+  const pressureDrop = !velocityValid
+    ? 0
+    : isCustom
+      ? Math.max(0, custom.pressureDropPa)
+      : eliminator.pressureCoefficient * 0.5 * rho4 * eliminatorFaceVelocity ** 2
   const equivalentArea = inputs.flowArea
   // Ideal air power P_air = V̇·Δp. Pressure is not fed back into the
   // psychrometrics because the eliminator loss is tiny relative to atmospheric
@@ -330,6 +349,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       massEscaping,
       massCaptured,
       split,
+      efficiency,
       sigma: Math.log(spread(distribution)),
       driftInlet,
       driftEscaping: driftInlet * massEscaping,
@@ -360,7 +380,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeVelocity: 3,
 
   eliminatorId: 'A',
-  customEliminator: DEFAULT_CUSTOM_ELIMINATOR,
+  customPerformance: DEFAULT_CUSTOM_PERFORMANCE,
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit

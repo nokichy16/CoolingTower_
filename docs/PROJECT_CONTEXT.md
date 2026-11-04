@@ -109,13 +109,13 @@ midpoint. The outlet curve is the running integral divided by eta_esc. The
 d50 cutoff and the Ruiz 2013 comparison points were removed from the app
 (Oct 2026); neither is used in the drift result.
 
-Custom eliminator (Nov 2026): a seventh option uses the same Ruiz (2019)
-correlations with user geometry, limited to what the correlations contain:
-vane gap b and height h (Kp and eps depend on b/h); honeycomb cell size
-(Re and St only; the shape constants come from the single 15 mm test);
-wire mesh characteristic length and turn angle 45 or 135 degrees only (eps
-was fitted only at those angles, so no interpolation). Out-of-range warnings
-apply as for A-F.
+Custom performance (Nov 2026): a seventh option with no geometry. The user
+sets the pressure drop (Pa, same at every velocity) and the collection
+efficiency at 5, 10, 20, 30, 50, 75, 100, 150, 200 and 300 um; eps is
+interpolated linearly in ln d and held constant outside that range. Fan air
+power uses P = V_dot * dp. "Start from A-F" copies a tested design's dp and
+eps at the current conditions. The eliminator graph shows inlet and escaping
+relative droplet counts per 5 um class, with eps(d) on a second axis.
 
 Approved assumptions and limits (user decisions, Oct 2026):
 

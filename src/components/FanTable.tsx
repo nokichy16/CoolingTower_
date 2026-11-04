@@ -26,7 +26,7 @@ export default function FanTable({
         const r = solveTower({ ...inputs, eliminatorId: id })
         return {
           id,
-          type: resolveSpec(id, inputs.customEliminator).type,
+          type: resolveSpec(id).type,
           kp: r.eliminator.pressureCoefficient,
           dp: r.droplets.pressureDrop,
           power: r.droplets.fanAirPower,
