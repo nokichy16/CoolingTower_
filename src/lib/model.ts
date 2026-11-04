@@ -24,7 +24,11 @@ import {
 import {
   collectionEfficiencyAtDiameter,
   evaluateRuizEliminator,
-  type EliminatorId,
+  type EliminatorSpec,
+  type SelectionId,
+  type CustomEliminator,
+  DEFAULT_CUSTOM_ELIMINATOR,
+  resolveSpec,
   type RuizEliminatorResult,
 } from './eliminators.ts'
 import {
@@ -68,7 +72,8 @@ export interface TowerInputs {
   plumeVelocity: number // m/s selected bulk plume / eliminator face velocity
 
   // Liquid droplets / drift eliminator
-  eliminatorId: EliminatorId
+  eliminatorId: SelectionId
+  customEliminator: CustomEliminator
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
   dropletMean: number // mass-weighted mean diameter E = exp(μ + σ²/2), µm
@@ -174,8 +179,12 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   const distribution = distributionParams(inputs)
   // Pressure loss depends only on Reynolds; the representative droplet size
   // (inlet mass median) only sets the reported Stokes number.
-  const eliminator = evaluateRuizEliminator(
+  const eliminatorSpec: EliminatorSpec = resolveSpec(
     inputs.eliminatorId,
+    inputs.customEliminator,
+  )
+  const eliminator = evaluateRuizEliminator(
+    eliminatorSpec,
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
@@ -184,7 +193,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
   // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
   const split = efficiencySplit(distribution, (d) =>
     collectionEfficiencyAtDiameter(
-      inputs.eliminatorId,
+      eliminatorSpec,
       evaluationVelocity,
       inputs.plumeTemperature,
       d,
@@ -351,6 +360,7 @@ export const DEFAULT_INPUTS: TowerInputs = {
   plumeVelocity: 3,
 
   eliminatorId: 'A',
+  customEliminator: DEFAULT_CUSTOM_ELIMINATOR,
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit

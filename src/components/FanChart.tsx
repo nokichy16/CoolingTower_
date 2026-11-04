@@ -9,24 +9,27 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { TowerResults } from '../lib/model'
+import type { TowerInputs, TowerResults } from '../lib/model'
 import {
-  ELIMINATORS,
   evaluateRuizEliminator,
+  resolveSpec,
   RUIZ_LIMITS,
-  type EliminatorId,
+  SELECTIONS,
+  selectionName,
+  type SelectionId,
 } from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { GRID_STROKE } from './DropletDistribution'
 
-const IDS = Object.keys(ELIMINATORS) as EliminatorId[]
-export const ELIMINATOR_COLORS: Record<EliminatorId, string> = {
+const IDS = SELECTIONS
+export const ELIMINATOR_COLORS: Record<SelectionId, string> = {
   A: '#2a78d6',
   B: '#137f70',
   C: '#6250d6',
   D: '#b8641a',
   E: '#c0397a',
   F: '#6b7a1f',
+  custom: '#252525',
 }
 
 /**
@@ -37,11 +40,16 @@ export const ELIMINATOR_COLORS: Record<EliminatorId, string> = {
  */
 export default function FanChart({
   r,
+  inputs,
   onSelect,
 }: {
   r: TowerResults
-  onSelect?: (id: EliminatorId) => void
+  inputs: TowerInputs
+  onSelect?: (id: SelectionId) => void
 }) {
+  const specs = Object.fromEntries(
+    IDS.map((id) => [id, resolveSpec(id, inputs.customEliminator)]),
+  ) as Record<SelectionId, ReturnType<typeof resolveSpec>>
   const { rho, t, flowArea, velocity } = r.plume
   const selected = r.eliminator.spec.id
   // Axis covers 0.5–6 m/s, extended to include the current velocity.
@@ -54,7 +62,7 @@ export default function FanChart({
     const u = 0.5 + (i * (uMax - 0.5)) / steps
     const row: Record<string, number> = { u: Number(u.toFixed(2)) }
     for (const id of IDS) {
-      const kp = evaluateRuizEliminator(id, rho, u, t, 50).pressureCoefficient
+      const kp = evaluateRuizEliminator(specs[id], rho, u, t, 50).pressureCoefficient
       row[id] = (flowArea * u * kp * 0.5 * rho * u * u) / 1000
     }
     return row
@@ -63,7 +71,7 @@ export default function FanChart({
   return (
     <section className="stage-graph" aria-labelledby="fan-chart-title">
       <h3 className="input-group-title" id="fan-chart-title">
-        Ideal fan air power, eliminators A–F
+        Ideal fan air power, eliminators A–F and custom
       </h3>
       <div className="chart-legend-row" role="radiogroup" aria-label="Eliminator">
         {IDS.map((id) => (
@@ -76,7 +84,7 @@ export default function FanChart({
             onClick={() => onSelect?.(id)}
           >
             <i style={{ background: ELIMINATOR_COLORS[id] }} />
-            {id} · {ELIMINATORS[id].type}
+            {selectionName(id)} · {specs[id].type}
           </button>
         ))}
       </div>
@@ -145,7 +153,7 @@ export default function FanChart({
               x={velocity}
               y={r.droplets.fanAirPower}
               r={5}
-              fill={ELIMINATOR_COLORS[selected]}
+              fill={ELIMINATOR_COLORS[selected as SelectionId]}
               stroke="#fff"
               strokeWidth={2}
             />

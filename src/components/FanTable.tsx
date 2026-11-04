@@ -1,6 +1,11 @@
 import { useMemo } from 'react'
 import { solveTower, type TowerInputs } from '../lib/model'
-import { ELIMINATORS, type EliminatorId } from '../lib/eliminators'
+import {
+  resolveSpec,
+  SELECTIONS,
+  selectionName,
+  type SelectionId,
+} from '../lib/eliminators'
 import { fmt } from '../lib/format'
 import { ELIMINATOR_COLORS } from './FanChart'
 
@@ -13,15 +18,15 @@ export default function FanTable({
   onSelect,
 }: {
   inputs: TowerInputs
-  onSelect: (id: EliminatorId) => void
+  onSelect: (id: SelectionId) => void
 }) {
   const rows = useMemo(
     () =>
-      (Object.keys(ELIMINATORS) as EliminatorId[]).map((id) => {
+      SELECTIONS.map((id) => {
         const r = solveTower({ ...inputs, eliminatorId: id })
         return {
           id,
-          type: ELIMINATORS[id].type,
+          type: resolveSpec(id, inputs.customEliminator).type,
           kp: r.eliminator.pressureCoefficient,
           dp: r.droplets.pressureDrop,
           power: r.droplets.fanAirPower,
@@ -58,7 +63,7 @@ export default function FanTable({
               >
                 <th scope="row">
                   <i style={{ background: ELIMINATOR_COLORS[row.id] }} />
-                  {row.id} · {row.type}
+                  {selectionName(row.id)} · {row.type}
                 </th>
                 <td className="num">{fmt(row.kp, 2)}</td>
                 <td className="num">{fmt(row.dp, 1)}</td>

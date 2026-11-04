@@ -109,6 +109,14 @@ midpoint. The outlet curve is the running integral divided by eta_esc. The
 d50 cutoff and the Ruiz 2013 comparison points were removed from the app
 (Oct 2026); neither is used in the drift result.
 
+Custom eliminator (Nov 2026): a seventh option uses the same Ruiz (2019)
+correlations with user geometry, limited to what the correlations contain:
+vane gap b and height h (Kp and eps depend on b/h); honeycomb cell size
+(Re and St only; the shape constants come from the single 15 mm test);
+wire mesh characteristic length and turn angle 45 or 135 degrees only (eps
+was fitted only at those angles, so no interpolation). Out-of-range warnings
+apply as for A-F.
+
 Approved assumptions and limits (user decisions, Oct 2026):
 
 - The Ruiz fits are used as published at every size, including St below the

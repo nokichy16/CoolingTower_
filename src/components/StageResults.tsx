@@ -3,7 +3,7 @@ import {
   massQuantile,
   sauterMeanDiameter,
 } from '../lib/droplet-distribution'
-import { RUIZ_LIMITS } from '../lib/eliminators'
+import { describeSpec, RUIZ_LIMITS } from '../lib/eliminators'
 import type { StageId } from '../lib/stages'
 import { fmt, sig } from '../lib/format'
 
@@ -101,7 +101,8 @@ export default function StageResults({
       path: 'liquid',
       headline: `Escaping ${sig(d.driftEscaping, 3)} kg/s (${fmt(100 * d.massEscaping, 1)} %)`,
       rows: [
-        input('Eliminator', `${r.eliminator.spec.id} · ${r.eliminator.spec.type}`, ''),
+        input('Eliminator', r.eliminator.spec.id === 'custom' ? 'Custom' : r.eliminator.spec.id, ''),
+        { label: 'Type', formula: describeSpec(r.eliminator.spec), value: r.eliminator.spec.type, unit: '' },
         { label: 'Air viscosity μ', formula: 'Sutherland: μ = 1.458e-6·T^1.5 / (T + 110.4)', value: sig(r.eliminator.dynamicViscosity, 4), unit: 'Pa·s' },
         { label: 'Reynolds number', formula: 'Re = ρuL / μ', value: fmt(r.eliminator.reynolds, 0), unit: '' },
         { label: 'Loss coefficient Kp', formula: 'Kp = f(Re, geometry)  (Ruiz 2019)', value: fmt(r.eliminator.pressureCoefficient, 2), unit: '' },
