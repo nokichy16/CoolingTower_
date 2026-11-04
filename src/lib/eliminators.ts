@@ -308,8 +308,8 @@ export function evaluateRuizEliminator(
     if (
       outside(
         pitchRatio,
-        RUIZ_LIMITS.pitchRatioMin,
-        RUIZ_LIMITS.pitchRatioMax,
+        RUIZ_LIMITS.pitchRatioMin - 1e-9,
+        RUIZ_LIMITS.pitchRatioMax + 1e-9,
       )
     ) {
       const issue = `b/L ${pitchRatio.toFixed(3)} is outside 1/6–1/3`

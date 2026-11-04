@@ -1,8 +1,4 @@
 import { distributionParams, type TowerResults } from '../lib/model'
-import {
-  massQuantile,
-  sauterMeanDiameter,
-} from '../lib/droplet-distribution'
 import { describeSpec, RUIZ_LIMITS } from '../lib/eliminators'
 import type { StageId } from '../lib/stages'
 import { fmt, sig } from '../lib/format'
@@ -76,21 +72,17 @@ export default function StageResults({
       index: '1',
       name: 'Inlet · Drift droplets',
       path: 'liquid',
-      headline: `ṁ_drift,in ${sig(d.driftInlet, 3)} kg/s · D₃₂ ${fmt(sauterMeanDiameter(p), 1)} µm`,
+      headline: `ṁ_drift,in ${sig(d.driftInlet, 3)} kg/s · E ${fmt(i.dropletMean, 1)} µm · σ ${fmt(i.dropletSigma, 3)}`,
       rows: [
         input('Circulating water ṁ_circ', fmt(i.circulatingWaterFlow, 0), 'kg/s'),
         input('Inlet drift rate D_in', fmt(i.inletDriftRate, 2), '%'),
         input('Mean diameter E (by mass)', fmt(i.dropletMean, 1), 'µm'),
         input('Std. deviation of ln d σ', fmt(i.dropletSigma, 3), ''),
-        input('d_max (100 %)', fmt(i.dropletDMax, 0), 'µm'),
+        input('Smallest d_min (1 %), linked to σ', fmt(p.dMinUm, 1), 'µm'),
+        input('Largest d_max (100 %)', fmt(i.dropletDMax, 0), 'µm'),
         { label: 'Drift entering eliminator', formula: 'ṁ_drift,in = ṁ_circ·D_in / 100', value: sig(d.driftInlet, 3), unit: 'kg/s' },
         { label: 'Log mean μ', formula: 'μ = ln E − σ²/2  (corrected for cut at d_max)', value: fmt(Math.log(p.dMedUm), 3), unit: '' },
         { label: 'Median d_med', formula: 'd_med = e^μ', value: fmt(p.dMedUm, 1), unit: 'µm' },
-        { label: 'Smallest d_min (1 %), linked', formula: 'd_min = e^(μ − 2.326σ)', value: fmt(p.dMinUm, 1), unit: 'µm' },
-        { label: 'Inlet d₁₀ (mass)', formula: 'F(d₁₀) = 0.10', value: fmt(massQuantile(0.1, p), 1), unit: 'µm' },
-        { label: 'Inlet mass median', formula: 'F(d) = 0.50', value: fmt(massQuantile(0.5, p), 1), unit: 'µm' },
-        { label: 'Inlet d₉₀ (mass)', formula: 'F(d₉₀) = 0.90', value: fmt(massQuantile(0.9, p), 1), unit: 'µm' },
-        { label: 'Inlet Sauter mean D₃₂', formula: 'D₃₂ = 1 / ∫ f(d)/d dd', value: fmt(sauterMeanDiameter(p), 1), unit: 'µm' },
       ],
       notes: ['Defaults are a fit to Ruiz et al. (2013) outlet data; the inlet shape and D_in are assumptions.'],
     },
@@ -107,12 +99,11 @@ export default function StageResults({
         { label: 'Reynolds number', formula: 'Re = ρuL / μ', value: fmt(r.eliminator.reynolds, 0), unit: '' },
         { label: 'Loss coefficient Kp', formula: 'Kp = f(Re, geometry)  (Ruiz 2019)', value: fmt(r.eliminator.pressureCoefficient, 2), unit: '' },
         { label: 'Pressure drop Δp', formula: 'Δp = Kp·½ρu²', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
-        { label: 'Stokes number at d_med', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
+        { label: 'Stokes number at d_med (range check)', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
         { label: 'Mass fraction escaping', formula: 'η_esc = ∫(1 − ε(d)) dF(d)', value: fmt(100 * d.massEscaping, 1), unit: '%' },
         { label: 'Mass fraction captured', formula: '1 − η_esc = ∫ε(d) dF(d)', value: fmt(100 * d.massCaptured, 1), unit: '%' },
         { label: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·η_esc', value: sig(d.driftEscaping, 3), unit: 'kg/s' },
         { label: 'Drift captured', formula: 'ṁ_cap = ṁ_drift,in·(1 − η_esc)', value: sig(d.driftCaptured, 3), unit: 'kg/s' },
-        { label: 'Escaping Sauter mean D₃₂', formula: '∫(1 − ε) dF / ∫(1 − ε)/d dF', value: fmt(d.split.outletSauterMean, 1), unit: 'µm' },
       ],
       notes: [
         ...r.eliminator.pressureRangeIssues.map((t) => `Outside the Ruiz pressure-correlation range: ${t}.`),

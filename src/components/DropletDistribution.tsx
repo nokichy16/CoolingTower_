@@ -11,7 +11,6 @@ import { distributionParams, type TowerInputs, type TowerResults } from '../lib/
 import {
   countHistogram,
   paramsFromMeanSigma,
-  sauterMeanDiameter,
   sigmaFromMinimum,
 } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
@@ -138,10 +137,7 @@ export default function DropletDistribution({
               <dt>Median d_med = e^μ</dt>
               <dd>{fmt(p.dMedUm, 1)} µm</dd>
             </div>
-            <div>
-              <dt>Sauter mean D₃₂</dt>
-              <dd>{fmt(sauterMeanDiameter(p), 1)} µm</dd>
-            </div>
+
           </dl>
         </div>
 

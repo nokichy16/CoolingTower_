@@ -173,3 +173,10 @@ test('custom eliminator with a tested geometry reproduces that design', () => {
     closeTo(custom.droplets.massEscaping, tested.droplets.massEscaping, 1e-9)
   }
 })
+
+test('tested vanes A-C are inside the Ruiz b/h range (no rounding warning)', () => {
+  for (const id of ['A', 'B', 'C']) {
+    const r = solveTower({ ...DEFAULT_INPUTS, eliminatorId: id })
+    assert.ok(!r.eliminator.pressureRangeIssues.some((t) => t.includes('b/L')))
+  }
+})

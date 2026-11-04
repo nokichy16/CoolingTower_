@@ -41,7 +41,6 @@ export default function EliminatorPicker({
           escaping: 100 * d.massEscaping,
           driftEscaping: d.driftEscaping,
           driftCaptured: d.driftCaptured,
-          d32: d.split.outletSauterMean,
         }
       }),
     [inputs],
@@ -64,7 +63,6 @@ export default function EliminatorPicker({
             <th scope="col" className="num">Escaping (%)</th>
             <th scope="col" className="num">Drift out (kg/s)</th>
             <th scope="col" className="num">Captured (kg/s)</th>
-            <th scope="col" className="num">Outlet D₃₂ (µm)</th>
           </tr>
         </thead>
         <tbody role="radiogroup" aria-label="Eliminator">
@@ -103,7 +101,6 @@ export default function EliminatorPicker({
                 <td className="num">{fmt(row.escaping, 1)}</td>
                 <td className="num">{sig(row.driftEscaping, 3)}</td>
                 <td className="num">{sig(row.driftCaptured, 3)}</td>
-                <td className="num">{fmt(row.d32, 1)}</td>
               </tr>
             )
           })}
