@@ -31,6 +31,7 @@ import {
   spread,
   RUIZ_2013_RUN1_FIT,
   efficiencySplit,
+  paramsFromMeanSigma,
   type DropletDistributionParams,
   type EfficiencySplit,
 } from './droplet-distribution.ts'
@@ -38,11 +39,11 @@ import {
 export function distributionParams(
   inputs: TowerInputs,
 ): DropletDistributionParams {
-  return {
-    dMinUm: inputs.dropletDMin,
-    dMedUm: inputs.dropletDMed,
-    dMaxUm: inputs.dropletDMax,
-  }
+  return paramsFromMeanSigma(
+    inputs.dropletMean,
+    inputs.dropletSigma,
+    inputs.dropletDMax,
+  )
 }
 
 export interface SolveIssue {
@@ -70,8 +71,8 @@ export interface TowerInputs {
   eliminatorId: EliminatorId
   circulatingWaterFlow: number // kg/s water through the fill
   inletDriftRate: number // % of circulating water carried as droplets into the eliminator
-  dropletDMin: number // 1 % of mass is smaller, µm
-  dropletDMed: number // mass median, µm
+  dropletMean: number // mass-weighted mean diameter E = exp(μ + σ²/2), µm
+  dropletSigma: number // σ, standard deviation of ln d (log-normal)
   dropletDMax: number // upper limit: no inlet droplets larger, µm
 
   // Vapour recovery
@@ -109,7 +110,7 @@ export interface TowerResults {
     massEscaping: number // ∫(1 − ε) dF, inlet mass fraction that escapes
     massCaptured: number // ∫ε dF
     split: EfficiencySplit // outlet curve and outlet D32
-    spread: number // σg derived from d_min and d_med
+    sigma: number // σ, standard deviation of ln d
     driftInlet: number // kg/s liquid drift entering the eliminator
     driftEscaping: number // kg/s
     driftCaptured: number // kg/s
@@ -178,7 +179,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
     rho4,
     evaluationVelocity,
     inputs.plumeTemperature,
-    inputs.dropletDMed,
+    distribution.dMedUm,
   )
   // Grade efficiency: every size is partly captured, by ε(d) from Ruiz.
   const split = efficiencySplit(distribution, (d) =>
@@ -320,7 +321,7 @@ export function solveTower(inputs: TowerInputs): TowerResults {
       massEscaping,
       massCaptured,
       split,
-      spread: spread(distribution),
+      sigma: Math.log(spread(distribution)),
       driftInlet,
       driftEscaping: driftInlet * massEscaping,
       driftCaptured: driftInlet * massCaptured,
@@ -353,8 +354,9 @@ export const DEFAULT_INPUTS: TowerInputs = {
   circulatingWaterFlow: 150, // placeholder, roughly L/G ≈ 1 with the default airflow
   inletDriftRate: 0.2, // placeholder assumption: drift entering the eliminator
   // One log-normal fitted to Ruiz et al. (2013) Fig. 9(a), run 1, measured at the tower exit
-  dropletDMin: RUIZ_2013_RUN1_FIT.dMinUm,
-  dropletDMed: RUIZ_2013_RUN1_FIT.dMedUm,
+  // Log-normal fit to Ruiz et al. (2013) run 1: d_med 35 µm, σ = 0.555
+  dropletMean: 40.8,
+  dropletSigma: 0.555,
   dropletDMax: RUIZ_2013_RUN1_FIT.dMaxUm,
 
   coolingBelowDewPoint: 10,

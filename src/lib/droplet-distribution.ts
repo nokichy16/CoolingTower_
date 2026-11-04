@@ -226,3 +226,47 @@ export function efficiencySplit(
     outletSauterMean: inverse > 0 ? escaping / inverse : Number.NaN,
   }
 }
+
+/** Mass-weighted mean diameter of the (truncated) distribution, E = ∫ d dF. */
+export function massMeanDiameter(p: DropletDistributionParams): number {
+  const steps = 2000
+  let sum = 0
+  let prevD = 0.05
+  let prevF = dropletCumulative(prevD, p)
+  for (let i = 1; i <= steps; i += 1) {
+    const d = 0.05 * (p.dMaxUm / 0.05) ** (i / steps)
+    const f = dropletCumulative(d, p)
+    sum += (f - prevF) * Math.sqrt(d * prevD)
+    prevD = d
+    prevF = f
+  }
+  return sum
+}
+
+/**
+ * Log-normal (by mass) from its mean E and the standard deviation σ of ln d,
+ * truncated at d_max:
+ *   μ = ln E − σ²/2,   d_med = e^μ,   d_min (1 % point) = e^(μ − 2.326σ)
+ * The cut at d_max lowers the mean slightly, so the untruncated mean is
+ * corrected a few times until the truncated mean matches the input.
+ */
+export function paramsFromMeanSigma(
+  meanUm: number,
+  sigma: number,
+  dMaxUm: number,
+): DropletDistributionParams {
+  const s = Math.max(sigma, 0.01)
+  const solve = (target: number): DropletDistributionParams => {
+    const mu = Math.log(Math.max(target, 0.1)) - (s * s) / 2
+    return { dMinUm: Math.exp(mu - Z99 * s), dMedUm: Math.exp(mu), dMaxUm }
+  }
+  let target = meanUm
+  let p = solve(target)
+  for (let i = 0; i < 8; i += 1) {
+    const actual = massMeanDiameter(p)
+    if (!(actual > 0) || Math.abs(actual - meanUm) < 1e-4 * meanUm) break
+    target *= meanUm / actual
+    p = solve(target)
+  }
+  return p
+}
