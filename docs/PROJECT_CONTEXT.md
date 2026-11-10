@@ -114,8 +114,9 @@ sets the pressure drop (Pa, same at every velocity) and the collection
 efficiency at 5, 10, 20, 30, 50, 75, 100, 150, 200 and 300 um; eps is
 interpolated linearly in ln d and held constant outside that range. Fan air
 power uses P = V_dot * dp. "Start from A-F" copies a tested design's dp and
-eps at the current conditions. The eliminator graph shows inlet and escaping
-relative droplet counts per 5 um class, with eps(d) on a second axis.
+eps at the current conditions. The eliminator graph shows cumulative drift
+below d for the inlet, captured and escaping parts on one basis (no
+rescaling, so captured + escaping = inlet), in kg/s or % of inlet.
 
 Approved assumptions and limits (user decisions, Oct 2026):
 

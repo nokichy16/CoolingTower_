@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import {
-  Bar,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -18,46 +18,44 @@ interface EliminatorOutputProps {
   droplets: TowerResults['droplets']
 }
 
-const BIN_UM = 5
+type Unit = 'kgs' | 'pct'
 
 /**
- * Drift eliminator output: relative number of droplets per 5 µm size class
- * entering (light) and escaping (solid) the eliminator, with the capture
- * efficiency ε(d) on the right axis.
- *   escaping mass in a class = (1 − ε(d_mid)) · inlet mass in the class
- *   count ∝ mass / d_mid³, scaled so the inlet peak is 1
+ * Drift eliminator output: cumulative drift mass below each diameter for the
+ * inlet, the captured part and the escaping part, all on the same basis (no
+ * rescaling), so captured + escaping = inlet at every d.
+ *   inlet(d)    = ṁ_drift,in · F(d)
+ *   escaping(d) = ṁ_drift,in · Σ (1 − ε) ΔF   up to d
+ *   captured(d) = inlet(d) − escaping(d) = ṁ_drift,in · Σ ε ΔF
+ * Shown in kg/s, or as % of the inlet drift mass.
  */
 export default function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
+  const [unit, setUnit] = useState<Unit>('kgs')
   const p = distributionParams(inputs)
-  const bins: {
-    mid: number
-    inlet: number
-    escaping: number
-    eps: number
-    escKgs: number
-  }[] = []
-  for (let a = 0; a < p.dMaxUm; a += BIN_UM) {
-    const b = Math.min(a + BIN_UM, p.dMaxUm)
-    const mid = (a + b) / 2
-    const mass = dropletCumulative(b, p) - dropletCumulative(a, p)
-    const eps = droplets.efficiency(mid)
-    bins.push({
-      mid,
-      inlet: mass / mid ** 3,
-      escaping: ((1 - eps) * mass) / mid ** 3,
-      eps: 100 * eps,
-      escKgs: droplets.driftInlet * (1 - eps) * mass,
+  const { split, driftInlet } = droplets
+  const scale = unit === 'kgs' ? driftInlet : 100
+  const data = split.diameters
+    .filter((_, i) => i % 2 === 1)
+    .map((d) => {
+      const i = split.diameters.indexOf(d)
+      const inlet = dropletCumulative(d, p)
+      const escaping = split.outletCumulative[i] * split.escaping
+      return {
+        d,
+        inlet: scale * inlet,
+        captured: scale * (inlet - escaping),
+        escaping: scale * escaping,
+      }
     })
-  }
-  const peak = Math.max(...bins.map((x) => x.inlet)) || 1
-  const data = bins.map((x) => ({ ...x, inlet: x.inlet / peak, escaping: x.escaping / peak }))
   const xTicks = Array.from(
     { length: Math.floor(p.dMaxUm / 50) + 1 },
     (_, i) => i * 50,
   )
+  const show = (v: number) =>
+    unit === 'kgs' ? `${sig(v, 3)} kg/s` : `${fmt(v, 1)} %`
 
   return (
     <section className="eliminator-output" aria-labelledby="eliminator-output-title">
@@ -65,20 +63,29 @@ export default function EliminatorOutput({
         Drift eliminator output
       </h3>
       <div className="chart-legend-row">
-        <span><i style={{ background: 'rgba(19, 127, 112, 0.28)' }} />Inlet droplets</span>
-        <span><i style={{ background: '#2a78d6' }} />Escaping droplets</span>
-        <span><i className="is-dash is-dotted" style={{ color: '#6250d6' }} />Capture efficiency ε(d), right axis</span>
+        <span><i className="is-line" style={{ color: '#137f70' }} />Inlet</span>
+        <span><i className="is-line" style={{ color: '#b8641a' }} />Captured</span>
+        <span><i className="is-line" style={{ color: '#2a78d6' }} />Escaping</span>
+        <span className="unit-toggle" role="radiogroup" aria-label="Units">
+          {(['kgs', 'pct'] as Unit[]).map((u) => (
+            <button
+              type="button"
+              key={u}
+              role="radio"
+              aria-checked={unit === u}
+              className={`legend-pick${unit === u ? ' is-selected' : ''}`}
+              onClick={() => setUnit(u)}
+            >
+              {u === 'kgs' ? 'kg/s' : '% of inlet'}
+            </button>
+          ))}
+        </span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
-        <ComposedChart
-          data={data}
-          margin={{ top: 16, right: 4, bottom: 8, left: -6 }}
-          barGap="-100%"
-          barCategoryGap={0}
-        >
+        <ComposedChart data={data} margin={{ top: 16, right: 18, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
-            dataKey="mid"
+            dataKey="d"
             type="number"
             domain={[0, p.dMaxUm]}
             ticks={xTicks}
@@ -93,31 +100,20 @@ export default function EliminatorOutput({
             }}
           />
           <YAxis
-            yAxisId="n"
-            domain={[0, 1]}
-            ticks={[0, 0.25, 0.5, 0.75, 1]}
+            domain={[0, unit === 'kgs' ? 'auto' : 100]}
             tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
-            width={56}
+            width={64}
+            tickFormatter={(v: number) => (unit === 'kgs' ? fmt(v, 3) : fmt(v, 0))}
             label={{
-              value: 'Relative count',
+              value: unit === 'kgs' ? 'Drift below d  (kg/s)' : 'Drift below d  (% of inlet)',
               angle: -90,
               position: 'insideLeft',
-              offset: 16,
+              offset: 12,
               fill: '#4c4943',
               fontSize: 12.5,
               style: { textAnchor: 'middle' },
             }}
-          />
-          <YAxis
-            yAxisId="e"
-            orientation="right"
-            domain={[0, 100]}
-            ticks={[0, 25, 50, 75, 100]}
-            tick={{ fill: '#6250d6', fontSize: 12.5 }}
-            stroke="#aaa49a"
-            width={44}
-            unit="%"
           />
           <Tooltip
             contentStyle={{
@@ -127,29 +123,15 @@ export default function EliminatorOutput({
               color: '#252525',
               fontSize: 13.5,
             }}
-            formatter={(value: number, name: string, item) =>
-              name === 'eps'
-                ? [`${fmt(value, 1)} %`, 'Capture ε']
-                : name === 'escaping'
-                  ? [`${fmt(value, 3)}  (${sig(item.payload.escKgs, 3)} kg/s)`, 'Escaping']
-                  : [fmt(value, 3), 'Inlet']
-            }
-            labelFormatter={(mid) =>
-              `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(Number(mid) + BIN_UM / 2, 0)} µm`
-            }
+            formatter={(value: number, name: string) => [
+              show(value),
+              name === 'inlet' ? 'Inlet' : name === 'captured' ? 'Captured' : 'Escaping',
+            ]}
+            labelFormatter={(d) => `Below ${fmt(Number(d), 1)} µm`}
           />
-          <Bar yAxisId="n" dataKey="inlet" fill="rgba(19, 127, 112, 0.28)" isAnimationActive={false} />
-          <Bar yAxisId="n" dataKey="escaping" fill="#2a78d6" isAnimationActive={false} />
-          <Line
-            yAxisId="e"
-            dataKey="eps"
-            type="monotone"
-            stroke="#6250d6"
-            strokeWidth={2}
-            strokeDasharray="2 3"
-            dot={false}
-            isAnimationActive={false}
-          />
+          <Line dataKey="inlet" type="monotone" stroke="#137f70" strokeWidth={2.6} dot={false} isAnimationActive={false} />
+          <Line dataKey="captured" type="monotone" stroke="#b8641a" strokeWidth={2.6} dot={false} isAnimationActive={false} />
+          <Line dataKey="escaping" type="monotone" stroke="#2a78d6" strokeWidth={2.6} dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </section>
