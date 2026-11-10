@@ -86,7 +86,9 @@ mu    = ln E - sigma^2 / 2          (E = exp(mu + sigma^2/2))
 d_med = e^mu,  d_min (1 % point) = e^(mu - 2.3263 sigma)
 ```
 
-The untruncated mean is corrected so the truncated mean matches E. Defaults
+E, sigma and d_min describe the log-normal before the cut; d_max only cuts
+it (no mean correction, which ran away when d_max approached E). The panel
+shows the mass fraction removed by the cut. Defaults
 (E = 40.8 um, sigma = 0.555, d_max = 300 um) reproduce the least-squares fit
 to Ruiz et al. (2013) Fig. 9(a), test run 1 (d_med = 35 um). Ruiz measured at
 the tower exit, so using this shape at the eliminator inlet is an assumption.
