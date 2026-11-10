@@ -95,11 +95,19 @@ export default function StageResults({
       rows: [
         input('Eliminator', r.eliminator.spec.id === 'custom' ? 'Custom' : r.eliminator.spec.id, ''),
         { label: 'Type', formula: describeSpec(r.eliminator.spec), value: r.eliminator.spec.type, unit: '' },
-        { label: 'Air viscosity μ', formula: 'Sutherland: μ = 1.458e-6·T^1.5 / (T + 110.4)', value: sig(r.eliminator.dynamicViscosity, 4), unit: 'Pa·s' },
-        { label: 'Reynolds number', formula: 'Re = ρuL / μ', value: fmt(r.eliminator.reynolds, 0), unit: '' },
-        { label: 'Loss coefficient Kp', formula: 'Kp = f(Re, geometry)  (Ruiz 2019)', value: fmt(r.eliminator.pressureCoefficient, 2), unit: '' },
-        { label: 'Pressure drop Δp', formula: 'Δp = Kp·½ρu²', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
-        { label: 'Stokes number at d_med (range check)', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
+        ...(r.eliminator.spec.id === 'custom'
+          ? [input('Set pressure drop Δp', fmt(i.customPerformance.pressureDropPa, 1), 'Pa'),
+             input('Set ε at 5 / 10 / 20 / 30 / 50 / 75 / 100 / 150 / 200 / 300 µm', i.customPerformance.efficiencyPct.map((v) => fmt(v, 0)).join(' / '), '%')]
+          : []),
+        ...(r.eliminator.spec.id === 'custom'
+          ? [{ label: 'Pressure drop Δp', formula: 'set directly (same at every velocity)', value: fmt(d.pressureDrop, 1), unit: 'Pa' }]
+          : [
+          { label: 'Air viscosity μ', formula: 'Sutherland: μ = 1.458e-6·T^1.5 / (T + 110.4)', value: sig(r.eliminator.dynamicViscosity, 4), unit: 'Pa·s' },
+          { label: 'Reynolds number', formula: 'Re = ρuL / μ', value: fmt(r.eliminator.reynolds, 0), unit: '' },
+          { label: 'Loss coefficient Kp', formula: 'Kp = f(Re, geometry)  (Ruiz 2019)', value: fmt(r.eliminator.pressureCoefficient, 2), unit: '' },
+          { label: 'Stokes number at d_med (range check)', formula: 'St = ρ_w·u·d² / (18μL)', value: fmt(r.eliminator.stokes, 3), unit: '' },
+          { label: 'Pressure drop Δp', formula: 'Δp = Kp·½ρu²', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
+            ]),
         { label: 'Mass fraction escaping', formula: 'η_esc = ∫(1 − ε(d)) dF(d)', value: fmt(100 * d.massEscaping, 1), unit: '%' },
         { label: 'Mass fraction captured', formula: '1 − η_esc = ∫ε(d) dF(d)', value: fmt(100 * d.massCaptured, 1), unit: '%' },
         { label: 'Drift escaping', formula: 'ṁ_esc = ṁ_drift,in·η_esc', value: sig(d.driftEscaping, 3), unit: 'kg/s' },
@@ -108,7 +116,7 @@ export default function StageResults({
       notes: [
         ...r.eliminator.pressureRangeIssues.map((t) => `Outside the Ruiz pressure-correlation range: ${t}.`),
         `Ruiz tested ${RUIZ_LIMITS.velocityMin}–${RUIZ_LIMITS.velocityMax} m/s and droplets ≥ ${RUIZ_LIMITS.dropletDiameterMin} µm.`,
-        'Every size is partly captured, by ε(d).',
+        r.eliminator.spec.id === 'custom' ? 'Custom: Δp and ε(d) are set directly; ε is interpolated in ln d between the set sizes.' : 'Every size is partly captured, by ε(d).',
       ],
     },
     {

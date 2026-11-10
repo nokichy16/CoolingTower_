@@ -48,7 +48,7 @@ export default function FanChart({
 }) {
   const [view, setView] = useState<'all' | SelectionId>('all')
   const specs = Object.fromEntries(
-    IDS.map((id) => [id, resolveSpec(id, inputs.customEliminator)]),
+    IDS.map((id) => [id, resolveSpec(id)]),
   ) as Record<SelectionId, ReturnType<typeof resolveSpec>>
   const { rho, t, flowArea, velocity } = r.plume
   const selected = r.eliminator.spec.id as SelectionId
@@ -59,15 +59,21 @@ export default function FanChart({
   const tickStep = rawMax <= 6 ? 1 : rawMax <= 15 ? 2 : rawMax <= 40 ? 5 : 10
   const uMax = Math.ceil(rawMax / tickStep) * tickStep
   const xTicks = [0.5, ...Array.from({ length: uMax / tickStep }, (_, i) => (i + 1) * tickStep)]
-  const dotKp = evaluateRuizEliminator(specs[dotId], rho, velocity, t, 50).pressureCoefficient
-  const dotPower = (flowArea * velocity * dotKp * 0.5 * rho * velocity * velocity) / 1000
+  // Ideal air power P = A·u·Δp; the custom option keeps its set Δp at every u.
+  const powerAt = (id: SelectionId, u: number) => {
+    const dp =
+      id === 'custom'
+        ? inputs.customPerformance.pressureDropPa
+        : evaluateRuizEliminator(specs[id], rho, u, t, 50).pressureCoefficient * 0.5 * rho * u * u
+    return (flowArea * u * dp) / 1000
+  }
+  const dotPower = powerAt(dotId, velocity)
   const steps = 120
   const data = Array.from({ length: steps + 1 }, (_, i) => {
     const u = 0.5 + (i * (uMax - 0.5)) / steps
     const row: Record<string, number> = { u: Number(u.toFixed(2)) }
     for (const id of IDS) {
-      const kp = evaluateRuizEliminator(specs[id], rho, u, t, 50).pressureCoefficient
-      row[id] = (flowArea * u * kp * 0.5 * rho * u * u) / 1000
+      row[id] = powerAt(id, u)
     }
     return row
   })

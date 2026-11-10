@@ -156,22 +156,16 @@ test('invalid area, velocity, or cycles are reported without negative airflow', 
   }
 })
 
-test('custom eliminator with a tested geometry reproduces that design', () => {
-  const cases = [
-    ['A', { type: 'vane', vaneGapMm: 50, vaneHeightMm: 150 }],
-    ['D', { type: 'honeycomb', cellMm: 15 }],
-    ['F', { type: 'wire-mesh', meshLengthMm: 34.79, meshAngleDeg: 135 }],
-  ]
-  for (const [id, geometry] of cases) {
-    const tested = solveTower({ ...DEFAULT_INPUTS, eliminatorId: id })
-    const custom = solveTower({
-      ...DEFAULT_INPUTS,
-      eliminatorId: 'custom',
-      customEliminator: { ...DEFAULT_INPUTS.customEliminator, ...geometry },
-    })
-    closeTo(custom.droplets.pressureDrop, tested.droplets.pressureDrop, 1e-9)
-    closeTo(custom.droplets.massEscaping, tested.droplets.massEscaping, 1e-9)
-  }
+test('custom performance: set Δp and ε are used directly', () => {
+  const base = { ...DEFAULT_INPUTS, eliminatorId: 'custom' }
+  const none = solveTower({ ...base, customPerformance: { pressureDropPa: 40, efficiencyPct: Array(10).fill(0) } })
+  closeTo(none.droplets.massEscaping, 1)
+  closeTo(none.droplets.pressureDrop, 40)
+  closeTo(none.droplets.fanAirPower, (none.plume.vDot * 40) / 1000)
+  const all = solveTower({ ...base, customPerformance: { pressureDropPa: 40, efficiencyPct: Array(10).fill(100) } })
+  assert.ok(all.droplets.massEscaping < 1e-12)
+  const half = solveTower({ ...base, customPerformance: { pressureDropPa: 40, efficiencyPct: Array(10).fill(50) } })
+  closeTo(half.droplets.massEscaping, 0.5, 1e-9)
 })
 
 test('tested vanes A-C are inside the Ruiz b/h range (no rounding warning)', () => {

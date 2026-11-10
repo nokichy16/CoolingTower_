@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { solveTower, type TowerInputs } from '../lib/model'
 import {
-  describeSpec,
   resolveSpec,
   SELECTIONS,
   selectionName,
@@ -88,11 +87,11 @@ export default function EliminatorPicker({
                   <span className="picker-dot" aria-hidden="true" />
                   <span className="elim-name">
                     <strong>
-                      {selectionName(row.id)} · {resolveSpec(row.id, inputs.customEliminator).type}
+                      {selectionName(row.id)}{row.id === 'custom' ? ' · performance' : ` · ${resolveSpec(row.id).type}`}
                     </strong>
                     <small>
                       {row.id === 'custom'
-                        ? describeSpec(resolveSpec('custom', inputs.customEliminator))
+                        ? `Δp ${inputs.customPerformance.pressureDropPa} Pa · ε set by size`
                         : ELIMINATOR_DESCRIPTIONS[row.id as EliminatorId].split(' · ').slice(1).join(' · ')}
                     </small>
                   </span>
