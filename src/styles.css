@@ -1846,4 +1846,3 @@ input[type='range']::-moz-range-thumb {
 .eff-editor { display: block; width: 100%; height: auto; margin-top: 6px; touch-action: none; user-select: none; }
 .eff-editor g[role="slider"]:focus { outline: none; }
 .eff-editor g[role="slider"]:focus rect:nth-child(2) { stroke: #252525; stroke-width: 1.5; }
-.chart-legend-row .unit-toggle { margin-left: auto; display: inline-flex; gap: 4px; }

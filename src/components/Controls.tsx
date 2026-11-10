@@ -3,6 +3,7 @@ import type { StageId } from '../lib/stages'
 import Field from './Field'
 import DropletDistribution from './DropletDistribution'
 import EliminatorOutput from './EliminatorOutput'
+import EliminatorCount from './EliminatorCount'
 import FanChart from './FanChart'
 import CustomPerformanceEditor from './CustomPerformanceEditor'
 import PsychrometricChart from './PsychrometricChart'
@@ -223,6 +224,7 @@ export default function Controls({
               />
             )}
             <EliminatorOutput inputs={inputs} droplets={droplets} />
+            <EliminatorCount inputs={inputs} droplets={droplets} />
           </>
         )}
 

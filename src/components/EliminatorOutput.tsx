@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   CartesianGrid,
   ComposedChart,
@@ -18,8 +17,6 @@ interface EliminatorOutputProps {
   droplets: TowerResults['droplets']
 }
 
-type Unit = 'kgs' | 'pct'
-
 /**
  * Drift eliminator output: cumulative drift mass below each diameter for the
  * inlet, the captured part and the escaping part, all on the same basis (no
@@ -27,16 +24,15 @@ type Unit = 'kgs' | 'pct'
  *   inlet(d)    = ṁ_drift,in · F(d)
  *   escaping(d) = ṁ_drift,in · Σ (1 − ε) ΔF   up to d
  *   captured(d) = inlet(d) − escaping(d) = ṁ_drift,in · Σ ε ΔF
- * Shown in kg/s, or as % of the inlet drift mass.
+ * Shown in kg/s.
  */
 export default function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
-  const [unit, setUnit] = useState<Unit>('kgs')
   const p = distributionParams(inputs)
   const { split, driftInlet } = droplets
-  const scale = unit === 'kgs' ? driftInlet : 100
+  const scale = driftInlet
   const data = split.diameters
     .filter((_, i) => i % 2 === 1)
     .map((d) => {
@@ -54,32 +50,17 @@ export default function EliminatorOutput({
     { length: Math.floor(p.dMaxUm / 50) + 1 },
     (_, i) => i * 50,
   )
-  const show = (v: number) =>
-    unit === 'kgs' ? `${sig(v, 3)} kg/s` : `${fmt(v, 1)} %`
+  const show = (v: number) => `${sig(v, 3)} kg/s`
 
   return (
     <section className="eliminator-output" aria-labelledby="eliminator-output-title">
       <h3 className="input-group-title" id="eliminator-output-title">
-        Drift eliminator output
+        Cumulative drift mass below d
       </h3>
       <div className="chart-legend-row">
         <span><i className="is-line" style={{ color: '#137f70' }} />Inlet</span>
         <span><i className="is-line" style={{ color: '#b8641a' }} />Captured</span>
         <span><i className="is-line" style={{ color: '#2a78d6' }} />Escaping</span>
-        <span className="unit-toggle" role="radiogroup" aria-label="Units">
-          {(['kgs', 'pct'] as Unit[]).map((u) => (
-            <button
-              type="button"
-              key={u}
-              role="radio"
-              aria-checked={unit === u}
-              className={`legend-pick${unit === u ? ' is-selected' : ''}`}
-              onClick={() => setUnit(u)}
-            >
-              {u === 'kgs' ? 'kg/s' : '% of inlet'}
-            </button>
-          ))}
-        </span>
       </div>
       <ResponsiveContainer width="100%" height={440}>
         <ComposedChart data={data} margin={{ top: 16, right: 18, bottom: 8, left: 0 }}>
@@ -100,13 +81,13 @@ export default function EliminatorOutput({
             }}
           />
           <YAxis
-            domain={[0, unit === 'kgs' ? 'auto' : 100]}
+            domain={[0, 'auto']}
             tick={{ fill: '#4c4943', fontSize: 12.5 }}
             stroke="#aaa49a"
             width={64}
-            tickFormatter={(v: number) => (unit === 'kgs' ? fmt(v, 3) : fmt(v, 0))}
+            tickFormatter={(v: number) => fmt(v, 3)}
             label={{
-              value: unit === 'kgs' ? 'Drift below d  (kg/s)' : 'Drift below d  (% of inlet)',
+              value: 'Drift below d  (kg/s)',
               angle: -90,
               position: 'insideLeft',
               offset: 12,
