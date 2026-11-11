@@ -10,7 +10,8 @@ import {
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import {
   countHistogram,
-  paramsFromMeanSigma,
+  massAboveCut,
+  minimumFromSigma,
   sigmaFromMinimum,
 } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
@@ -109,14 +110,14 @@ export default function DropletDistribution({
             sym="d_min"
             unit="µm"
             value={Number(p.dMinUm.toFixed(1))}
-            min={Math.max(0.5, Number(paramsFromMeanSigma(inputs.dropletMean, 1.5, inputs.dropletDMax).dMinUm.toFixed(1)))}
-            max={Number(paramsFromMeanSigma(inputs.dropletMean, 0.05, inputs.dropletDMax).dMinUm.toFixed(1))}
+            min={Math.max(0.1, Number(minimumFromSigma(inputs.dropletMean, 1.5).toFixed(1)))}
+            max={Number(minimumFromSigma(inputs.dropletMean, 0.05).toFixed(1))}
             step={0.1}
             digits={1}
             onChange={(value) =>
               onChange({
                 dropletSigma: Number(
-                  sigmaFromMinimum(value, inputs.dropletMean, inputs.dropletDMax).toFixed(4),
+                  sigmaFromMinimum(value, inputs.dropletMean).toFixed(4),
                 ),
               })
             }
@@ -126,7 +127,7 @@ export default function DropletDistribution({
             sym="d_max"
             unit="µm"
             value={inputs.dropletDMax}
-            min={Math.ceil(p.dMedUm + 10)}
+            min={10}
             max={1000}
             step={10}
             digits={0}
@@ -136,6 +137,10 @@ export default function DropletDistribution({
             <div>
               <dt>Median d_med = e^μ</dt>
               <dd>{fmt(p.dMedUm, 1)} µm</dd>
+            </div>
+            <div>
+              <dt>Mass removed by the cut at d_max</dt>
+              <dd>{fmt(100 * massAboveCut(p), 2)} %</dd>
             </div>
 
           </dl>
