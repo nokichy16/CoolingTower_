@@ -1,41 +1,22 @@
-import { useMemo } from 'react'
-import { solveTower, type TowerInputs } from '../lib/model'
-import {
-  resolveSpec,
-  SELECTIONS,
-  selectionName,
-  type SelectionId,
-} from '../lib/eliminators'
+import type { EliminatorComparisonRow, TowerInputs } from '../lib/model'
+import { selectionName, type SelectionId } from '../lib/eliminators'
 import { fmt } from '../lib/format'
-import { ELIMINATOR_COLORS } from './FanChart'
+import { ELIMINATOR_COLORS } from './chartTheme'
+import { selectOnKey } from './selectOnKey'
 
 /**
- * All eliminators A–F at the current inputs: the full model is run once per
- * eliminator with only the eliminator changed. Click a row to select it.
+ * All eliminators at the current inputs: the full model is run once per
+ * eliminator with only the eliminator changed. Select a row to use it.
  */
 export default function FanTable({
   inputs,
+  rows,
   onSelect,
 }: {
   inputs: TowerInputs
+  rows: EliminatorComparisonRow[]
   onSelect: (id: SelectionId) => void
 }) {
-  const rows = useMemo(
-    () =>
-      SELECTIONS.map((id) => {
-        const r = solveTower({ ...inputs, eliminatorId: id })
-        return {
-          id,
-          type: resolveSpec(id).type,
-          kp: r.eliminator.pressureCoefficient,
-          dp: r.droplets.pressureDrop,
-          power: r.droplets.fanAirPower,
-          escaping: 100 * r.droplets.massEscaping,
-        }
-      }),
-    [inputs],
-  )
-
   return (
     <section className="fan-table" aria-labelledby="fan-table-title">
       <h3 className="input-group-title" id="fan-table-title">
@@ -51,24 +32,27 @@ export default function FanTable({
             <th scope="col" className="num">Drift escaping (%)</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="radiogroup" aria-label="Eliminator">
           {rows.map((row) => {
             const on = row.id === inputs.eliminatorId
             return (
               <tr
                 key={row.id}
                 className={on ? 'is-selected' : ''}
+                role="radio"
+                aria-checked={on}
+                tabIndex={0}
                 onClick={() => onSelect(row.id)}
-                aria-selected={on}
+                onKeyDown={selectOnKey(() => onSelect(row.id))}
               >
                 <th scope="row">
                   <i style={{ background: ELIMINATOR_COLORS[row.id] }} />
                   {selectionName(row.id)} · {row.type}
                 </th>
-                <td className="num">{fmt(row.kp, 2)}</td>
-                <td className="num">{fmt(row.dp, 1)}</td>
-                <td className="num">{fmt(row.power, 2)}</td>
-                <td className="num">{fmt(row.escaping, 1)}</td>
+                <td className="num">{fmt(row.pressureCoefficient, 2)}</td>
+                <td className="num">{fmt(row.pressureDrop, 1)}</td>
+                <td className="num">{fmt(row.fanAirPower, 2)}</td>
+                <td className="num">{fmt(100 * row.massEscaping, 1)}</td>
               </tr>
             )
           })}

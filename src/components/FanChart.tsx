@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -12,26 +12,29 @@ import {
 } from 'recharts'
 import type { TowerInputs, TowerResults } from '../lib/model'
 import {
-  evaluateRuizEliminator,
+  airDynamicViscosity,
+  customPressureDrop,
   resolveSpec,
+  ruizPressureCoefficient,
   RUIZ_LIMITS,
   SELECTIONS,
   selectionName,
   type SelectionId,
 } from '../lib/eliminators'
 import { fmt } from '../lib/format'
-import { GRID_STROKE } from './DropletDistribution'
+import {
+  AXIS_STROKE,
+  AXIS_TICK,
+  ELIMINATOR_COLORS,
+  GRID_STROKE,
+  TOOLTIP_STYLE,
+  xLabel,
+  yLabel,
+} from './chartTheme'
 
 const IDS = SELECTIONS
-export const ELIMINATOR_COLORS: Record<SelectionId, string> = {
-  A: '#2a78d6',
-  B: '#137f70',
-  C: '#6250d6',
-  D: '#b8641a',
-  E: '#c0397a',
-  F: '#6b7a1f',
-  custom: '#252525',
-}
+const U_MIN = 0.5
+const STEPS = 120
 
 /**
  * Ideal fan air power against face velocity for all Ruiz eliminators A–F,
@@ -47,36 +50,35 @@ export default function FanChart({
   inputs: TowerInputs
 }) {
   const [view, setView] = useState<'all' | SelectionId>('all')
-  const specs = Object.fromEntries(
-    IDS.map((id) => [id, resolveSpec(id)]),
-  ) as Record<SelectionId, ReturnType<typeof resolveSpec>>
   const { rho, t, flowArea, velocity } = r.plume
-  const selected = r.eliminator.spec.id as SelectionId
+  const customDp = customPressureDrop(inputs.customPerformance)
+  const selected = r.eliminator.spec.id
   const shown = view === 'all' ? IDS : [view]
   const dotId = view === 'all' ? selected : view
   // Axis covers 0.5–6 m/s, extended to include the current velocity.
   const rawMax = Math.max(6, velocity * 1.15)
   const tickStep = rawMax <= 6 ? 1 : rawMax <= 15 ? 2 : rawMax <= 40 ? 5 : 10
   const uMax = Math.ceil(rawMax / tickStep) * tickStep
-  const xTicks = [0.5, ...Array.from({ length: uMax / tickStep }, (_, i) => (i + 1) * tickStep)]
-  // Ideal air power P = A·u·Δp; the custom option keeps its set Δp at every u.
-  const powerAt = (id: SelectionId, u: number) => {
-    const dp =
-      id === 'custom'
-        ? inputs.customPerformance.pressureDropPa
-        : evaluateRuizEliminator(specs[id], rho, u, t, 50).pressureCoefficient * 0.5 * rho * u * u
-    return (flowArea * u * dp) / 1000
-  }
-  const dotPower = powerAt(dotId, velocity)
-  const steps = 120
-  const data = Array.from({ length: steps + 1 }, (_, i) => {
-    const u = 0.5 + (i * (uMax - 0.5)) / steps
-    const row: Record<string, number> = { u: Number(u.toFixed(2)) }
-    for (const id of IDS) {
-      row[id] = powerAt(id, u)
+  const xTicks = [U_MIN, ...Array.from({ length: uMax / tickStep }, (_, i) => (i + 1) * tickStep)]
+
+  const { data, dotPower } = useMemo(() => {
+    const mu = airDynamicViscosity(t)
+    // Ideal air power P = A·u·Δp; the custom option keeps its set Δp at every u.
+    const powerAt = (id: SelectionId, u: number) => {
+      const dp =
+        id === 'custom'
+          ? customDp
+          : ruizPressureCoefficient(resolveSpec(id), rho, u, mu) * 0.5 * rho * u * u
+      return (flowArea * u * dp) / 1000
     }
-    return row
-  })
+    const rows = Array.from({ length: STEPS + 1 }, (_, i) => {
+      const u = U_MIN + (i * (uMax - U_MIN)) / STEPS
+      const row: Record<string, number> = { u: Number(u.toFixed(2)) }
+      for (const id of IDS) row[id] = powerAt(id, u)
+      return row
+    })
+    return { data: rows, dotPower: powerAt(dotId, velocity) }
+  }, [rho, t, flowArea, velocity, customDp, uMax, dotId])
 
   return (
     <section className="stage-graph" aria-labelledby="fan-chart-title">
@@ -103,7 +105,7 @@ export default function FanChart({
             onClick={() => setView(id)}
           >
             <i style={{ background: ELIMINATOR_COLORS[id] }} />
-            {selectionName(id)} · {specs[id].type}
+            {selectionName(id)} · {resolveSpec(id).type}
           </button>
         ))}
       </div>
@@ -113,41 +115,21 @@ export default function FanChart({
           <XAxis
             dataKey="u"
             type="number"
-            domain={[0.5, uMax]}
+            domain={[U_MIN, uMax]}
             ticks={xTicks}
-            tick={{ fill: '#4c4943', fontSize: 12.5 }}
-            stroke="#aaa49a"
-            label={{
-              value: 'Face velocity u  (m/s)',
-              position: 'insideBottom',
-              offset: -4,
-              fill: '#4c4943',
-              fontSize: 12.5,
-            }}
+            tick={AXIS_TICK}
+            stroke={AXIS_STROKE}
+            label={xLabel('Face velocity u  (m/s)')}
           />
           <YAxis
-            tick={{ fill: '#4c4943', fontSize: 12.5 }}
-            stroke="#aaa49a"
+            tick={AXIS_TICK}
+            stroke={AXIS_STROKE}
             width={72}
             tickFormatter={(v: number) => fmt(v, 0)}
-            label={{
-              value: 'Fan air power  (kW)',
-              angle: -90,
-              position: 'insideLeft',
-              offset: 16,
-              style: { textAnchor: 'middle' },
-              fill: '#4c4943',
-              fontSize: 12.5,
-            }}
+            label={yLabel('Fan air power  (kW)')}
           />
           <Tooltip
-            contentStyle={{
-              background: '#fbfaf7',
-              border: '1px solid #d8d3ca',
-              borderRadius: 8,
-              color: '#252525',
-              fontSize: 13.5,
-            }}
+            contentStyle={TOOLTIP_STYLE}
             formatter={(value: number, name: string) => [`${fmt(value, 2)} kW`, name]}
             labelFormatter={(u) => `u = ${fmt(Number(u), 1)} m/s`}
             itemSorter={(item) => -(item.value as number)}
@@ -164,10 +146,10 @@ export default function FanChart({
               isAnimationActive={false}
             />
           ))}
-          {velocity >= 0.5 && (
+          {velocity >= U_MIN && (
             <ReferenceLine x={velocity} stroke="#8a857c" strokeDasharray="4 3" />
           )}
-          {velocity >= 0.5 && (
+          {velocity >= U_MIN && (
             <ReferenceDot
               x={velocity}
               y={dotPower}

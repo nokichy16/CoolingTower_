@@ -107,3 +107,14 @@ test('d_min input gives back the σ that produced it', async () => {
     assert.ok(Math.abs(sigmaFromMinimum(p.dMinUm, 40.8) - sigma) < 1e-9)
   }
 })
+
+test('cumulativeFunction and massBins agree with dropletCumulative', async () => {
+  const { cumulativeFunction, massBins, dropletCumulative, RUIZ_2013_RUN1_FIT: p } =
+    await import('../src/lib/droplet-distribution.ts')
+  const F = cumulativeFunction(p)
+  for (const d of [-1, 0, 5, 35, 120, 300, 400]) {
+    assert.equal(F(d), dropletCumulative(d, p))
+  }
+  const total = massBins(p, 5).reduce((sum, bin) => sum + bin.mass, 0)
+  assert.ok(Math.abs(total - 1) < 1e-12)
+})

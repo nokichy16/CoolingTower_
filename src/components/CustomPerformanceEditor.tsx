@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { CUSTOM_SIZES_UM, type CustomPerformance } from '../lib/eliminators'
 import type { TowerInputs } from '../lib/model'
 import Field from './Field'
+import { GRID_STROKE } from './chartTheme'
 
 const W = 600
 const H = 220
@@ -76,7 +77,7 @@ export default function CustomPerformanceEditor({
           const i = indexFromEvent(e)
           if (i < 0 || i >= n) return
           dragIndex.current = i
-          ;(e.target as Element).setPointerCapture?.(e.pointerId)
+          e.currentTarget.setPointerCapture?.(e.pointerId)
           setEff(i, pctFromEvent(e))
         }}
         onPointerMove={(e) => {
@@ -85,13 +86,13 @@ export default function CustomPerformanceEditor({
         onPointerUp={() => {
           dragIndex.current = null
         }}
-        onPointerLeave={() => {
+        onPointerCancel={() => {
           dragIndex.current = null
         }}
       >
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={yOf(g)} y2={yOf(g)} stroke="#dcd8cf" />
+            <line x1={PAD.left} x2={W - PAD.right} y1={yOf(g)} y2={yOf(g)} stroke={GRID_STROKE} />
             <text x={PAD.left - 6} y={yOf(g) + 4} textAnchor="end" fontSize={12} fill="#4c4943">
               {g}
             </text>

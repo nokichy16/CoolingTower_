@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
+  compareEliminators,
   DEFAULT_INPUTS,
   dryAirMassFlowFromVelocity,
   solveTower,
   velocityFromDryAirMassFlow,
   type TowerInputs,
 } from './lib/model'
+import { SELECTIONS, type SelectionId } from './lib/eliminators'
 import type { StageId } from './lib/stages'
 import Controls from './components/Controls'
-import TowerExplorer from './components/TowerExplorer'
+import TowerGraphic from './components/TowerGraphic'
 import StageResults from './components/StageResults'
 import FanTable from './components/FanTable'
 import EliminatorPicker from './components/EliminatorPicker'
@@ -18,7 +20,21 @@ export default function App() {
   const [selectedStage, setSelectedStage] = useState<StageId>('plume')
   const results = useMemo(() => solveTower(inputs), [inputs])
 
-  const patch = (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p }))
+  // The comparison tables are shown on the eliminator and fan stages only.
+  const showsComparison = selectedStage === 'droplets' || selectedStage === 'fan'
+  const comparison = useMemo(
+    () => (showsComparison ? compareEliminators(inputs, SELECTIONS) : []),
+    [inputs, showsComparison],
+  )
+
+  const patch = useCallback(
+    (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p })),
+    [],
+  )
+  const selectEliminator = useCallback(
+    (id: SelectionId) => patch({ eliminatorId: id }),
+    [patch],
+  )
   const reset = () => setInputs(DEFAULT_INPUTS)
   const dryAirMassFlowAtVelocity = (velocity: number) =>
     dryAirMassFlowFromVelocity(
@@ -61,23 +77,28 @@ export default function App() {
             className="visual-workspace"
             aria-label="Cooling-tower process"
           >
-            <TowerExplorer
-              r={results}
-              selected={selectedStage}
-              onSelect={setSelectedStage}
-            />
+            <div className="tower-explorer">
+              <TowerGraphic
+                r={results}
+                selected={selectedStage}
+                onSelect={setSelectedStage}
+              />
+            </div>
             {selectedStage === 'droplets' && (
               <div className="side-panel">
                 <EliminatorPicker
                   inputs={inputs}
-                  onSelect={(id) => patch({ eliminatorId: id })}
+                  rows={comparison}
+                  driftInlet={results.droplets.driftInlet}
+                  onSelect={selectEliminator}
                 />
               </div>
             )}
             {selectedStage === 'fan' && (
               <FanTable
                 inputs={inputs}
-                onSelect={(id) => patch({ eliminatorId: id })}
+                rows={comparison}
+                onSelect={selectEliminator}
               />
             )}
           </section>

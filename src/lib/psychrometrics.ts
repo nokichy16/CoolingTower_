@@ -14,9 +14,6 @@ const RATIO = 0.62198;
 /** Specific gas constant of dry air, J/(kg·K). */
 const R_DA = 287.055;
 
-/** Standard atmospheric pressure, Pa. */
-export const P_ATM = 101325;
-
 /**
  * Saturation vapour pressure of water over liquid, Pa.
  * Magnus / August–Roche–Magnus form — accurate to well under 0.5 % across
@@ -58,10 +55,9 @@ export function density(tC: number, omega: number, p: number): number {
   return ((1 + omega) * p) / (R_DA * tK * (1 + 1.6078 * omega));
 }
 
-/** Relative humidity (%) from dry-bulb, humidity ratio and pressure. */
-export function relHumidity(tC: number, omega: number, p: number): number {
-  const pv = (omega * p) / (RATIO + omega);
-  return Math.min(100, (pv / pSat(tC)) * 100);
+/** Vapour partial pressure, Pa, of air with humidity ratio ω. */
+export function vapourPressure(omega: number, p: number): number {
+  return (omega * p) / (RATIO + omega);
 }
 
 /**
@@ -69,64 +65,6 @@ export function relHumidity(tC: number, omega: number, p: number): number {
  * Inverts the Magnus form for the vapour partial pressure.
  */
 export function dewPoint(omega: number, p: number): number {
-  const pv = (omega * p) / (RATIO + omega);
-  const ln = Math.log(pv / 610.94);
+  const ln = Math.log(vapourPressure(omega, p) / 610.94);
   return (243.04 * ln) / (17.625 - ln);
-}
-
-/**
- * Bracket the saturation-enthalpy inversion searches over. Outside this range
- * `tSatFromH` cannot represent the state and silently returns the bracket edge,
- * so callers must test with `hWithinSatRange` before trusting the result.
- */
-export const T_SAT_MIN = -20;
-export const T_SAT_MAX = 90;
-
-/**
- * True when an enthalpy can actually be inverted onto the saturation curve.
- * A fill-exit enthalpy above the top of the range means the air would have to
- * leave hotter than any state this model represents — that is no solution,
- * not a hot one.
- */
-export function hWithinSatRange(h: number, p: number): boolean {
-  return h >= hSat(T_SAT_MIN, p) && h <= hSat(T_SAT_MAX, p);
-}
-
-/**
- * Temperature of saturated air with a given enthalpy — inverts hSat.
- * Used to find the fill-exit state: we know the exit enthalpy from the energy
- * balance and that the air leaves saturated, which fixes the temperature.
- * Monotone in T, so a bisection converges cleanly.
- *
- * Clamps to the bracket when `h` is out of range — guard with `hWithinSatRange`.
- */
-export function tSatFromH(h: number, p: number): number {
-  let lo = T_SAT_MIN;
-  let hi = T_SAT_MAX;
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2;
-    if (hSat(mid, p) < h) lo = mid;
-    else hi = mid;
-  }
-  return (lo + hi) / 2;
-}
-
-/**
- * Thermodynamic wet-bulb temperature, °C. Iterated from the adiabatic
- * saturation relation. Used for display / context, not in the core chain.
- */
-export function wetBulb(tC: number, omega: number, p: number): number {
-  let lo = -20;
-  let hi = tC;
-  for (let i = 0; i < 60; i++) {
-    const tw = (lo + hi) / 2;
-    const wsStar = omegaSat(tw, p);
-    // Humidity ratio implied by treating tw as the adiabatic saturation temp.
-    const wImplied =
-      ((2501 - 2.326 * tw) * wsStar - 1.006 * (tC - tw)) /
-      (2501 + 1.86 * tC - 4.186 * tw);
-    if (wImplied > omega) hi = tw;
-    else lo = tw;
-  }
-  return (lo + hi) / 2;
 }

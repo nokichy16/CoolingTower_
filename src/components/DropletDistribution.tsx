@@ -16,6 +16,15 @@ import {
 } from '../lib/droplet-distribution'
 import { fmt } from '../lib/format'
 import Field from './Field'
+import {
+  AXIS_STROKE,
+  AXIS_TICK,
+  diameterTicks,
+  GRID_STROKE,
+  SERIES,
+  TOOLTIP_STYLE,
+  xLabel,
+} from './chartTheme'
 
 interface DropletDistributionProps {
   inputs: TowerInputs
@@ -23,7 +32,6 @@ interface DropletDistributionProps {
   onChange: (patch: Partial<TowerInputs>) => void
 }
 
-export const GRID_STROKE = '#dcd8cf'
 const BIN_UM = 5
 
 /**
@@ -38,10 +46,7 @@ export default function DropletDistribution({
 }: DropletDistributionProps) {
   const p = distributionParams(inputs)
   const bins = countHistogram(p, BIN_UM)
-  const xTicks = Array.from(
-    { length: Math.floor(p.dMaxUm / 50) + 1 },
-    (_, i) => i * 50,
-  )
+  const xTicks = diameterTicks(p.dMaxUm)
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
@@ -142,7 +147,6 @@ export default function DropletDistribution({
               <dt>Mass removed by the cut at d_max</dt>
               <dd>{fmt(100 * massAboveCut(p), 2)} %</dd>
             </div>
-
           </dl>
         </div>
 
@@ -162,31 +166,19 @@ export default function DropletDistribution({
                 type="number"
                 domain={[0, p.dMaxUm]}
                 ticks={xTicks}
-                tick={{ fill: '#4c4943', fontSize: 12.5 }}
-                stroke="#aaa49a"
-                label={{
-                  value: 'Droplet diameter d  (µm)',
-                  position: 'insideBottom',
-                  offset: -4,
-                  fill: '#4c4943',
-                  fontSize: 12.5,
-                }}
+                tick={AXIS_TICK}
+                stroke={AXIS_STROKE}
+                label={xLabel('Droplet diameter d  (µm)')}
               />
               <YAxis
                 domain={[0, 1]}
                 ticks={[0, 0.25, 0.5, 0.75, 1]}
-                tick={{ fill: '#4c4943', fontSize: 12.5 }}
-                stroke="#aaa49a"
+                tick={AXIS_TICK}
+                stroke={AXIS_STROKE}
                 width={60}
               />
               <Tooltip
-                contentStyle={{
-                  background: '#fbfaf7',
-                  border: '1px solid #d8d3ca',
-                  borderRadius: 8,
-                  color: '#252525',
-                  fontSize: 13.5,
-                }}
+                contentStyle={TOOLTIP_STYLE}
                 formatter={(value: number) => [fmt(value, 3), 'Relative count']}
                 labelFormatter={(mid) =>
                   `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(
@@ -195,7 +187,7 @@ export default function DropletDistribution({
                   )} µm`
                 }
               />
-              <Bar dataKey="count" fill="#137f70" isAnimationActive={false} />
+              <Bar dataKey="count" fill={SERIES.inlet} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>

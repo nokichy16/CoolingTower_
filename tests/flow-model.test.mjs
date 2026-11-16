@@ -131,7 +131,8 @@ test('every eliminator reports drift from the full ε(d) curve', () => {
 test('escaping fraction equals the integral of (1 − ε) over the inlet distribution', () => {
   const result = solveTower({ ...DEFAULT_INPUTS, eliminatorId: 'A' })
   const { split, massEscaping } = result.droplets
-  closeTo(split.outletCumulative.at(-1), 1)
+  closeTo(split.escapingCumulative.at(-1), split.escaping)
+  closeTo(split.inletCumulative.at(-1), 1)
   assert.ok(massEscaping > 0.3 && massEscaping < 0.7)
 })
 
@@ -172,5 +173,61 @@ test('tested vanes A-C are inside the Ruiz b/h range (no rounding warning)', () 
   for (const id of ['A', 'B', 'C']) {
     const r = solveTower({ ...DEFAULT_INPUTS, eliminatorId: id })
     assert.ok(!r.eliminator.pressureRangeIssues.some((t) => t.includes('b/L')))
+  }
+})
+
+test('dry air (RH 0) has no dew point and gives zero recovery, not NaN', () => {
+  const r = solveTower({ ...DEFAULT_INPUTS, plumeRh: 0 })
+  assert.ok(Number.isNaN(r.plume.dewPoint))
+  for (const key of ['t', 'omega', 'h', 'dOmega', 'dH', 'e', 'mDotCond', 'qDuty']) {
+    assert.ok(Number.isFinite(r.recovery[key]), key)
+  }
+  assert.equal(r.recovery.mDotCond, 0)
+  assert.equal(r.recovery.qDuty, 0)
+  assert.equal(r.recovery.feasible, false)
+})
+
+test('a negative or invalid custom Δp is treated as zero everywhere', () => {
+  for (const pressureDropPa of [-20, Number.NaN]) {
+    const r = solveTower({
+      ...DEFAULT_INPUTS,
+      eliminatorId: 'custom',
+      customPerformance: { ...DEFAULT_INPUTS.customPerformance, pressureDropPa },
+    })
+    assert.equal(r.droplets.pressureDrop, 0)
+    assert.equal(r.eliminator.pressureCoefficient, 0)
+    assert.equal(r.droplets.fanAirPower, 0)
+  }
+})
+
+test('eliminator comparison rows match a full solve for each eliminator', async () => {
+  const { compareEliminators } = await import('../src/lib/model.ts')
+  const { SELECTIONS } = await import('../src/lib/eliminators.ts')
+  const rows = compareEliminators(DEFAULT_INPUTS, SELECTIONS)
+  assert.equal(rows.length, SELECTIONS.length)
+  for (const row of rows) {
+    const r = solveTower({ ...DEFAULT_INPUTS, eliminatorId: row.id })
+    assert.equal(row.pressureDrop, r.droplets.pressureDrop)
+    assert.equal(row.fanAirPower, r.droplets.fanAirPower)
+    assert.equal(row.massEscaping, r.droplets.massEscaping)
+    closeTo(row.driftEscaping + row.driftCaptured, r.droplets.driftInlet)
+  }
+})
+
+test('plume vapour pressures are consistent with RH', () => {
+  const r = solveTower(DEFAULT_INPUTS)
+  closeTo(r.plume.pv, (r.plume.rh / 100) * r.plume.pSat)
+})
+
+test('the sweep loss coefficient equals the full Ruiz evaluation', async () => {
+  const { ruizPressureCoefficient, evaluateRuizEliminator, airDynamicViscosity, ELIMINATORS } =
+    await import('../src/lib/eliminators.ts')
+  for (const spec of Object.values(ELIMINATORS)) {
+    for (const u of [0.5, 2, 4.3]) {
+      closeTo(
+        ruizPressureCoefficient(spec, 1.1, u, airDynamicViscosity(35)),
+        evaluateRuizEliminator(spec, 1.1, u, 35, 50).pressureCoefficient,
+      )
+    }
   }
 })

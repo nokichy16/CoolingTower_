@@ -106,15 +106,25 @@ export const DEFAULT_CUSTOM_PERFORMANCE: CustomPerformance = {
   efficiencyPct: [5, 15, 40, 60, 85, 95, 99, 100, 100, 100],
 }
 
+const CUSTOM_LN_SIZES = CUSTOM_SIZES_UM.map((d) => Math.log(d))
+
 export function customEfficiency(dUm: number, c: CustomPerformance): number {
   const xs = CUSTOM_SIZES_UM
-  const ys = c.efficiencyPct.map((v) => Math.min(100, Math.max(0, v)) / 100)
-  if (!(dUm > 0) || dUm <= xs[0]) return ys[0]
-  if (dUm >= xs[xs.length - 1]) return ys[ys.length - 1]
+  const last = xs.length - 1
+  const y = (i: number) => Math.min(100, Math.max(0, c.efficiencyPct[i])) / 100
+  if (!(dUm > 0) || dUm <= xs[0]) return y(0)
+  if (dUm >= xs[last]) return y(last)
   let i = 1
   while (xs[i] < dUm) i += 1
-  const t = (Math.log(dUm) - Math.log(xs[i - 1])) / (Math.log(xs[i]) - Math.log(xs[i - 1]))
-  return ys[i - 1] + t * (ys[i] - ys[i - 1])
+  const t =
+    (Math.log(dUm) - CUSTOM_LN_SIZES[i - 1]) /
+    (CUSTOM_LN_SIZES[i] - CUSTOM_LN_SIZES[i - 1])
+  return y(i - 1) + t * (y(i) - y(i - 1))
+}
+
+/** Custom Δp as used by the model: never negative. */
+export function customPressureDrop(c: CustomPerformance): number {
+  return Number.isFinite(c.pressureDropPa) ? Math.max(0, c.pressureDropPa) : 0
 }
 
 export const CUSTOM_SPEC: EliminatorSpec = {
@@ -189,6 +199,22 @@ export function collectionEfficiency(
     spec.type === 'vane' ? -(2.52 - 0.702 * pitchRatio) : -3.08
   const exponent = -(stokes ** 2) * (1 - Math.exp(beta / stokes))
   return 1 - alpha * Math.exp(exponent)
+}
+
+/**
+ * Ruiz loss coefficient Kp at one velocity, without the range checks.
+ * Use this for sweeps; `evaluateRuizEliminator` gives the full result.
+ */
+export function ruizPressureCoefficient(
+  spec: EliminatorSpec,
+  rhoAir: number,
+  velocity: number,
+  dynamicViscosity: number,
+): number {
+  return pressureCoefficient(
+    spec,
+    (rhoAir * velocity * spec.characteristicLength) / dynamicViscosity,
+  )
 }
 
 function outside(value: number, min: number, max: number): boolean {

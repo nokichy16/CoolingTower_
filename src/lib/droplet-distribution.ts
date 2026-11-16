@@ -1,30 +1,20 @@
 /**
- * Inlet drift droplet-size distribution (log-normal, by mass).
+ * Inlet drift droplet-size distribution: one log-normal by mass, cut at d_max.
  *
- * Cumulative mass fraction of droplets smaller than diameter d:
+ * Inputs are the mass-weighted mean E and σ, the standard deviation of ln d:
  *
- *   F(d) = ½ [1 + erf( ln(d / d_med) / (√2 · ln σg) )]
+ *   μ = ln E − σ²/2,   d_med = e^μ,   d_min (1 % point) = e^(μ − 2.326σ)
+ *   LN(d) = ½ [1 + erf((ln d − μ) / (√2·σ))]
+ *   F(d)  = LN(d) / LN(d_max)   for d < d_max,   F(d) = 1 for d ≥ d_max
  *
- * d_med is the mass median diameter (50 % of the mass is smaller) and σg is
- * the geometric standard deviation (σg = 1 is a single size; larger is wider).
- *
- * Users enter d_min (1 % of the mass is smaller) and d_med; σg follows.
+ * d_max only cuts the curve; it does not move μ or σ. The parameter object
+ * stores d_min and d_med, so σ = ln(d_med / d_min) / 2.326.
  *
  * Ruiz et al. (2013), Atmospheric Environment 69:170–181, found the
  * log-normal function fitted measured cooling-tower drift better than
- * Rosin–Rammler. A fit to their test run 1 gives the default values below. Those
- * measurements were taken at the tower exit, so using them as an eliminator
- * inlet distribution is an assumption.
- */
-
-/**
- * Inlet distribution: one log-normal by mass, truncated at d_max.
- *
- *   F(d) = LN(d; d_med, σg) / LN(d_max; d_med, σg)   for d < d_max,
- *   F(d) = 1                                           for d ≥ d_max
- *
- * σg follows from d_min, the diameter where 1 % of the mass is smaller:
- *   σg = (d_med / d_min)^(1 / z99).
+ * Rosin–Rammler. A fit to their test run 1 gives the default values below.
+ * Those measurements were taken at the tower exit, so using them as an
+ * eliminator inlet distribution is an assumption.
  */
 export interface DropletDistributionParams {
   dMinUm: number // 1 % of mass is smaller
@@ -62,17 +52,46 @@ export function spread(p: DropletDistributionParams): number {
   return (p.dMedUm / p.dMinUm) ** (1 / Z99)
 }
 
+/**
+ * F(d) for one parameter set, with the spread and the value at d_max worked
+ * out once. Use this when F is needed at many diameters.
+ */
+export function cumulativeFunction(
+  p: DropletDistributionParams,
+): (diameterUm: number) => number {
+  const sg = spread(p)
+  const top = logNormalCumulative(p.dMaxUm, p.dMedUm, sg)
+  return (diameterUm) => {
+    if (!(diameterUm > 0)) return 0
+    if (diameterUm >= p.dMaxUm) return 1
+    return top > 0
+      ? Math.min(1, logNormalCumulative(diameterUm, p.dMedUm, sg) / top)
+      : 0
+  }
+}
+
 export function dropletCumulative(
   diameterUm: number,
   p: DropletDistributionParams,
 ): number {
-  if (!(diameterUm > 0)) return 0
-  if (diameterUm >= p.dMaxUm) return 1
-  const sg = spread(p)
-  const top = logNormalCumulative(p.dMaxUm, p.dMedUm, sg)
-  return top > 0
-    ? Math.min(1, logNormalCumulative(diameterUm, p.dMedUm, sg) / top)
-    : 0
+  return cumulativeFunction(p)(diameterUm)
+}
+
+/** Inlet mass fraction in each size class of width binUm, up to d_max. */
+export function massBins(
+  p: DropletDistributionParams,
+  binUm: number,
+): { mid: number; mass: number }[] {
+  const F = cumulativeFunction(p)
+  const bins: { mid: number; mass: number }[] = []
+  let prevF = 0
+  for (let a = 0; a < p.dMaxUm; a += binUm) {
+    const b = Math.min(a + binUm, p.dMaxUm)
+    const f = F(b)
+    bins.push({ mid: (a + b) / 2, mass: f - prevF })
+    prevF = f
+  }
+  return bins
 }
 
 /**
@@ -83,14 +102,11 @@ export function countHistogram(
   p: DropletDistributionParams,
   binUm: number,
 ): { mid: number; count: number }[] {
-  const bins: { mid: number; count: number }[] = []
-  for (let a = 0; a < p.dMaxUm; a += binUm) {
-    const b = Math.min(a + binUm, p.dMaxUm)
-    const mid = (a + b) / 2
-    const mass = dropletCumulative(b, p) - dropletCumulative(a, p)
-    bins.push({ mid, count: mass / mid ** 3 })
-  }
-  const peak = Math.max(...bins.map((x) => x.count))
+  const bins = massBins(p, binUm).map((x) => ({
+    mid: x.mid,
+    count: x.mass / x.mid ** 3,
+  }))
+  const peak = bins.reduce((m, x) => Math.max(m, x.count), 0)
   return bins.map((x) => ({ ...x, count: peak > 0 ? x.count / peak : 0 }))
 }
 
@@ -129,28 +145,17 @@ export function logNormalCumulative(
   return 0.5 * (1 + erf(z))
 }
 
-/** Evenly spaced diameters for plotting the cumulative curve. */
-export function linearDiameters(
-  minUm: number,
-  maxUm: number,
-  count: number,
-): number[] {
-  return Array.from(
-    { length: count },
-    (_, index) => minUm + ((maxUm - minUm) * index) / (count - 1),
-  )
-}
-
 /** Diameter below which a mass fraction p of the distribution lies (bisection). */
 export function massQuantile(
   fraction: number,
   p: DropletDistributionParams,
 ): number {
+  const F = cumulativeFunction(p)
   let lo = 0.01
   let hi = p.dMaxUm
   for (let i = 0; i < 80; i += 1) {
     const mid = (lo + hi) / 2
-    if (dropletCumulative(mid, p) < fraction) lo = mid
+    if (F(mid) < fraction) lo = mid
     else hi = mid
   }
   return (lo + hi) / 2
@@ -165,14 +170,15 @@ export function sauterMeanDiameter(
   upToUm = p.dMaxUm,
 ): number {
   const top = Math.min(upToUm, p.dMaxUm)
+  const F = cumulativeFunction(p)
   const steps = 2000
-  const total = dropletCumulative(top, p)
+  const total = F(top)
   let sum = 0
   let prevD = 0.05
-  let prevF = dropletCumulative(prevD, p)
+  let prevF = F(prevD)
   for (let i = 1; i <= steps; i += 1) {
     const d = 0.05 * (top / 0.05) ** (i / steps)
-    const f = dropletCumulative(d, p)
+    const f = F(d)
     sum += (f - prevF) / Math.sqrt(d * prevD)
     prevD = d
     prevF = f
@@ -184,16 +190,16 @@ export function sauterMeanDiameter(
  * Grade-efficiency split of the inlet distribution.
  *
  *   escaping fraction = ∫₀^d_max (1 − ε(d)) dF(d)
- *   outlet F_out(d)   = ∫₀^d (1 − ε) dF / escaping fraction
- *   outlet D₃₂        = ∫(1 − ε) dF / ∫(1 − ε)/d dF
  *
  * Evaluated over equal size classes with ε at the class midpoint.
+ * `inletCumulative` and `escapingCumulative` are fractions of the inlet mass
+ * below each class upper edge, so captured = inlet − escaping at every d.
  */
 export interface EfficiencySplit {
   escaping: number
   diameters: number[] // class upper edges, µm
-  outletCumulative: number[] // F_out at each upper edge (0–1)
-  outletSauterMean: number // µm
+  inletCumulative: number[] // F(d) at each upper edge (0–1)
+  escapingCumulative: number[] // Σ(1 − ε)ΔF up to each upper edge (0–escaping)
 }
 
 export function efficiencySplit(
@@ -201,46 +207,24 @@ export function efficiencySplit(
   efficiency: (diameterUm: number) => number,
   classes = 600,
 ): EfficiencySplit {
+  const F = cumulativeFunction(p)
   const step = p.dMaxUm / classes
   const diameters: number[] = []
-  const running: number[] = []
+  const inletCumulative: number[] = []
+  const escapingCumulative: number[] = []
   let escaping = 0
-  let inverse = 0
   let prevF = 0
   for (let i = 1; i <= classes; i += 1) {
     const d = i * step
-    const f = dropletCumulative(d, p)
-    const mid = d - step / 2
-    const eps = Math.min(1, Math.max(0, efficiency(mid)))
-    const passed = (1 - eps) * (f - prevF)
-    escaping += passed
-    inverse += passed / mid
+    const f = F(d)
+    const eps = Math.min(1, Math.max(0, efficiency(d - step / 2)))
+    escaping += (1 - eps) * (f - prevF)
     diameters.push(d)
-    running.push(escaping)
+    inletCumulative.push(f)
+    escapingCumulative.push(escaping)
     prevF = f
   }
-  return {
-    escaping,
-    diameters,
-    outletCumulative: running.map((x) => (escaping > 0 ? x / escaping : 0)),
-    outletSauterMean: inverse > 0 ? escaping / inverse : Number.NaN,
-  }
-}
-
-/** Mass-weighted mean diameter of the (truncated) distribution, E = ∫ d dF. */
-export function massMeanDiameter(p: DropletDistributionParams): number {
-  const steps = 2000
-  let sum = 0
-  let prevD = 0.05
-  let prevF = dropletCumulative(prevD, p)
-  for (let i = 1; i <= steps; i += 1) {
-    const d = 0.05 * (p.dMaxUm / 0.05) ** (i / steps)
-    const f = dropletCumulative(d, p)
-    sum += (f - prevF) * Math.sqrt(d * prevD)
-    prevD = d
-    prevF = f
-  }
-  return sum
+  return { escaping, diameters, inletCumulative, escapingCumulative }
 }
 
 /**

@@ -9,6 +9,7 @@
  * plain markup underneath the plot, where they stay legible at any width.
  */
 
+import { useMemo } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -26,10 +27,11 @@ import {
   type PsychrometricChartData,
 } from '../lib/psychrometric-chart'
 import { fmt } from '../lib/format'
+import { AXIS_STROKE, AXIS_TEXT, GRID_STROKE } from './chartTheme'
 
-const AXIS = '#4c4943'
-const GRID = '#dcd8cf' // same grid as the drift droplet graphs
-const LINE = '#aaa49a'
+const AXIS = AXIS_TEXT
+const GRID = GRID_STROKE
+const LINE = AXIS_STROKE
 const RH_MAIN = '#2a78d6'
 const RH_FAINT = 'rgba(42, 120, 214, 0.38)'
 const ENTHALPY = 'rgba(184, 100, 26, 0.55)'
@@ -109,7 +111,7 @@ function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
 }
 
 export default function PsychrometricChart({ r }: { r: TowerResults }) {
-  const c = buildPsychrometricChart(r)
+  const c = useMemo(() => buildPsychrometricChart(r), [r])
   const processPoints = c.rows.flatMap((row) => {
     const w = row[c.processKey]
     return typeof w === 'number' ? [{ x: row.t, y: w }] : []

@@ -1,13 +1,16 @@
+import { lazy, Suspense } from 'react'
 import type { TowerInputs, TowerResults } from '../lib/model'
-import type { StageId } from '../lib/stages'
+import { groupOf, STAGE_GROUPS, STAGE_META, type StageId } from '../lib/stages'
 import Field from './Field'
-import DropletDistribution from './DropletDistribution'
-import EliminatorOutput from './EliminatorOutput'
-import EliminatorCount from './EliminatorCount'
-import FanChart from './FanChart'
 import CustomPerformanceEditor from './CustomPerformanceEditor'
-import PsychrometricChart from './PsychrometricChart'
 
+// The graphs pull in the charting library, so they load only when a stage
+// that shows one is opened. The first screen (plume inputs) has no graph.
+const DropletDistribution = lazy(() => import('./DropletDistribution'))
+const EliminatorOutput = lazy(() => import('./EliminatorOutput'))
+const EliminatorCount = lazy(() => import('./EliminatorCount'))
+const FanChart = lazy(() => import('./FanChart'))
+const PsychrometricChart = lazy(() => import('./PsychrometricChart'))
 
 interface ControlsProps {
   inputs: TowerInputs
@@ -21,35 +24,6 @@ interface ControlsProps {
   onSelectStage: (id: StageId) => void
   onReset: () => void
 }
-
-const STAGE_META: Record<
-  StageId,
-  {
-    index: string
-    name: string
-    path: 'air' | 'liquid'
-  }
-> = {
-  plume: { index: '1', name: 'Plume & airflow', path: 'air' },
-  drift: { index: '1', name: 'Drift droplets', path: 'liquid' },
-  droplets: { index: '2', name: 'Drift eliminator', path: 'liquid' },
-  fan: { index: '3', name: 'Fan', path: 'air' },
-  recovery: { index: '4', name: 'Condensation recovery', path: 'air' },
-}
-
-/** Top-level stages; the inlet has two sub-stages. */
-const STAGE_GROUPS: {
-  key: string
-  index: string
-  name: string
-  path: 'air' | 'liquid'
-  stages: StageId[]
-}[] = [
-  { key: 'inlet', index: '1', name: 'Inlet', path: 'air', stages: ['plume', 'drift'] },
-  { key: 'droplets', index: '2', name: 'Drift eliminator', path: 'liquid', stages: ['droplets'] },
-  { key: 'fan', index: '3', name: 'Fan', path: 'air', stages: ['fan'] },
-  { key: 'recovery', index: '4', name: 'Condensation recovery', path: 'air', stages: ['recovery'] },
-]
 
 export default function Controls({
   inputs,
@@ -65,8 +39,7 @@ export default function Controls({
 }: ControlsProps) {
   const droplets = r.droplets
   const stage = STAGE_META[selectedStage]
-  const group =
-    STAGE_GROUPS.find((g) => g.stages.includes(selectedStage)) ?? STAGE_GROUPS[0]
+  const group = groupOf(selectedStage)
   const set =
     (key: keyof TowerInputs) =>
     (value: number) =>
@@ -83,7 +56,7 @@ export default function Controls({
           </span>
           <h2>{stage.name}</h2>
         </div>
-        <button className="reset" onClick={onReset}>
+        <button type="button" className="reset" onClick={onReset}>
           Reset all
         </button>
       </div>
@@ -126,6 +99,7 @@ export default function Controls({
       )}
 
       <div className="stage-input-panel" key={selectedStage}>
+        <Suspense fallback={<p className="stage-loading" role="status">Loading graphs…</p>}>
         {selectedStage === 'plume' && (
           <div className="inlet-layout">
             <section className="input-group" aria-labelledby="group-plume">
@@ -229,9 +203,7 @@ export default function Controls({
         )}
 
         {selectedStage === 'fan' && (
-          <>
-            <FanChart r={r} inputs={inputs} />
-          </>
+          <FanChart r={r} inputs={inputs} />
         )}
 
         {selectedStage === 'recovery' && (
@@ -262,6 +234,7 @@ export default function Controls({
             </div>
           </>
         )}
+        </Suspense>
       </div>
     </aside>
   )

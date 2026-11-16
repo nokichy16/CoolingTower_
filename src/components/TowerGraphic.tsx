@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { TowerResults } from '../lib/model'
-import { buildStages, type StageId } from '../lib/stages'
+import { STAGE_META, type StageId } from '../lib/stages'
+import { fmt } from '../lib/format'
+import { selectOnKey } from './selectOnKey'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -57,60 +59,43 @@ export default function TowerGraphic({
   selected: StageId
   onSelect: (id: StageId) => void
 }) {
-  const stages = buildStages(r)
-  const byId = Object.fromEntries(
-    stages.map((stage) => [stage.id, stage]),
-  ) as Record<StageId, (typeof stages)[number]>
   const toZone = (id: StageId): GraphicZoneId => (id === 'drift' ? 'droplets' : id)
   const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(toZone(selected))
-
-  const metricReading = (value: string, unit: string) =>
-    `${value}${unit === '%' || unit === '°C' ? '' : ' '}${unit}`
 
   useEffect(() => {
     setGraphicZone(toZone(selected))
   }, [selected])
 
-  const graphicInfo = (id: GraphicZoneId): GraphicInfo => {
-    const info: Record<GraphicZoneId, GraphicInfo> = {
-      plume: {
-        name: 'Plume',
-        reading: `T ${metricReading(
-          byId.plume.primary[0].value,
-          byId.plume.primary[0].unit,
-        )} · RH ${metricReading(
-          byId.plume.primary[1].value,
-          byId.plume.primary[1].unit,
-        )}`,
-        control: 'plume',
-        accent: byId.plume.accent,
-      },
-      droplets: {
-        name: 'Drift eliminator',
-        reading: `Escaping ${(100 * r.droplets.massEscaping).toFixed(1)} %`,
-        control: 'droplets',
-        accent: byId.droplets.accent,
-      },
-      fan: {
-        name: 'Fan',
-        reading: `Air power ${metricReading(
-          byId.fan.primary[0].value,
-          byId.fan.primary[0].unit,
-        )}`,
-        control: 'fan',
-        accent: byId.fan.accent,
-      },
-      recovery: {
-        name: 'Recovery',
-        reading: `Water ${metricReading(
-          byId.recovery.supporting[0].value,
-          byId.recovery.supporting[0].unit,
-        )}`,
-        control: 'recovery',
-        accent: byId.recovery.accent,
-      },
-    }
-    return info[id]
+  const info: Record<GraphicZoneId, GraphicInfo> = {
+    plume: {
+      name: 'Plume',
+      reading: `T ${fmt(r.plume.t)}°C · RH ${fmt(r.plume.rh, 0)}%`,
+      control: 'plume',
+      accent: STAGE_META.plume.accent,
+    },
+    droplets: {
+      name: 'Drift eliminator',
+      reading: `Escaping ${fmt(100 * r.droplets.massEscaping, 1)} %`,
+      control: 'droplets',
+      accent: STAGE_META.droplets.accent,
+    },
+    fan: {
+      name: 'Fan',
+      reading: `Air power ${fmt(r.droplets.fanAirPower, 1)} kW`,
+      control: 'fan',
+      accent: STAGE_META.fan.accent,
+    },
+    recovery: {
+      name: 'Recovery',
+      reading: `Water ${fmt(r.recovery.mDotCond, 2)} kg/s`,
+      control: 'recovery',
+      accent: STAGE_META.recovery.accent,
+    },
+  }
+  const graphicInfo = (id: GraphicZoneId): GraphicInfo => info[id]
+  const pick = (id: GraphicZoneId) => {
+    setGraphicZone(id)
+    onSelect(info[id].control)
   }
 
   const airIntensity = clamp(r.plume.velocity / 10, 0.12, 1)
@@ -129,17 +114,8 @@ export default function TowerGraphic({
         tabIndex={0}
         aria-label={`${info.name}, ${info.reading}, select station`}
         aria-pressed={isSelected}
-        onClick={() => {
-          setGraphicZone(id)
-          onSelect(info.control)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setGraphicZone(id)
-            onSelect(info.control)
-          }
-        }}
+        onClick={() => pick(id)}
+        onKeyDown={selectOnKey(() => pick(id))}
       >
         {isSelected && (
           <rect
@@ -178,17 +154,8 @@ export default function TowerGraphic({
         role="button"
         tabIndex={0}
         aria-label={`${info.name}, ${info.reading}, select station`}
-        onClick={() => {
-          setGraphicZone(id)
-          onSelect(info.control)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setGraphicZone(id)
-            onSelect(info.control)
-          }
-        }}
+        onClick={() => pick(id)}
+        onKeyDown={selectOnKey(() => pick(id))}
       >
         <path
           className="leader"
