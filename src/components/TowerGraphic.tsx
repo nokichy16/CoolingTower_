@@ -54,10 +54,13 @@ export default function TowerGraphic({
   r,
   selected,
   onSelect,
+  compact = false,
 }: {
   r: TowerResults
   selected: StageId
   onSelect: (id: StageId) => void
+  /** Draw the tower alone, without the side labels. */
+  compact?: boolean
 }) {
   const toZone = (id: StageId): GraphicZoneId => (id === 'drift' ? 'droplets' : id)
   const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(toZone(selected))
@@ -187,7 +190,7 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="55 0 545 405"
+        viewBox={compact ? '50 0 400 405' : '55 0 545 405'}
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
@@ -432,7 +435,7 @@ export default function TowerGraphic({
           </text>
         </g>
 
-        {LABELS.map(label)}
+        {!compact && LABELS.map(label)}
         {zone('fan')}
         {zone('droplets')}
         {zone('plume')}

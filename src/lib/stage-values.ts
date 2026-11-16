@@ -1,9 +1,13 @@
-import { distributionParams, type TowerResults } from '../lib/model'
-import { describeSpec, RUIZ_LIMITS, selectionName } from '../lib/eliminators'
-import type { StageId, StagePath } from '../lib/stages'
-import { fmt, sig } from '../lib/format'
+/**
+ * Every input and calculated value, grouped by stage, with the formula used.
+ * This is display data only; the numbers come from `solveTower`.
+ */
+import { distributionParams, type TowerResults } from './model'
+import { describeSpec, RUIZ_LIMITS, selectionName } from './eliminators'
+import type { StageId, StagePath } from './stages'
+import { fmt, sig } from './format'
 
-interface Row {
+export interface ValueRow {
   label: string
   formula: string
   value: string
@@ -11,16 +15,16 @@ interface Row {
   kind?: 'input' | 'result'
 }
 
-interface StageBlock {
+export interface StageBlock {
   id: StageId
   index: string
   name: string
   path: StagePath
-  rows: Row[]
+  rows: ValueRow[]
   notes?: string[]
 }
 
-const input = (label: string, value: string, unit: string): Row => ({
+const input = (label: string, value: string, unit: string): ValueRow => ({
   label,
   formula: 'input',
   value,
@@ -28,22 +32,12 @@ const input = (label: string, value: string, unit: string): Row => ({
   kind: 'input',
 })
 
-/**
- * Every calculated value, grouped by stage and always visible. Each row shows
- * the quantity, the formula used and the value; input rows are greyed.
- */
-export default function StageResults({
-  r,
-  onSelect,
-}: {
-  r: TowerResults
-  onSelect: (id: StageId) => void
-}) {
+export function buildStageBlocks(r: TowerResults): StageBlock[] {
   const i = r.inputs
   const d = r.droplets
   const p = distributionParams(i)
 
-  const blocks: StageBlock[] = [
+  return [
     {
       id: 'plume',
       index: '1',
@@ -148,54 +142,4 @@ export default function StageResults({
       notes: ['Theoretical condensate and air-side duty; not equipment sizing.'],
     },
   ]
-
-  return (
-    <section className="stage-results" aria-labelledby="stage-results-title">
-      <div className="output-section-head">
-        <h2 id="stage-results-title">All calculated values</h2>
-      </div>
-
-      <div className="stage-result-grid">
-        {blocks.map((b) => (
-          <section key={b.id} className={`stage-result is-${b.path}`}>
-            <header className="stage-result-head">
-              <span className="stage-result-index">{b.index}</span>
-              <strong>{b.name}</strong>
-              <button
-                type="button"
-                className="stage-result-edit"
-                onClick={() => onSelect(b.id)}
-              >
-                Edit inputs
-              </button>
-            </header>
-            <ul className="stage-result-rows">
-              {b.rows.map((row) => (
-                <li key={row.label} className={row.kind === 'input' ? 'is-input' : ''}>
-                  <span className="row-label">
-                    <span>
-                      {row.label}
-                      {row.kind === 'input' && <em className="input-tag">input</em>}
-                    </span>
-                    {row.kind !== 'input' && <code>{row.formula}</code>}
-                  </span>
-                  <span className="row-value">
-                    <strong>{row.value}</strong>
-                    {row.unit && <small>{row.unit}</small>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {b.notes && b.notes.length > 0 && (
-              <ul className="stage-result-notes">
-                {b.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
-    </section>
-  )
 }

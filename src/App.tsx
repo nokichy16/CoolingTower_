@@ -5,23 +5,37 @@ import {
   dryAirMassFlowFromVelocity,
   solveTower,
   velocityFromDryAirMassFlow,
+  type SolveIssue,
   type TowerInputs,
 } from './lib/model'
 import { SELECTIONS, type SelectionId } from './lib/eliminators'
+import { buildStageBlocks } from './lib/stage-values'
 import type { StageId } from './lib/stages'
-import Controls from './components/Controls'
-import TowerGraphic from './components/TowerGraphic'
-import StageResults from './components/StageResults'
-import FanTable from './components/FanTable'
-import EliminatorPicker from './components/EliminatorPicker'
+import KpiBar from './components/KpiBar'
+import StageRail from './components/StageRail'
+import StageWorkspace from './components/StageWorkspace'
+import ValueTable from './components/ValueTable'
+
+/** The stage where each warning is caused and can be fixed. */
+const ISSUE_STAGE: Record<SolveIssue['code'], StageId> = {
+  'flow-input-invalid': 'plume',
+  'ruiz-pressure-extrapolation': 'droplets',
+  'ruiz-collection-extrapolation': 'droplets',
+  'recovery-temperature-limited': 'recovery',
+  'no-condensation-depth': 'recovery',
+  'cycles-invalid': 'recovery',
+}
+
+const STAGE_IDS: StageId[] = ['plume', 'drift', 'droplets', 'fan', 'recovery']
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
-  const [selectedStage, setSelectedStage] = useState<StageId>('plume')
+  const [stage, setStage] = useState<StageId>('plume')
   const results = useMemo(() => solveTower(inputs), [inputs])
+  const blocks = useMemo(() => buildStageBlocks(results), [results])
 
   // The comparison tables are shown on the eliminator and fan stages only.
-  const showsComparison = selectedStage === 'droplets' || selectedStage === 'fan'
+  const showsComparison = stage === 'droplets' || stage === 'fan'
   const comparison = useMemo(
     () => (showsComparison ? compareEliminators(inputs, SELECTIONS) : []),
     [inputs, showsComparison],
@@ -35,90 +49,86 @@ export default function App() {
     (id: SelectionId) => patch({ eliminatorId: id }),
     [patch],
   )
-  const reset = () => setInputs(DEFAULT_INPUTS)
-  const dryAirMassFlowAtVelocity = (velocity: number) =>
-    dryAirMassFlowFromVelocity(
-      results.plume.rho,
-      inputs.flowArea,
-      velocity,
-      results.plume.omega,
-    )
+  const { rho, omega } = results.plume
+  const massFlowAt = (velocity: number) =>
+    dryAirMassFlowFromVelocity(rho, inputs.flowArea, velocity, omega)
   const setDryAirMassFlow = (dryAirMassFlow: number) =>
     patch({
-      plumeVelocity: velocityFromDryAirMassFlow(
-        dryAirMassFlow,
-        results.plume.rho,
-        inputs.flowArea,
-        results.plume.omega,
-      ),
+      plumeVelocity: velocityFromDryAirMassFlow(dryAirMassFlow, rho, inputs.flowArea, omega),
     })
-  const visibleIssues = results.issues.filter(
-    (issue) => !issue.code.startsWith('ruiz-'),
-  )
-  const firstWarning = visibleIssues.find((issue) => issue.severity === 'warning')
+
+  const issuesByStage = useMemo(() => {
+    const map: Record<StageId, SolveIssue[]> = {
+      plume: [], drift: [], droplets: [], fan: [], recovery: [],
+    }
+    for (const issue of results.issues) map[ISSUE_STAGE[issue.code]].push(issue)
+    return map
+  }, [results.issues])
+  const warningCounts = Object.fromEntries(
+    STAGE_IDS.map((id) => [id, issuesByStage[id].length]),
+  ) as Record<StageId, number>
+  const firstWarningStage = STAGE_IDS.find((id) => warningCounts[id] > 0)
+  const isDefault = inputs === DEFAULT_INPUTS
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
           <h1>Plume Water Recovery</h1>
+          <span>Cooling-tower screening model</span>
         </div>
-        {firstWarning && (
-          <div className="header-warning" role="alert">
-            <strong>{firstWarning.title}</strong>
-            <span>{firstWarning.message}</span>
-          </div>
-        )}
+        <KpiBar r={results} selected={stage} onSelect={setStage} />
+        <div className="topbar-actions">
+          {firstWarningStage && (
+            <button
+              type="button"
+              className="warn-chip"
+              onClick={() => setStage(firstWarningStage)}
+            >
+              {results.issues.length} warning{results.issues.length > 1 ? 's' : ''}
+            </button>
+          )}
+          <button
+            type="button"
+            className="reset"
+            onClick={() => setInputs(DEFAULT_INPUTS)}
+            disabled={isDefault}
+          >
+            Reset all
+          </button>
+        </div>
       </header>
 
-      <div className="page">
-        <div className="workspace">
-          <section
-            className="visual-workspace"
-            aria-label="Cooling-tower process"
-          >
-            <div className="tower-explorer">
-              <TowerGraphic
-                r={results}
-                selected={selectedStage}
-                onSelect={setSelectedStage}
-              />
-            </div>
-            {selectedStage === 'droplets' && (
-              <div className="side-panel">
-                <EliminatorPicker
-                  inputs={inputs}
-                  rows={comparison}
-                  driftInlet={results.droplets.driftInlet}
-                  onSelect={selectEliminator}
-                />
-              </div>
-            )}
-            {selectedStage === 'fan' && (
-              <FanTable
-                inputs={inputs}
-                rows={comparison}
-                onSelect={selectEliminator}
-              />
-            )}
-          </section>
-          <Controls
-            inputs={inputs}
-            r={results}
-            dryAirMassFlow={results.plume.airMassFlow}
-            dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
-            dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}
-            selectedStage={selectedStage}
-            onChange={patch}
-            onDryAirMassFlowChange={setDryAirMassFlow}
-            onSelectStage={setSelectedStage}
-            onReset={reset}
-          />
+      <div className="shell">
+        <StageRail r={results} selected={stage} warnings={warningCounts} onSelect={setStage} />
+        <div className="content">
+        <StageWorkspace
+          inputs={inputs}
+          r={results}
+          stage={stage}
+          block={blocks.find((b) => b.id === stage) ?? blocks[0]}
+          issues={issuesByStage[stage]}
+          comparison={comparison}
+          dryAirMassFlowMin={massFlowAt(1)}
+          dryAirMassFlowMax={massFlowAt(100)}
+          onChange={patch}
+          onDryAirMassFlowChange={setDryAirMassFlow}
+          onSelectEliminator={selectEliminator}
+        />
+        <details className="all-values">
+          <summary>All calculated values, every stage</summary>
+          <div className="all-values-grid">
+            {blocks.map((b) => (
+              <section className="card" key={b.id}>
+                <h3 className="card-title">
+                  {b.index} · {b.name}
+                </h3>
+                <ValueTable block={b} />
+              </section>
+            ))}
+          </div>
+        </details>
         </div>
-
-        <main className="main">
-          <StageResults r={results} onSelect={setSelectedStage} />
-        </main>
       </div>
     </div>
   )
