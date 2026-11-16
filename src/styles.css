@@ -632,10 +632,10 @@ input[type='range']::-moz-range-thumb {
 /* Responsive */
 @media (max-width: 920px) {
   .topbar { grid-template-columns: 1fr; gap: 0; }
-  
-  
-  
-  
+
+
+
+
 }
 
 @media (max-width: 920px) {
@@ -662,17 +662,17 @@ input[type='range']::-moz-range-thumb {
     flex-direction: column;
     gap: 4px;
   }
-  
-  
-  
+
+
+
   .main > .panel { padding: 18px; border-radius: 22px; }
-  
-  
+
+
 }
 
 @media (max-width: 520px) {
-  
-  
+
+
   .brand h1 { font-size: 20px; }
 }
 
