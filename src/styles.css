@@ -1294,7 +1294,7 @@ button.sf-link:hover { border-color: var(--text); }
 /* chart heights follow the screen height, so each stage fits one screen */
 @media (min-width: 921px) {
   .stage-drift .chart-box { height: clamp(300px, calc(100vh - 300px), 600px); }
-  .stage-droplets .chart-box { height: clamp(240px, calc(100vh - 530px), 480px); }
+  .stage-droplets .chart-box { height: clamp(260px, calc(100vh - 470px), 520px); }
   .stage-fan .chart-box { height: clamp(260px, calc(100vh - 460px), 560px); }
   .stage-recovery .process-chart .chart-box { height: clamp(280px, calc(100vh - 330px), 640px); }
   .stage-fan .card-note { display: none; }
@@ -1322,3 +1322,20 @@ button.sf-link:hover { border-color: var(--text); }
 .stage-panel .stage-input-panel { padding-top: 0; }
 .stage-panel .controls-head { padding-bottom: 10px; border-bottom: 2px solid var(--text); }
 .stage-fan .stage-table { margin-top: 10px; }
+
+/* eliminator stage: graphs on top, then a compact one-line table */
+@media (min-width: 921px) {
+  .stage-droplets .stage-input-panel { gap: 10px 16px; }
+  .stage-droplets .stage-table { margin-top: 6px; }
+  .stage-droplets .eliminator-picker-note { display: none; }
+  .stage-droplets .eliminator-table .elim-cell { min-width: 0; }
+  .stage-droplets .eliminator-table .elim-name { flex-wrap: nowrap; min-width: 0; }
+  .stage-droplets .eliminator-table tbody th { max-width: 0; width: 58%; }
+  .stage-droplets .eliminator-table .elim-name strong { white-space: nowrap; }
+  .stage-droplets .eliminator-table .elim-name small { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+  .stage-droplets .eliminator-table th, .stage-droplets .eliminator-table td { padding-top: 3px; padding-bottom: 3px; }
+  .stage-droplets .eliminator-table thead th { white-space: nowrap; }
+}
+@media (min-width: 921px) {
+  .stage-droplets .chart-legend-row { gap: 2px 12px; font-size: 12.5px; }
+}

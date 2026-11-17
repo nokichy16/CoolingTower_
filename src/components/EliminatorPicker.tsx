@@ -72,7 +72,9 @@ export default function EliminatorPicker({
                     <strong>
                       {selectionName(row.id)}{row.id === 'custom' ? ' · performance' : ` · ${row.type}`}
                     </strong>
-                    <small>
+                    <small
+                      title={row.id === 'custom' ? undefined : ELIMINATOR_GEOMETRY[row.id as EliminatorId]}
+                    >
                       {row.id === 'custom'
                         ? `Δp ${Number(customPressureDrop(inputs.customPerformance).toFixed(1))} Pa · ε set by size`
                         : ELIMINATOR_GEOMETRY[row.id as EliminatorId]}

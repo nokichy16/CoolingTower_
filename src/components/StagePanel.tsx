@@ -167,6 +167,8 @@ export default function StagePanel({
 
         {stage === 'droplets' && (
           <>
+            <EliminatorOutput inputs={graphInputs} droplets={graphResults.droplets} />
+            <EliminatorCount inputs={graphInputs} droplets={graphResults.droplets} />
             <div className="stage-table">
               <EliminatorPicker
                 inputs={inputs}
@@ -181,8 +183,6 @@ export default function StagePanel({
                 onChange={(next) => onChange({ customPerformance: next })}
               />
             )}
-            <EliminatorOutput inputs={graphInputs} droplets={graphResults.droplets} />
-            <EliminatorCount inputs={graphInputs} droplets={graphResults.droplets} />
           </>
         )}
 
