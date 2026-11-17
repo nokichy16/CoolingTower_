@@ -1,6 +1,6 @@
 import { distributionParams, type TowerResults } from '../lib/model'
-import { describeSpec, RUIZ_LIMITS } from '../lib/eliminators'
-import type { StageId } from '../lib/stages'
+import { describeSpec, RUIZ_LIMITS, selectionName } from '../lib/eliminators'
+import type { StageId, StagePath } from '../lib/stages'
 import { fmt, sig } from '../lib/format'
 
 interface Row {
@@ -15,8 +15,7 @@ interface StageBlock {
   id: StageId
   index: string
   name: string
-  path: 'air' | 'liquid'
-  headline: string
+  path: StagePath
   rows: Row[]
   notes?: string[]
 }
@@ -47,18 +46,17 @@ export default function StageResults({
   const blocks: StageBlock[] = [
     {
       id: 'plume',
-      index: '1',
+      index: '1A',
       name: 'Inlet · Plume & airflow',
       path: 'air',
-      headline: `ṁ_da ${fmt(r.plume.airMassFlow, 1)} kg/s · T_dew ${fmt(r.plume.dewPoint, 1)} °C`,
       rows: [
         input('Plume temperature T₄', fmt(i.plumeTemperature, 1), '°C'),
         input('Relative humidity RH₄', fmt(i.plumeRh, 0), '%'),
         input('Atmospheric pressure P', fmt(i.pressure / 1000, 1), 'kPa'),
         input('Flow area A', fmt(i.flowArea, 2), 'm²'),
         input('Air velocity u₄', fmt(i.plumeVelocity, 3), 'm/s'),
-        { label: 'Saturation pressure', formula: 'p_sat = 610.94·exp(17.625T / (T + 243.04))', value: fmt(r.plume.omega > 0 ? (r.plume.omega * i.pressure) / (0.622 + r.plume.omega) / (i.plumeRh / 100) : 0, 0), unit: 'Pa' },
-        { label: 'Vapour pressure', formula: 'p_v = RH·p_sat', value: fmt((r.plume.omega * i.pressure) / (0.622 + r.plume.omega), 0), unit: 'Pa' },
+        { label: 'Saturation pressure', formula: 'p_sat = 610.94·exp(17.625T / (T + 243.04))', value: fmt(r.plume.pSat, 0), unit: 'Pa' },
+        { label: 'Vapour pressure', formula: 'p_v = RH·p_sat', value: fmt(r.plume.pv, 0), unit: 'Pa' },
         { label: 'Humidity ratio ω₄', formula: 'ω = 0.622·p_v / (P − p_v)', value: sig(r.plume.omega, 4), unit: 'kg/kg da' },
         { label: 'Dew point', formula: 'T_dew : p_sat(T_dew) = p_v', value: fmt(r.plume.dewPoint, 1), unit: '°C' },
         { label: 'Enthalpy h₄', formula: 'h = 1.006T + ω(2501 + 1.86T)', value: fmt(r.plume.h, 1), unit: 'kJ/kg da' },
@@ -69,10 +67,9 @@ export default function StageResults({
     },
     {
       id: 'drift',
-      index: '1',
+      index: '1B',
       name: 'Inlet · Drift droplets',
       path: 'liquid',
-      headline: `ṁ_drift,in ${sig(d.driftInlet, 3)} kg/s · E ${fmt(i.dropletMean, 1)} µm · σ ${fmt(i.dropletSigma, 3)}`,
       rows: [
         input('Circulating water ṁ_circ', fmt(i.circulatingWaterFlow, 0), 'kg/s'),
         input('Inlet drift rate D_in', fmt(i.inletDriftRate, 2), '%'),
@@ -81,7 +78,7 @@ export default function StageResults({
         input('Smallest d_min (1 %), linked to σ', fmt(p.dMinUm, 1), 'µm'),
         input('Largest d_max (100 %)', fmt(i.dropletDMax, 0), 'µm'),
         { label: 'Drift entering eliminator', formula: 'ṁ_drift,in = ṁ_circ·D_in / 100', value: sig(d.driftInlet, 3), unit: 'kg/s' },
-        { label: 'Log mean μ', formula: 'μ = ln E − σ²/2  (corrected for cut at d_max)', value: fmt(Math.log(p.dMedUm), 3), unit: '' },
+        { label: 'Log mean μ', formula: 'μ = ln E − σ²/2', value: fmt(Math.log(p.dMedUm), 3), unit: '' },
         { label: 'Median d_med', formula: 'd_med = e^μ', value: fmt(p.dMedUm, 1), unit: 'µm' },
       ],
       notes: ['Defaults are a fit to Ruiz et al. (2013) outlet data; the inlet shape and D_in are assumptions.'],
@@ -91,9 +88,8 @@ export default function StageResults({
       index: '2',
       name: 'Drift eliminator',
       path: 'liquid',
-      headline: `Escaping ${sig(d.driftEscaping, 3)} kg/s (${fmt(100 * d.massEscaping, 1)} %)`,
       rows: [
-        input('Eliminator', r.eliminator.spec.id === 'custom' ? 'Custom' : r.eliminator.spec.id, ''),
+        input('Eliminator', selectionName(r.eliminator.spec.id), ''),
         { label: 'Type', formula: describeSpec(r.eliminator.spec), value: r.eliminator.spec.type, unit: '' },
         ...(r.eliminator.spec.id === 'custom'
           ? [input('Set pressure drop Δp', fmt(i.customPerformance.pressureDropPa, 1), 'Pa'),
@@ -124,7 +120,6 @@ export default function StageResults({
       index: '3',
       name: 'Fan',
       path: 'air',
-      headline: `${fmt(d.fanAirPower, 1)} kW ideal air power`,
       rows: [
         { label: 'Volumetric flow V̇', formula: 'from stage 1 (inlet)', value: fmt(r.plume.vDot, 1), unit: 'm³/s' },
         { label: 'Eliminator pressure drop Δp', formula: 'from stage 2', value: fmt(d.pressureDrop, 1), unit: 'Pa' },
@@ -137,7 +132,6 @@ export default function StageResults({
       index: '4',
       name: 'Condensation recovery',
       path: 'air',
-      headline: `${fmt(r.recovery.mDotCond, 2)} kg/s · ${r.recovery.feasible ? fmt(r.recovery.e, 0) : '—'} kJ/kg`,
       rows: [
         input('Cooling below dew point ΔT_dew', fmt(i.coolingBelowDewPoint, 1), '°C'),
         input('Cycles of concentration CoC', fmt(i.cyclesOfConcentration, 1), ''),

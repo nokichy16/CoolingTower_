@@ -78,22 +78,23 @@ The linked dry-air mass-flow input scales recovered water and cooling duty.
 Editing it recalculates velocity at the selected area and plume state; editing
 velocity or area updates the displayed dry-air mass flow.
 
-### Theoretical droplet prediction
+### Drift droplet mass balance
 
 ```text
-u_de = u₄
-St(d) = ρ_water u_de d² / (18 μ L_c)
-η(d) = f(St(d), eliminator geometry)
-η(d50) = 0.50
-predicted remaining range = d_min to d50
-predicted captured range = d50 to d_max
+μ = ln E − σ²/2,  d_med = e^μ                    inlet log-normal by mass
+F(d) = LN(d) / LN(d_max)                          cut at d_max
+St(d) = ρ_water u_de d² / (18 μ_air L_c)
+ε(d) = f(St(d), eliminator geometry)              Ruiz et al. (2019)
+η_esc = ∫ (1 − ε(d)) dF(d)                        600 size classes
+ṁ_drift,in = ṁ_circ · D_in / 100
+ṁ_esc = ṁ_drift,in · η_esc,  ṁ_cap = ṁ_drift,in · (1 − η_esc)
 P_air = V̇ Δp_de
 ```
 
-The application evaluates the Ruiz collection curve across the selected size
-limits and reports the theoretical 50% collection diameter. The two reported
-ranges are screening predictions, not an exact physical separation or a
-liquid-drift mass balance.
+Every droplet size is partly captured, by ε(d). The inlet shape and the inlet
+drift rate D_in are assumptions: the default shape is a fit to Ruiz et al.
+(2013) data measured at a tower exit. The custom option sets Δp and ε(d)
+directly instead of using the Ruiz correlations.
 
 The Ruiz pressure calculation retains its Reynolds-number and velocity-range
 checks internally.

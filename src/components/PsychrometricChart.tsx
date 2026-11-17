@@ -9,6 +9,7 @@
  * plain markup underneath the plot, where they stay legible at any width.
  */
 
+import { memo, useMemo } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -26,10 +27,11 @@ import {
   type PsychrometricChartData,
 } from '../lib/psychrometric-chart'
 import { fmt } from '../lib/format'
+import { AXIS_STROKE, AXIS_TEXT, GRID_STROKE } from './chartTheme'
 
-const AXIS = '#4c4943'
-const GRID = '#dcd8cf' // same grid as the drift droplet graphs
-const LINE = '#aaa49a'
+const AXIS = AXIS_TEXT
+const GRID = GRID_STROKE
+const LINE = AXIS_STROKE
 const RH_MAIN = '#2a78d6'
 const RH_FAINT = 'rgba(42, 120, 214, 0.38)'
 const ENTHALPY = 'rgba(184, 100, 26, 0.55)'
@@ -108,8 +110,8 @@ function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
   )
 }
 
-export default function PsychrometricChart({ r }: { r: TowerResults }) {
-  const c = buildPsychrometricChart(r)
+function PsychrometricChart({ r }: { r: TowerResults }) {
+  const c = useMemo(() => buildPsychrometricChart(r), [r])
   const processPoints = c.rows.flatMap((row) => {
     const w = row[c.processKey]
     return typeof w === 'number' ? [{ x: row.t, y: w }] : []
@@ -144,7 +146,8 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
         role="img"
         aria-label={`Recovery process from the inlet plume state at ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to the calculated saturated recovery state at ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
-        <ResponsiveContainer width="100%" height={510}>
+        <div className="chart-box">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={c.rows}
             margin={{ top: 18, right: 34, bottom: 8, left: -6 }}
@@ -313,6 +316,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+      </div>
 
       <div className="psychro-table-wrap">
         <table className="psychro-table">
@@ -347,3 +351,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
     </section>
   )
 }
+
+// Skips re-rendering while its props are the same objects (see App: the
+// graphs get deferred results, so a slider drag does not wait for them).
+export default memo(PsychrometricChart)

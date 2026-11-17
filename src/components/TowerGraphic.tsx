@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { TowerResults } from '../lib/model'
-import { buildStages, type StageId } from '../lib/stages'
+import { STAGE_META, type StageId } from '../lib/stages'
+import { fmt } from '../lib/format'
+import { selectOnKey } from './selectOnKey'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -18,10 +20,10 @@ const lx = (y: number) =>
 const rx = (y: number) =>
   TOP_R + ((y - TOP_Y) / (BOT_Y - TOP_Y)) * (BOT_R - TOP_R)
 
-type GraphicZoneId = 'plume' | 'droplets' | 'fan' | 'recovery'
+type GraphicZoneId = StageId
 
 interface ZoneLabel {
-  id: Exclude<GraphicZoneId, 'recovery'>
+  id: GraphicZoneId
   anchor: [number, number]
 }
 
@@ -32,20 +34,40 @@ interface GraphicInfo {
   accent: string
 }
 
+/** The tower is drawn this far down, so the recovery unit sits on top. */
+const DY = 96
+/** The tower body below the stack is drawn this much taller than it is wide. */
+const SY = 1.4
+/** A y position in the tower body after the vertical stretch. */
+const sy = (y: number) => TOP_Y + (y - TOP_Y) * SY
+const BODY = `translate(0 ${TOP_Y}) scale(1 ${SY}) translate(0 ${-TOP_Y})`
+
 const LABELS: ZoneLabel[] = [
+  { id: 'recovery', anchor: [350, 40 - DY] },
   { id: 'fan', anchor: [320, 84] },
-  { id: 'droplets', anchor: [360, 134] },
-  { id: 'plume', anchor: [396, 214] },
+  { id: 'droplets', anchor: [360, sy(134)] },
+  { id: 'drift', anchor: [372, sy(172)] },
+  { id: 'plume', anchor: [400, sy(250)] },
 ]
+
+/** Stage numbers shown on the drawing; the drawing is the stage selector. */
+const NUMBER: Record<GraphicZoneId, string> = {
+  plume: '1A',
+  drift: '1B',
+  droplets: '2',
+  fan: '3',
+  recovery: '4',
+}
 
 const HOTZONES: Record<
   GraphicZoneId,
   { x: number; y: number; width: number; height: number }
 > = {
   fan: { x: 118, y: 58, width: 326, height: 58 },
-  droplets: { x: 118, y: 116, width: 326, height: 38 },
-  plume: { x: 118, y: 154, width: 326, height: 210 },
-  recovery: { x: 55, y: 4, width: 112, height: 124 },
+  droplets: { x: 118, y: sy(116), width: 326, height: 38 * SY },
+  drift: { x: 118, y: sy(154), width: 326, height: 44 * SY },
+  plume: { x: 118, y: sy(198), width: 326, height: 166 * SY },
+  recovery: { x: 196, y: 2 - DY, width: 168, height: 96 },
 }
 
 export default function TowerGraphic({
@@ -57,60 +79,48 @@ export default function TowerGraphic({
   selected: StageId
   onSelect: (id: StageId) => void
 }) {
-  const stages = buildStages(r)
-  const byId = Object.fromEntries(
-    stages.map((stage) => [stage.id, stage]),
-  ) as Record<StageId, (typeof stages)[number]>
-  const toZone = (id: StageId): GraphicZoneId => (id === 'drift' ? 'droplets' : id)
-  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(toZone(selected))
-
-  const metricReading = (value: string, unit: string) =>
-    `${value}${unit === '%' || unit === '°C' ? '' : ' '}${unit}`
+  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
 
   useEffect(() => {
-    setGraphicZone(toZone(selected))
+    setGraphicZone(selected)
   }, [selected])
 
-  const graphicInfo = (id: GraphicZoneId): GraphicInfo => {
-    const info: Record<GraphicZoneId, GraphicInfo> = {
-      plume: {
-        name: 'Plume',
-        reading: `T ${metricReading(
-          byId.plume.primary[0].value,
-          byId.plume.primary[0].unit,
-        )} · RH ${metricReading(
-          byId.plume.primary[1].value,
-          byId.plume.primary[1].unit,
-        )}`,
-        control: 'plume',
-        accent: byId.plume.accent,
-      },
-      droplets: {
-        name: 'Drift eliminator',
-        reading: `Escaping ${(100 * r.droplets.massEscaping).toFixed(1)} %`,
-        control: 'droplets',
-        accent: byId.droplets.accent,
-      },
-      fan: {
-        name: 'Fan',
-        reading: `Air power ${metricReading(
-          byId.fan.primary[0].value,
-          byId.fan.primary[0].unit,
-        )}`,
-        control: 'fan',
-        accent: byId.fan.accent,
-      },
-      recovery: {
-        name: 'Recovery',
-        reading: `Water ${metricReading(
-          byId.recovery.supporting[0].value,
-          byId.recovery.supporting[0].unit,
-        )}`,
-        control: 'recovery',
-        accent: byId.recovery.accent,
-      },
-    }
-    return info[id]
+  const info: Record<GraphicZoneId, GraphicInfo> = {
+    plume: {
+      name: 'Plume',
+      reading: `T ${fmt(r.plume.t)}°C · RH ${fmt(r.plume.rh, 0)}%`,
+      control: 'plume',
+      accent: STAGE_META.plume.accent,
+    },
+    drift: {
+      name: 'Drift droplets',
+      reading: `Entering ${fmt(r.droplets.driftInlet, 3)} kg/s`,
+      control: 'drift',
+      accent: STAGE_META.drift.accent,
+    },
+    droplets: {
+      name: 'Drift eliminator',
+      reading: `Escaping ${fmt(100 * r.droplets.massEscaping, 1)} %`,
+      control: 'droplets',
+      accent: STAGE_META.droplets.accent,
+    },
+    fan: {
+      name: 'Fan',
+      reading: `Air power ${fmt(r.droplets.fanAirPower, 1)} kW`,
+      control: 'fan',
+      accent: STAGE_META.fan.accent,
+    },
+    recovery: {
+      name: 'Recovery',
+      reading: `Water ${fmt(r.recovery.mDotCond, 2)} kg/s`,
+      control: 'recovery',
+      accent: STAGE_META.recovery.accent,
+    },
+  }
+  const graphicInfo = (id: GraphicZoneId): GraphicInfo => info[id]
+  const pick = (id: GraphicZoneId) => {
+    setGraphicZone(id)
+    onSelect(info[id].control)
   }
 
   const airIntensity = clamp(r.plume.velocity / 10, 0.12, 1)
@@ -129,17 +139,8 @@ export default function TowerGraphic({
         tabIndex={0}
         aria-label={`${info.name}, ${info.reading}, select station`}
         aria-pressed={isSelected}
-        onClick={() => {
-          setGraphicZone(id)
-          onSelect(info.control)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setGraphicZone(id)
-            onSelect(info.control)
-          }
-        }}
+        onClick={() => pick(id)}
+        onKeyDown={selectOnKey(() => pick(id))}
       >
         {isSelected && (
           <rect
@@ -169,7 +170,7 @@ export default function TowerGraphic({
   const label = ({ id, anchor }: ZoneLabel) => {
     const info = graphicInfo(id)
     const isSelected = graphicZone === id
-    const labelX = 452
+    const labelX = 440
     const labelY = anchor[1]
     return (
       <g
@@ -178,17 +179,8 @@ export default function TowerGraphic({
         role="button"
         tabIndex={0}
         aria-label={`${info.name}, ${info.reading}, select station`}
-        onClick={() => {
-          setGraphicZone(id)
-          onSelect(info.control)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setGraphicZone(id)
-            onSelect(info.control)
-          }
-        }}
+        onClick={() => pick(id)}
+        onKeyDown={selectOnKey(() => pick(id))}
       >
         <path
           className="leader"
@@ -201,16 +193,22 @@ export default function TowerGraphic({
           r={2.4}
           style={{ fill: info.accent }}
         />
-        <circle
-          cx={labelX + 13}
-          cy={labelY}
-          r={3}
+        <rect
+          className="label-badge"
+          x={labelX - 6}
+          y={labelY - 11}
+          width={30}
+          height={20}
+          rx={10}
           style={{ fill: info.accent }}
         />
-        <text className="label-name" x={labelX + 24} y={labelY - 2}>
+        <text className="label-number" x={labelX + 9} y={labelY + 4} textAnchor="middle">
+          {NUMBER[id]}
+        </text>
+        <text className="label-name" x={labelX + 30} y={labelY - 3}>
           {info.name}
         </text>
-        <text className="label-value" x={labelX + 24} y={labelY + 10}>
+        <text className="label-value" x={labelX + 30} y={labelY + 13}>
           {info.reading}
         </text>
       </g>
@@ -220,16 +218,29 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="55 0 545 405"
+        viewBox="92 0 532 606"
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
         <title id="tower-title">Cooling-tower plume process</title>
         <desc id="tower-desc">
-          Cooling-tower cutaway with four selectable stations: plume, drift
-          eliminator, fan and recovery.
+          Cooling-tower cutaway. Select a part to open its stage: 1A plume,
+          1B drift droplets, 2 drift eliminator, 3 fan, 4 recovery.
         </desc>
 
+        <g
+          className={`tg-recovery${r.recovery.feasible ? '' : ' is-idle'}`}
+          transform={`translate(0 ${DY})`}
+        >
+          {/* hood from the fan stack up to the condenser */}
+          <path className="rec-hood" d="M200 56 L226 -6 H334 L360 56" />
+          <rect className="rec-shell" x="210" y="-88" width="140" height="82" rx="9" />
+          <path className="rec-coil" d="M228 -70 H332 M228 -56 H332 M228 -42 H332" />
+          <path className="rec-drop" d="M280 -36 C272 -24 274 -16 280 -12 C286 -16 288 -24 280 -36Z" />
+        </g>
+
+        <g transform={`translate(0 ${DY})`}>
+        <g className="tg-body" transform={BODY}>
         <path
           className="tower-shell"
           d={`M${TOP_L} ${TOP_Y} L${BOT_L} ${BOT_Y} H${BOT_R} L${TOP_R} ${TOP_Y}`}
@@ -243,41 +254,13 @@ export default function TowerGraphic({
           } Z`}
         />
 
+        </g>
+
         <path
           className="tower-stack"
           d="M205 112 C201 92 201 78 196 60 H364 C359 78 359 92 355 112"
         />
         <ellipse className="stack-rim" cx="280" cy="60" rx="84" ry="10" />
-
-        <g
-          className={`tg-recovery${
-            r.recovery.feasible ? '' : ' is-idle'
-          }`}
-        >
-          <path className="rec-duct" d="M196 40 C181 40 170 38 160 44" />
-          <rect
-            className="rec-shell"
-            x="56"
-            y="8"
-            width="104"
-            height="86"
-            rx="9"
-          />
-          <path
-            className="rec-coil"
-            d="M72 28 H144 M72 42 H144 M72 56 H144"
-          />
-          <path
-            className="rec-drop"
-            d="M108 60 C98 74 100 84 108 88 C116 84 118 74 108 60Z"
-          />
-          <text className="rec-label" x="108" y="108" textAnchor="middle">
-            RECOVERY
-          </text>
-          <text className="rec-value" x="108" y="121" textAnchor="middle">
-            {graphicInfo('recovery').reading}
-          </text>
-        </g>
 
         <g className="tower-plume" aria-hidden="true">
           <path d="M258 54 C250 34 268 24 262 6" />
@@ -301,6 +284,7 @@ export default function TowerGraphic({
           <circle className="fan-hub" r="4" />
         </g>
 
+        <g className="tg-body" transform={BODY}>
         <g className="tg-drift" aria-hidden="true">
           <path
             d={`M${lx(124) + 6} 124 H${rx(124) - 6} L${
@@ -446,30 +430,15 @@ export default function TowerGraphic({
           </text>
         </g>
 
-        <g className="tg-pipe cold" aria-hidden="true">
-          <path
-            className="pipe-underlay"
-            d={`M${rx(380)} 380 H612`}
-          />
-          <path
-            className="pipe-flow"
-            d={`M${rx(380)} 380 H612`}
-          />
-          <text
-            className="pipe-label"
-            x="612"
-            y="372"
-            textAnchor="end"
-          >
-            COOLED WATER OUT
-          </text>
         </g>
 
         {LABELS.map(label)}
         {zone('fan')}
         {zone('droplets')}
+        {zone('drift')}
         {zone('plume')}
         {zone('recovery')}
+        </g>
       </svg>
     </div>
   )

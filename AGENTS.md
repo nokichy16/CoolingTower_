@@ -33,8 +33,9 @@ current local working copy.
 - Treat theoretical condensate and cooling duty as screening results, not
   recovery-equipment sizing or guaranteed performance.
 - Treat Ruiz collection efficiency as a diameter-specific prediction. The
-  current interface reports a theoretical d50 cutoff across a selected size
-  range, not total circulating-water recovery or a drift mass balance.
+  model integrates (1 − ε(d)) over an assumed log-normal inlet distribution to
+  give the escaping and captured drift. The inlet shape and the inlet drift
+  rate are assumptions, not measurements.
 - Treat the Ruiz 25 micrometre lower limit as an evidence/measurement limit,
   not a physical minimum droplet size.
 - Treat eliminator fan power as ideal air power for the eliminator pressure
@@ -43,8 +44,8 @@ current local working copy.
   a separately approved water-balance boundary and the necessary tower inputs.
 - Do not make blowdown and cycles of concentration simultaneous independent
   inputs.
-- A liquid-drift mass balance would require circulating-water mass flow and a
-  supported drift rate. Neither is part of the current theoretical d50 model.
+- The liquid-drift mass balance uses circulating-water mass flow and an
+  assumed inlet drift rate. Keep it separate from the vapour recovery.
   Do not present the historical Qu and Li/Wang nozzle-and-drenching-density
   experiment as approved.
 - The area/airflow basis is not yet synchronized across the deployed code and
@@ -56,7 +57,9 @@ current local working copy.
 - Keep psychrometrics in `src/lib/psychrometrics.ts`.
 - Keep eliminator correlations in `src/lib/eliminators.ts`.
 - Keep the main calculation assembly in `src/lib/model.ts`.
-- Keep display-stage formatting in `src/lib/stages.ts`.
+- Keep stage names, order and colours in `src/lib/stages.ts`.
+- Keep shared graph colours and axis styles in
+  `src/components/chartTheme.ts`.
 - Keep input controls in `src/components/Controls.tsx`.
 - Keep the psychrometric chart calculation and rendering separated between
   `src/lib/psychrometric-chart.ts` and
@@ -69,7 +72,8 @@ current local working copy.
 - Before editing or reporting deployment, run `git status --short --branch`,
   inspect the current branch and commit, and compare local changes with
   `origin/main`.
-- After approved code changes, run `npm run build` and `git diff --check`.
+- After approved code changes, run `npm test`, `npm run build` and
+  `git diff --check`.
 - When interface behaviour changes, test the affected controls and outputs in
   the browser.
 - A local build is not a deployment. Report the change as live only after the
