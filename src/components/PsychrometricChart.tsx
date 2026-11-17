@@ -146,7 +146,8 @@ function PsychrometricChart({ r }: { r: TowerResults }) {
         role="img"
         aria-label={`Recovery process from the inlet plume state at ${fmt(c.state1.t, 1)} degrees Celsius and ${fmt(c.state1.rh, 1)} percent relative humidity to the calculated saturated recovery state at ${fmt(c.state2.t, 1)} degrees Celsius. Humidity ratio decreases from ${fmt(c.state1.w, 2)} to ${fmt(c.state2.w, 2)} grams of water per kilogram of dry air.`}
       >
-        <ResponsiveContainer width="100%" height={510}>
+        <div className="chart-box">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={c.rows}
             margin={{ top: 18, right: 34, bottom: 8, left: -6 }}
@@ -314,6 +315,7 @@ function PsychrometricChart({ r }: { r: TowerResults }) {
             />
           </LineChart>
         </ResponsiveContainer>
+      </div>
       </div>
 
       <div className="psychro-table-wrap">

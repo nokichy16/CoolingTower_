@@ -5,34 +5,30 @@ import ChangeValue from './ChangeValue'
 import { STAGE_LABEL } from './StagePanel'
 
 /**
- * Every stage with its key outputs, always in view. Select a row to open
- * the stage. Numbers show how much they changed after an input moved.
+ * Every stage's key outputs, always in view under the drawing. Numbers show
+ * how much they changed after an input moved. The open stage is marked.
  */
 export default function StageList({
   r,
   selected,
   warnings,
-  onSelect,
 }: {
   r: TowerResults
   selected: StageId
   warnings: Record<StageId, number>
-  onSelect: (id: StageId) => void
 }) {
   const values = stageValues(r)
   return (
-    <nav className="stage-list" aria-label="Stages and their outputs">
+    <section className="stage-list" aria-label="Key outputs of every stage">
       {STAGE_IDS.map((id) => {
         const meta = STAGE_META[id]
         const on = id === selected
         const sub = stageSubtitle(id, r)
         return (
-          <button
-            type="button"
+          <div
             key={id}
             className={`sl-row is-${meta.path}${on ? ' is-selected' : ''}`}
             aria-current={on ? 'true' : undefined}
-            onClick={() => onSelect(id)}
           >
             <span className="sl-index">{STAGE_LABEL[id]}</span>
             <span className="sl-name">
@@ -55,9 +51,9 @@ export default function StageList({
                 )
               })}
             </span>
-          </button>
+          </div>
         )
       })}
-    </nav>
+    </section>
   )
 }

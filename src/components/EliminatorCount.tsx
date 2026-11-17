@@ -71,7 +71,8 @@ function EliminatorCount({
         <span><i style={{ background: SERIES.escaping }} />Escaping droplets</span>
         <span><i className="is-dash is-dotted" style={{ color: SERIES.efficiency }} />Capture efficiency ε(d), right axis</span>
       </div>
-      <ResponsiveContainer width="100%" height={440}>
+      <div className="chart-box">
+      <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={data}
           margin={{ top: 16, right: 4, bottom: 8, left: -6 }}
@@ -134,6 +135,7 @@ function EliminatorCount({
           />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </section>
   )
 }

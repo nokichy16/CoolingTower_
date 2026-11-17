@@ -171,7 +171,8 @@ const InletCountChart = memo(function InletCountChart(
       <span className="droplet-chart-title">
         Inlet: relative number of droplets per {BIN_UM} µm size class
       </span>
-      <ResponsiveContainer width="100%" height={440}>
+      <div className="chart-box">
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={bins}
           margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
@@ -207,6 +208,7 @@ const InletCountChart = memo(function InletCountChart(
           <Bar dataKey="count" fill={SERIES.inlet} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   )
 })

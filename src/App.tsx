@@ -97,7 +97,7 @@ export default function App() {
         <div className="tower-explorer">
           <TowerGraphic r={results} selected={selectedStage} onSelect={goTo} />
         </div>
-        <StageList r={results} selected={selectedStage} warnings={warningCounts} onSelect={goTo} />
+        <StageList r={results} selected={selectedStage} warnings={warningCounts} />
       </aside>
 
       <div className="content">

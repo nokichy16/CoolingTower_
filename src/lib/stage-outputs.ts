@@ -47,10 +47,10 @@ export function stageValues(r: TowerResults): Record<string, StageValue> {
 
 /** Key outputs shown for each stage in the stage list. */
 export const STAGE_KEY_OUTPUTS: Record<StageId, string[]> = {
-  plume: ['T4', 'mda', 'omega4'],
-  drift: ['min', 'dmed'],
+  plume: ['mda', 'vdot', 'omega4', 'tdew', 'h4', 'rho'],
+  drift: ['min', 'dmed', 'dmax'],
   droplets: ['esc', 'mesc', 'dp'],
-  fan: ['pair', 'dp'],
+  fan: ['pair', 'dp', 'vdot'],
   recovery: ['mc', 'e', 'q'],
 }
 

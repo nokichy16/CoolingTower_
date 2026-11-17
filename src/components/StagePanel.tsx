@@ -65,7 +65,7 @@ export default function StagePanel({
       onChange({ [key]: value } as Partial<TowerInputs>)
 
   return (
-    <section className={`controls stage-panel is-${meta.path}`} id={`stage-${stage}`} aria-labelledby={`stage-title-${stage}`}>
+    <section className={`controls stage-panel stage-${stage} is-${meta.path}`} id={`stage-${stage}`} aria-labelledby={`stage-title-${stage}`}>
       <div className="controls-head">
         <div>
           <span className="controls-kicker">

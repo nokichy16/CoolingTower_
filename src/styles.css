@@ -1107,9 +1107,7 @@ input[type='range']::-moz-range-thumb {
   background: transparent;
   color: var(--text);
   text-align: left;
-  cursor: pointer;
 }
-.sl-row:hover { background: rgba(40, 39, 37, 0.05); }
 .sl-row.is-selected { background: var(--text); color: #f6f2e8; }
 .sl-index {
   grid-row: span 2;
@@ -1222,4 +1220,83 @@ button.sf-link:hover { border-color: var(--text); }
 @media (max-width: 620px) {
   .stage-flow { grid-template-columns: minmax(0, 1fr); }
   .sf-title { padding-top: 0; }
+}
+
+/* ===== The drawing is the stage selector ===== */
+.tower-label .label-badge { opacity: 0.9; }
+.tower-label .label-number { fill: #fff; font: 700 10px var(--mono); pointer-events: none; }
+.tower-label:hover .label-name { fill: var(--text); text-decoration: underline; }
+.tower-label.is-selected .label-name { font-weight: 800; }
+.tower-label.is-selected .label-badge { opacity: 1; stroke: var(--text); stroke-width: 1.5; }
+
+/* charts are sized here, so a stage can fit one screen */
+.chart-box { height: 440px; min-width: 0; }
+.process-chart .chart-box { height: 480px; }
+@media (max-width: 620px) {
+  .chart-box, .process-chart .chart-box { height: 320px; }
+}
+
+/* outputs under the drawing: values in columns */
+.sl-values { display: grid; grid-template-columns: repeat(3, minmax(0, max-content)); gap: 1px 16px; }
+.sl-row { padding: 7px 10px 7px 0; }
+@media (max-width: 1250px) and (min-width: 921px) {
+  .sl-values { grid-template-columns: repeat(2, minmax(0, max-content)); }
+}
+
+/* ===== Desktop: each stage fits one screen ===== */
+@media (min-width: 921px) {
+  .stage-stack { padding-top: 18px; }
+  .stage-panel .controls-head { margin-bottom: 8px; }
+  .stage-flow { margin-bottom: 10px; padding: 6px 0; gap: 6px 10px; }
+  .stage-flow.is-out { margin-top: 12px; }
+  .sf-link { padding: 3px 9px 4px; }
+  .stage-graph, .eliminator-output, .process-chart, .droplet-result { margin-top: 0; padding-top: 4px; padding-bottom: 0; }
+  .chart-legend-row { margin: 4px 0 6px; }
+  .chart-box { height: 340px; }
+
+  /* 1B: inputs left, graph right */
+  .stage-drift .droplet-layout { grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.2fr); gap: 0 22px; align-items: start; }
+  .stage-drift .droplet-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .stage-drift .chart-box { height: 400px; }
+
+  /* 2: compact table across, the two graphs side by side */
+  .stage-droplets .stage-input-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 22px; align-items: start; }
+  .stage-droplets .stage-input-panel > .stage-table,
+  .stage-droplets .stage-input-panel > .custom-eliminator { grid-column: 1 / -1; }
+  .stage-droplets .stage-input-panel > * + * { margin-top: 0; }
+  .stage-droplets .chart-box { height: 300px; }
+  .stage-droplets .eliminator-picker-note { margin-bottom: 4px; font-size: 12.5px; }
+  .eliminator-table th, .eliminator-table td { padding-top: 4px; padding-bottom: 4px; }
+  .eliminator-table .elim-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+  .eliminator-table .elim-name small { font-size: 11.5px; }
+  .stage-droplets .stage-table .input-group-title { margin-bottom: 2px; }
+  .stage-fan .chart-legend-row { gap: 4px 12px; }
+  .stage-fan .legend-pick { padding-top: 1px; padding-bottom: 1px; }
+  .stage-fan .chart-box { height: 320px; }
+  .stage-panel .card-note { margin-top: 6px; font-size: 12.5px; }
+
+  /* 3: compact table, shorter graph */
+  .fan-table th, .fan-table td { padding-top: 4px; padding-bottom: 4px; }
+  .stage-fan .chart-box { height: 360px; }
+
+  /* 4: the two inputs side by side, chart shorter */
+  .stage-recovery .stage-input-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; }
+  .stage-recovery .stage-input-panel > .stage-graph { grid-column: 1 / -1; }
+  .stage-recovery .process-chart .chart-box { height: 360px; }
+}
+
+/* a mouse click on the drawing does not leave a focus box; the keyboard still does */
+.tower-label:focus:not(:focus-visible),
+.tower-zone:focus:not(:focus-visible) { outline: none; }
+.tower-label:focus-visible .label-name { text-decoration: underline; }
+
+/* chart heights follow the screen height, so each stage fits one screen */
+@media (min-width: 921px) {
+  .stage-drift .chart-box { height: clamp(280px, calc(100vh - 380px), 460px); }
+  .stage-droplets .chart-box { height: clamp(220px, calc(100vh - 650px), 360px); }
+  .stage-fan .chart-box { height: clamp(240px, calc(100vh - 590px), 420px); }
+  .stage-recovery .process-chart .chart-box { height: clamp(260px, calc(100vh - 470px), 460px); }
+  .stage-fan .card-note { display: none; }
+  .stage-table .fan-table { padding-top: 0; border-top: 0; }
+  .stage-flow.is-in + .stage-input-panel > .stage-table:first-child > * { margin-top: 0; }
 }

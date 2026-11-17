@@ -69,7 +69,8 @@ function EliminatorOutput({
         <span><i className="is-line" style={{ color: SERIES.captured }} />Captured</span>
         <span><i className="is-line" style={{ color: SERIES.escaping }} />Escaping</span>
       </div>
-      <ResponsiveContainer width="100%" height={440}>
+      <div className="chart-box">
+      <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 16, right: 18, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
@@ -102,6 +103,7 @@ function EliminatorOutput({
           <Line dataKey="escaping" type="monotone" stroke={SERIES.escaping} strokeWidth={2.6} dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </section>
   )
 }

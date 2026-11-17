@@ -109,7 +109,8 @@ function FanChart({
           </button>
         ))}
       </div>
-      <ResponsiveContainer width="100%" height={440}>
+      <div className="chart-box">
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: 0 }}>
           <CartesianGrid stroke={GRID_STROKE} />
           <XAxis
@@ -161,6 +162,7 @@ function FanChart({
           )}
         </LineChart>
       </ResponsiveContainer>
+      </div>
       <p className="card-note">
         No inputs here: velocity is from stage 1, the eliminator from stage 2.
         P = A·u·Δp, Δp = Kp(Re)·½ρu² (Ruiz et al., 2019). Ideal air power for

@@ -20,7 +20,7 @@ const lx = (y: number) =>
 const rx = (y: number) =>
   TOP_R + ((y - TOP_Y) / (BOT_Y - TOP_Y)) * (BOT_R - TOP_R)
 
-type GraphicZoneId = 'plume' | 'droplets' | 'fan' | 'recovery'
+type GraphicZoneId = StageId
 
 interface ZoneLabel {
   id: Exclude<GraphicZoneId, 'recovery'>
@@ -37,8 +37,18 @@ interface GraphicInfo {
 const LABELS: ZoneLabel[] = [
   { id: 'fan', anchor: [320, 84] },
   { id: 'droplets', anchor: [360, 134] },
-  { id: 'plume', anchor: [396, 214] },
+  { id: 'drift', anchor: [372, 172] },
+  { id: 'plume', anchor: [400, 250] },
 ]
+
+/** Stage numbers shown on the drawing; the drawing is the stage selector. */
+const NUMBER: Record<GraphicZoneId, string> = {
+  plume: '1A',
+  drift: '1B',
+  droplets: '2',
+  fan: '3',
+  recovery: '4',
+}
 
 const HOTZONES: Record<
   GraphicZoneId,
@@ -46,7 +56,8 @@ const HOTZONES: Record<
 > = {
   fan: { x: 118, y: 58, width: 326, height: 58 },
   droplets: { x: 118, y: 116, width: 326, height: 38 },
-  plume: { x: 118, y: 154, width: 326, height: 210 },
+  drift: { x: 118, y: 154, width: 326, height: 44 },
+  plume: { x: 118, y: 198, width: 326, height: 166 },
   recovery: { x: 55, y: 4, width: 112, height: 124 },
 }
 
@@ -59,11 +70,10 @@ export default function TowerGraphic({
   selected: StageId
   onSelect: (id: StageId) => void
 }) {
-  const toZone = (id: StageId): GraphicZoneId => (id === 'drift' ? 'droplets' : id)
-  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(toZone(selected))
+  const [graphicZone, setGraphicZone] = useState<GraphicZoneId>(selected)
 
   useEffect(() => {
-    setGraphicZone(toZone(selected))
+    setGraphicZone(selected)
   }, [selected])
 
   const info: Record<GraphicZoneId, GraphicInfo> = {
@@ -72,6 +82,12 @@ export default function TowerGraphic({
       reading: `T ${fmt(r.plume.t)}°C · RH ${fmt(r.plume.rh, 0)}%`,
       control: 'plume',
       accent: STAGE_META.plume.accent,
+    },
+    drift: {
+      name: 'Drift droplets',
+      reading: `Entering ${fmt(r.droplets.driftInlet, 3)} kg/s`,
+      control: 'drift',
+      accent: STAGE_META.drift.accent,
     },
     droplets: {
       name: 'Drift eliminator',
@@ -168,16 +184,22 @@ export default function TowerGraphic({
           r={2.4}
           style={{ fill: info.accent }}
         />
-        <circle
-          cx={labelX + 13}
-          cy={labelY}
-          r={3}
+        <rect
+          className="label-badge"
+          x={labelX - 4}
+          y={labelY - 9}
+          width={24}
+          height={16}
+          rx={8}
           style={{ fill: info.accent }}
         />
-        <text className="label-name" x={labelX + 24} y={labelY - 2}>
+        <text className="label-number" x={labelX + 8} y={labelY + 3} textAnchor="middle">
+          {NUMBER[id]}
+        </text>
+        <text className="label-name" x={labelX + 26} y={labelY - 2}>
           {info.name}
         </text>
-        <text className="label-value" x={labelX + 24} y={labelY + 10}>
+        <text className="label-value" x={labelX + 26} y={labelY + 10}>
           {info.reading}
         </text>
       </g>
@@ -193,8 +215,8 @@ export default function TowerGraphic({
       >
         <title id="tower-title">Cooling-tower plume process</title>
         <desc id="tower-desc">
-          Cooling-tower cutaway with four selectable stations: plume, drift
-          eliminator, fan and recovery.
+          Cooling-tower cutaway. Select a part to open its stage: 1A plume,
+          1B drift droplets, 2 drift eliminator, 3 fan, 4 recovery.
         </desc>
 
         <path
@@ -239,7 +261,7 @@ export default function TowerGraphic({
             d="M108 60 C98 74 100 84 108 88 C116 84 118 74 108 60Z"
           />
           <text className="rec-label" x="108" y="108" textAnchor="middle">
-            RECOVERY
+            4 · RECOVERY
           </text>
           <text className="rec-value" x="108" y="121" textAnchor="middle">
             {graphicInfo('recovery').reading}
@@ -435,6 +457,7 @@ export default function TowerGraphic({
         {LABELS.map(label)}
         {zone('fan')}
         {zone('droplets')}
+        {zone('drift')}
         {zone('plume')}
         {zone('recovery')}
       </svg>
