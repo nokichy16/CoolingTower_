@@ -1339,3 +1339,48 @@ button.sf-link:hover { border-color: var(--text); }
 @media (min-width: 921px) {
   .stage-droplets .chart-legend-row { gap: 2px 12px; font-size: 12.5px; }
 }
+
+/* ===== Desktop: graph titles and legends smaller; graphs fill the screen ===== */
+@media (min-width: 921px) {
+  .stage-panel .stage-graph > .input-group-title,
+  .stage-panel .eliminator-output > .input-group-title,
+  .stage-panel .process-chart > .input-group-title,
+  .stage-panel .droplet-chart-title { margin: 0 0 2px; font-size: 13.5px; font-weight: 600; letter-spacing: 0; }
+  .stage-panel .chart-legend-row { margin: 0 0 4px; gap: 2px 12px; font-size: 12px; }
+  .stage-panel .chart-legend-row i { width: 9px; height: 9px; }
+
+  /* the stage fills the screen; graphs take the height left after the tables */
+  .stage-droplets, .stage-fan, .stage-recovery {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 18px);
+  }
+  .stage-droplets .stage-input-panel,
+  .stage-fan .stage-input-panel,
+  .stage-recovery .stage-input-panel { flex: 1 1 auto; min-height: 0; }
+
+  .stage-droplets .stage-input-panel { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .stage-fan .stage-input-panel { display: flex; flex-direction: column; }
+  .stage-recovery .stage-input-panel { grid-template-rows: auto minmax(0, 1fr); }
+
+  .stage-droplets .eliminator-output, .stage-droplets .stage-graph,
+  .stage-fan .stage-graph,
+  .stage-recovery .stage-graph, .stage-recovery .process-chart {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .stage-fan .stage-graph, .stage-recovery .process-chart { flex: 1 1 auto; }
+  .stage-recovery .stage-graph { height: 100%; }
+
+  .stage-droplets .chart-box,
+  .stage-fan .chart-box,
+  .stage-recovery .process-chart .chart-box { flex: 1 1 0; height: auto; min-height: 240px; }
+}
+@media (min-width: 921px) {
+  .stage-droplets .stage-input-panel { align-items: stretch; }
+  .stage-recovery .process-chart > .chart { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+}
+/* the graph always fills its box, whatever sets the box size */
+.chart-box { position: relative; }
+.chart-box > .recharts-responsive-container { position: absolute; inset: 0; }
