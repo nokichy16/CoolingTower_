@@ -13,9 +13,9 @@
   --amber: #ff9f45;
   --droplet: #c9b568;
   --danger: #ff6b6b;
-  --head: 'STIX Two Text', 'Times New Roman', serif;
-  --sans: 'STIX Two Text', 'Times New Roman', serif;
-  --mono: 'STIX Two Text', 'Times New Roman', serif; /* numbers line up through tabular figures */
+  --head: 'IBM Plex Sans', system-ui, sans-serif;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
   color: var(--text);
   background: var(--bg);
   font-family: var(--sans);
@@ -1302,8 +1302,8 @@ button.sf-link:hover { border-color: var(--text); }
   .stage-flow.is-in + .stage-input-panel > .stage-table:first-child > * { margin-top: 0; }
 }
 
-/* ===== Fonts: STIX Two Text (serif, high stroke contrast) for all text ===== */
-.brand h1 { font-family: var(--head); font-weight: 700; font-size: 24px; letter-spacing: 0; line-height: 0.95; }
+/* ===== Fonts: IBM Plex Sans for text and headings, IBM Plex Mono for numbers ===== */
+.brand h1 { font-family: var(--head); font-weight: 700; font-size: 24px; letter-spacing: -0.03em; line-height: 0.95; }
 .controls-head h2 { font-family: var(--head); font-weight: 700; font-size: 21px; letter-spacing: -0.02em; }
 .input-group-title, .stage-result-head strong { font-family: var(--head); font-weight: 600; font-size: 15.5px; letter-spacing: -0.005em; }
 .output-section-head h2 { font-family: var(--head); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; }
@@ -1564,7 +1564,3 @@ html, body, .app { background: var(--bg); }
 .recharts-cartesian-axis-tick-value { fill: #1e2328; }
 .recharts-label { font-size: 15px; fill: #1e2328; }
 .chart-legend-row { font-size: 14px; }
-
-/* one serif everywhere; digits keep equal widths so columns of numbers line up */
-body { font-variant-numeric: tabular-nums lining-nums; }
-input, button, select, textarea { font-family: inherit; }
