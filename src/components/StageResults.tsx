@@ -34,9 +34,11 @@ const input = (label: string, value: string, unit: string): Row => ({
  */
 export default function StageResults({
   r,
+  selected,
   onSelect,
 }: {
   r: TowerResults
+  selected: StageId
   onSelect: (id: StageId) => void
 }) {
   const i = r.inputs
@@ -149,53 +151,69 @@ export default function StageResults({
     },
   ]
 
+  const rowsOf = (b: StageBlock) => (
+    <ul className="stage-result-rows">
+      {b.rows.map((row) => (
+        <li key={row.label} className={row.kind === 'input' ? 'is-input' : ''}>
+          <span className="row-label">
+            <span>
+              {row.label}
+              {row.kind === 'input' && <em className="input-tag">input</em>}
+            </span>
+            {row.kind !== 'input' && <code>{row.formula}</code>}
+          </span>
+          <span className="row-value">
+            <strong>{row.value}</strong>
+            {row.unit && <small>{row.unit}</small>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+  const notesOf = (b: StageBlock) =>
+    b.notes && b.notes.length > 0 ? (
+      <ul className="stage-result-notes">
+        {b.notes.map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
+    ) : null
+  const current = blocks.find((b) => b.id === selected) ?? blocks[0]
+
   return (
     <section className="stage-results" aria-labelledby="stage-results-title">
+      {/* the open stage first */}
       <div className="output-section-head">
-        <h2 id="stage-results-title">All calculated values</h2>
+        <h2 id="stage-results-title">Calculated values · {current.name}</h2>
+      </div>
+      <div className={`stage-result is-current is-${current.path}`}>
+        {rowsOf(current)}
+        {notesOf(current)}
       </div>
 
-      <div className="stage-result-grid">
-        {blocks.map((b) => (
-          <section key={b.id} className={`stage-result is-${b.path}`}>
-            <header className="stage-result-head">
-              <span className="stage-result-index">{b.index}</span>
-              <strong>{b.name}</strong>
-              <button
-                type="button"
-                className="stage-result-edit"
-                onClick={() => onSelect(b.id)}
-              >
-                Edit inputs
-              </button>
-            </header>
-            <ul className="stage-result-rows">
-              {b.rows.map((row) => (
-                <li key={row.label} className={row.kind === 'input' ? 'is-input' : ''}>
-                  <span className="row-label">
-                    <span>
-                      {row.label}
-                      {row.kind === 'input' && <em className="input-tag">input</em>}
-                    </span>
-                    {row.kind !== 'input' && <code>{row.formula}</code>}
-                  </span>
-                  <span className="row-value">
-                    <strong>{row.value}</strong>
-                    {row.unit && <small>{row.unit}</small>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {b.notes && b.notes.length > 0 && (
-              <ul className="stage-result-notes">
-                {b.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
+      {/* every stage, on request */}
+      <details className="all-calculations">
+        <summary>View all calculations</summary>
+        <div className="stage-result-grid">
+          {blocks.map((b) => (
+            <section key={b.id} className={`stage-result is-${b.path}`}>
+              <header className="stage-result-head">
+                <span className="stage-result-index">{b.index}</span>
+                <strong>{b.name}</strong>
+                <button
+                  type="button"
+                  className="stage-result-edit"
+                  onClick={() => onSelect(b.id)}
+                >
+                  Open stage
+                </button>
+              </header>
+              {rowsOf(b)}
+              {notesOf(b)}
+            </section>
+          ))}
+        </div>
+      </details>
     </section>
   )
 }

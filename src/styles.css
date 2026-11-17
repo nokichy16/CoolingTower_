@@ -1461,3 +1461,88 @@ button.sf-link:hover { border-color: var(--text); }
   .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
   .cv { flex-wrap: wrap; }
 }
+
+/* ===== Clean contrast: separated surfaces, darker secondary text ===== */
+:root {
+  --bg: #f4f2ec;          /* warm off-white page */
+  --surface: #ffffff;     /* inputs, plots and values sit on white */
+  --sidebar: #e8e5dc;     /* navigation panel, one step darker */
+  --text: #1e2328;        /* charcoal */
+  --text-dim: #3c444d;
+  --text-faint: #58616b;  /* units and formulas: still readable */
+  --line-soft: rgba(30, 35, 40, 0.16);
+  --focus: #0f6b74;       /* deep teal: selection and focus only */
+}
+html, body, .app { background: var(--bg); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* sidebar reads as navigation */
+.sheet { background: var(--sidebar); border-right: 1px solid var(--line-soft); }
+.sheet .stage-list { border-top-color: var(--text); }
+.sl-row { border-bottom-color: var(--line-soft); }
+
+/* the tower shows names only; numbers live in the list under it */
+.tower-label .label-value { display: none; }
+.tower-label .label-name { font-size: 17px; }
+
+/* white surfaces for the working area and the values */
+@media (min-width: 921px) {
+  .stage-panel .stage-input-panel {
+    padding: 16px 18px;
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .stage-panel .controls-head { border-bottom: 0; padding-bottom: 4px; }
+}
+@media (max-width: 920px) {
+  .stage-panel .stage-input-panel { padding: 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); }
+}
+.content .main .stage-results {
+  margin-top: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+/* stage kicker: quieter, not shouting */
+.controls-kicker { color: var(--text-dim); font-size: 12px; letter-spacing: 0.06em; }
+
+/* typed values look editable */
+.field-value-input {
+  padding: 2px 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.field-value-input:hover { border-color: var(--text-faint); }
+.field-value-input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 2px rgba(15, 107, 116, 0.18); }
+.field-unit { color: var(--text-dim); }
+
+/* graph titles a step stronger */
+.stage-panel .stage-graph > .input-group-title,
+.stage-panel .eliminator-output > .input-group-title,
+.stage-panel .process-chart > .input-group-title { font-size: 14.5px; font-weight: 700; color: var(--text); }
+.chart-legend-row { color: var(--text-dim); }
+
+/* values: open stage first, every stage behind "View all calculations" */
+.output-section-head { margin-bottom: 8px; }
+.output-section-head h2 { color: var(--text); font-size: 15px; letter-spacing: 0.02em; text-transform: none; }
+.stage-result.is-current .stage-result-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  column-gap: 32px;
+}
+.row-label code { color: var(--text-faint); font-size: 13px; }
+.row-value strong { font-size: 14px; }
+.row-value small { color: var(--text-faint); font-size: 13px; }
+.stage-result-notes { color: var(--text-dim); }
+.all-calculations { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.all-calculations summary { color: var(--focus); font-weight: 600; cursor: pointer; }
+.all-calculations[open] summary { margin-bottom: 14px; }
+.stage-result-edit { color: var(--focus); }
+@media (min-width: 921px) {
+  /* line the values card up with the stage card above it */
+  .content .main { padding-left: 36px; }
+}

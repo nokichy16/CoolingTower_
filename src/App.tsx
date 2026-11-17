@@ -120,7 +120,7 @@ export default function App() {
           ))}
         </div>
         <main className="main">
-          <StageResults r={results} onSelect={goTo} />
+          <StageResults r={results} selected={selectedStage} onSelect={goTo} />
         </main>
       </div>
     </div>

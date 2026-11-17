@@ -2,15 +2,15 @@
 import type { CSSProperties } from 'react'
 import type { SelectionId } from '../lib/eliminators'
 
-export const GRID_STROKE = '#dcd8cf'
-export const AXIS_STROKE = '#aaa49a'
-export const AXIS_TEXT = '#4c4943'
-export const AXIS_FONT_SIZE = 12.5
+export const GRID_STROKE = '#dde1e5'
+export const AXIS_STROKE = '#7f8790'
+export const AXIS_TEXT = '#2b3138'
+export const AXIS_FONT_SIZE = 13
 
 export const AXIS_TICK = { fill: AXIS_TEXT, fontSize: AXIS_FONT_SIZE }
 
 export const TOOLTIP_STYLE: CSSProperties = {
-  background: '#fbfaf7',
+  background: '#ffffff',
   border: '1px solid #d8d3ca',
   borderRadius: 8,
   color: '#252525',
