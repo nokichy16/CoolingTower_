@@ -1,40 +1,34 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useMemo, useState } from 'react'
 import {
   compareEliminators,
   DEFAULT_INPUTS,
   dryAirMassFlowFromVelocity,
   solveTower,
   velocityFromDryAirMassFlow,
+  type SolveIssue,
   type TowerInputs,
 } from './lib/model'
 import { SELECTIONS, type SelectionId } from './lib/eliminators'
 import type { StageId } from './lib/stages'
 import StagePanel from './components/StagePanel'
-import StageToggles, { STAGE_IDS } from './components/StageToggles'
-import TitleBlock from './components/TitleBlock'
+import StageList from './components/StageList'
 import TowerGraphic from './components/TowerGraphic'
 import StageResults from './components/StageResults'
 
-/** Desktop shows every stage on one page; narrow screens show one at a time. */
-const DESKTOP = '(min-width: 921px)'
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const mq = window.matchMedia(query)
-    const update = () => setMatches(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [query])
-  return matches
+/** The stage where each warning is caused and can be fixed. */
+const ISSUE_STAGE: Record<SolveIssue['code'], StageId> = {
+  'flow-input-invalid': 'plume',
+  'ruiz-pressure-extrapolation': 'droplets',
+  'ruiz-collection-extrapolation': 'droplets',
+  'recovery-temperature-limited': 'recovery',
+  'no-condensation-depth': 'recovery',
+  'cycles-invalid': 'recovery',
 }
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
   const [selectedStage, setSelectedStage] = useState<StageId>('plume')
   const results = useMemo(() => solveTower(inputs), [inputs])
-  const isDesktop = useMediaQuery(DESKTOP)
 
   // The graphs and the comparison tables (seven extra solves) use deferred
   // copies: React draws the sliders and numbers first, then the graphs when
@@ -66,51 +60,22 @@ export default function App() {
   const visibleIssues = results.issues.filter((issue) => !issue.code.startsWith('ruiz-'))
   const firstWarning = visibleIssues.find((issue) => issue.severity === 'warning')
 
-  // Desktop: the stage in the middle of the screen is the current one, and
-  // selecting a stage scrolls to it. Phone: selecting a stage switches to it.
-  const scrollTarget = useRef<StageId | null>(null)
-  useEffect(() => {
-    if (!isDesktop) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          const id = entry.target.id.replace('stage-', '') as StageId
-          // While a requested scroll runs, ignore the stages it passes.
-          if (scrollTarget.current && scrollTarget.current !== id) continue
-          scrollTarget.current = null
-          setSelectedStage(id)
-        }
-      },
-      { rootMargin: '-35% 0px -60% 0px' },
-    )
-    for (const id of STAGE_IDS) {
-      const el = document.getElementById(`stage-${id}`)
-      if (el) observer.observe(el)
-    }
-    return () => observer.disconnect()
-  }, [isDesktop])
+  const warningCounts = useMemo(() => {
+    const counts: Record<StageId, number> = { plume: 0, drift: 0, droplets: 0, fan: 0, recovery: 0 }
+    for (const issue of results.issues) counts[ISSUE_STAGE[issue.code]] += 1
+    return counts
+  }, [results.issues])
 
-  const goTo = useCallback(
-    (id: StageId) => {
-      setSelectedStage(id)
+  // One stage is open at a time. When the stage area is scrolled away,
+  // opening a stage brings its top back into view.
+  const goTo = useCallback((id: StageId) => {
+    setSelectedStage(id)
+    const area = document.getElementById('stage-area')
+    if (area && area.getBoundingClientRect().top < 0) {
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      const behavior: ScrollBehavior = reduce ? 'auto' : 'smooth'
-      if (!isDesktop) {
-        document.getElementById('stage-area')?.scrollIntoView({ behavior, block: 'start' })
-        return
-      }
-      scrollTarget.current = id
-      document.getElementById(`stage-${id}`)?.scrollIntoView({ behavior, block: 'start' })
-      // Stop ignoring the observer if the scroll is cut short.
-      window.setTimeout(() => {
-        if (scrollTarget.current === id) scrollTarget.current = null
-      }, 1500)
-    },
-    [isDesktop],
-  )
-
-  const shownStages = isDesktop ? STAGE_IDS : [selectedStage]
+      area.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    }
+  }, [])
 
   return (
     <div className="app side-layout">
@@ -132,13 +97,12 @@ export default function App() {
         <div className="tower-explorer">
           <TowerGraphic r={results} selected={selectedStage} onSelect={goTo} />
         </div>
-        <StageToggles selected={selectedStage} onSelect={goTo} />
-        <TitleBlock r={results} onSelect={goTo} />
+        <StageList r={results} selected={selectedStage} warnings={warningCounts} onSelect={goTo} />
       </aside>
 
       <div className="content">
         <div className="stage-stack" id="stage-area">
-          {shownStages.map((id) => (
+          {[selectedStage].map((id) => (
             <StagePanel
               key={id}
               stage={id}
@@ -152,6 +116,7 @@ export default function App() {
               onChange={patch}
               onDryAirMassFlowChange={setDryAirMassFlow}
               onSelectEliminator={selectEliminator}
+              onSelectStage={goTo}
             />
           ))}
         </div>

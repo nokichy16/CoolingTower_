@@ -37,3 +37,6 @@ export const STAGE_GROUPS: StageGroup[] = [
 export function groupOf(id: StageId): StageGroup {
   return STAGE_GROUPS.find((g) => g.stages.includes(id)) ?? STAGE_GROUPS[0]
 }
+
+/** Stages in calculation order. */
+export const STAGE_IDS: StageId[] = ['plume', 'drift', 'droplets', 'fan', 'recovery']
