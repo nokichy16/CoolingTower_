@@ -2,27 +2,28 @@
 import type { CSSProperties } from 'react'
 import type { SelectionId } from '../lib/eliminators'
 
-export const GRID_STROKE = '#dcd8cf'
-export const AXIS_STROKE = '#aaa49a'
-export const AXIS_TEXT = '#4c4943'
+export const GRID_STROKE = '#d3dbe3'
+export const AXIS_STROKE = '#aab6c4'
+export const AXIS_TEXT = '#44546b'
 export const AXIS_FONT_SIZE = 12.5
 
 export const AXIS_TICK = { fill: AXIS_TEXT, fontSize: AXIS_FONT_SIZE }
 
 export const TOOLTIP_STYLE: CSSProperties = {
-  background: '#fbfaf7',
-  border: '1px solid #d8d3ca',
-  borderRadius: 8,
-  color: '#252525',
+  background: '#ffffff',
+  border: '1px solid #12233b',
+  borderRadius: 3,
+  color: '#12233b',
   fontSize: 13.5,
 }
 
 export const SERIES = {
-  inlet: '#137f70',
-  inletSoft: 'rgba(19, 127, 112, 0.28)',
-  captured: '#b8641a',
-  escaping: '#2a78d6',
-  efficiency: '#6250d6',
+  // inlet = ink, captured = water kept, escaping = water lost
+  inlet: '#12233b',
+  inletSoft: 'rgba(18, 35, 59, 0.2)',
+  captured: '#0b7cc0',
+  escaping: '#d2531c',
+  efficiency: '#6b4fd8',
 } as const
 
 export const ELIMINATOR_COLORS: Record<SelectionId, string> = {
@@ -32,7 +33,7 @@ export const ELIMINATOR_COLORS: Record<SelectionId, string> = {
   D: '#b8641a',
   E: '#c0397a',
   F: '#6b7a1f',
-  custom: '#252525',
+  custom: '#12233b',
 }
 
 /** X-axis label under a chart. */

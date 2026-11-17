@@ -26,6 +26,7 @@ interface StageWorkspaceProps {
   inputs: TowerInputs
   r: TowerResults
   stage: StageId
+  label: string
   block: StageBlock
   issues: SolveIssue[]
   comparison: EliminatorComparisonRow[]
@@ -41,6 +42,7 @@ export default function StageWorkspace({
   inputs,
   r,
   stage,
+  label,
   block,
   issues,
   comparison,
@@ -67,12 +69,15 @@ export default function StageWorkspace({
   return (
     <main className={`stage is-${meta.path}`} key={stage}>
       <header className="stage-head">
-        <span className="stage-kicker">
-          Stage {meta.index}
-          {group.stages.length > 1 ? ` · ${group.name}` : ''} ·{' '}
-          {meta.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
-        </span>
-        <h2>{meta.name}</h2>
+        <span className="stage-number" aria-hidden="true">{label}</span>
+        <div>
+          <span className="stage-kicker">
+            Stage {meta.index}
+            {group.stages.length > 1 ? ` · ${group.name}` : ''} ·{' '}
+            {meta.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
+          </span>
+          <h2>{meta.name}</h2>
+        </div>
       </header>
 
       {issues.length > 0 && (

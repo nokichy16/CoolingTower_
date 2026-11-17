@@ -10,9 +10,9 @@ import {
 } from './lib/model'
 import { SELECTIONS, type SelectionId } from './lib/eliminators'
 import { buildStageBlocks } from './lib/stage-values'
-import type { StageId } from './lib/stages'
-import KpiBar from './components/KpiBar'
-import StageRail from './components/StageRail'
+import { STAGE_META, type StageId } from './lib/stages'
+import TitleBlock from './components/TitleBlock'
+import TowerSection from './components/TowerSection'
 import StageWorkspace from './components/StageWorkspace'
 import ValueTable from './components/ValueTable'
 
@@ -27,6 +27,13 @@ const ISSUE_STAGE: Record<SolveIssue['code'], StageId> = {
 }
 
 const STAGE_IDS: StageId[] = ['plume', 'drift', 'droplets', 'fan', 'recovery']
+const STAGE_LABEL: Record<StageId, string> = {
+  plume: '1A',
+  drift: '1B',
+  droplets: '2',
+  fan: '3',
+  recovery: '4',
+}
 
 export default function App() {
   const [inputs, setInputs] = useState<TowerInputs>(DEFAULT_INPUTS)
@@ -72,40 +79,52 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <h1>Plume Water Recovery</h1>
-          <span>Cooling-tower screening model</span>
-        </div>
-        <KpiBar r={results} selected={stage} onSelect={setStage} />
-        <div className="topbar-actions">
-          {firstWarningStage && (
+      <aside className="sheet">
+        <header className="sheet-head">
+          <div className="brand">
+            <h1>Plume Water Recovery</h1>
+            <span>Cooling-tower section · screening model</span>
+          </div>
+          <div className="sheet-actions">
+            {firstWarningStage && (
+              <button type="button" className="warn-chip" onClick={() => setStage(firstWarningStage)}>
+                {results.issues.length} warning{results.issues.length > 1 ? 's' : ''}
+              </button>
+            )}
             <button
               type="button"
-              className="warn-chip"
-              onClick={() => setStage(firstWarningStage)}
+              className="reset"
+              onClick={() => setInputs(DEFAULT_INPUTS)}
+              disabled={isDefault}
             >
-              {results.issues.length} warning{results.issues.length > 1 ? 's' : ''}
+              Reset all
             </button>
-          )}
-          <button
-            type="button"
-            className="reset"
-            onClick={() => setInputs(DEFAULT_INPUTS)}
-            disabled={isDefault}
-          >
-            Reset all
-          </button>
-        </div>
-      </header>
+          </div>
+        </header>
+        <TowerSection r={results} selected={stage} warnings={warningCounts} onSelect={setStage} />
+        <TitleBlock r={results} selected={stage} onSelect={setStage} />
+      </aside>
 
-      <div className="shell">
-        <StageRail r={results} selected={stage} warnings={warningCounts} onSelect={setStage} />
-        <div className="content">
+      <div className="content">
+        <nav className="stage-nav" aria-label="Stages">
+          {STAGE_IDS.map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={`stage-nav-item${id === stage ? ' is-selected' : ''}`}
+              aria-current={id === stage ? 'step' : undefined}
+              onClick={() => setStage(id)}
+            >
+              <span>{STAGE_LABEL[id]}</span>
+              {STAGE_META[id].name}
+            </button>
+          ))}
+        </nav>
         <StageWorkspace
           inputs={inputs}
           r={results}
           stage={stage}
+          label={STAGE_LABEL[stage]}
           block={blocks.find((b) => b.id === stage) ?? blocks[0]}
           issues={issuesByStage[stage]}
           comparison={comparison}
@@ -121,14 +140,13 @@ export default function App() {
             {blocks.map((b) => (
               <section className="card" key={b.id}>
                 <h3 className="card-title">
-                  {b.index} · {b.name}
+                  {STAGE_LABEL[b.id]} · {b.name}
                 </h3>
                 <ValueTable block={b} />
               </section>
             ))}
           </div>
         </details>
-        </div>
       </div>
     </div>
   )
