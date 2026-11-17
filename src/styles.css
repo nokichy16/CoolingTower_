@@ -1546,3 +1546,9 @@ html, body, .app { background: var(--bg); }
   /* line the values card up with the stage card above it */
   .content .main { padding-left: 36px; }
 }
+
+/* formulas as mathematical notation */
+.row-label .formula { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 2px; color: var(--text-dim); }
+.row-label .formula .katex { font-size: 1.08em; }
+.formula-note { color: var(--text-faint); font: 12px var(--sans); }
+.row-label .formula-text { color: var(--text-faint); font-size: 13px; }

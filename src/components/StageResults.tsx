@@ -2,6 +2,11 @@ import { distributionParams, type TowerResults } from '../lib/model'
 import { describeSpec, RUIZ_LIMITS, selectionName } from '../lib/eliminators'
 import type { StageId, StagePath } from '../lib/stages'
 import { fmt, sig } from '../lib/format'
+import { lazy, Suspense } from 'react'
+
+// KaTeX is large, so the maths notation loads after the page; until then
+// each formula shows as plain text.
+const Formula = lazy(() => import('./Formula'))
 
 interface Row {
   label: string
@@ -160,7 +165,11 @@ export default function StageResults({
               {row.label}
               {row.kind === 'input' && <em className="input-tag">input</em>}
             </span>
-            {row.kind !== 'input' && <code>{row.formula}</code>}
+            {row.kind !== 'input' && (
+              <Suspense fallback={<span className="formula-text">{row.formula}</span>}>
+                <Formula text={row.formula} />
+              </Suspense>
+            )}
           </span>
           <span className="row-value">
             <strong>{row.value}</strong>
