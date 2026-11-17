@@ -113,54 +113,48 @@ export default function App() {
   const shownStages = isDesktop ? STAGE_IDS : [selectedStage]
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <h1>Plume Water Recovery</h1>
+    <div className="app side-layout">
+      <aside className="sheet" aria-label="Cooling-tower process">
+        <div className="sheet-head">
+          <div className="brand">
+            <h1>Plume Water Recovery</h1>
+          </div>
+          <button type="button" className="reset" onClick={reset}>
+            Reset all
+          </button>
         </div>
-        <TitleBlock r={results} onSelect={goTo} />
         {firstWarning && (
           <div className="header-warning" role="alert">
             <strong>{firstWarning.title}</strong>
             <span>{firstWarning.message}</span>
           </div>
         )}
-      </header>
-
-      <div className="page">
-        <div className="workspace">
-          <section className="visual-workspace" aria-label="Cooling-tower process">
-            <div className="tower-explorer">
-              <TowerGraphic r={results} selected={selectedStage} onSelect={goTo} />
-            </div>
-            <div className="nav-row">
-              <StageToggles selected={selectedStage} onSelect={goTo} />
-              <button type="button" className="reset" onClick={reset}>
-                Reset all
-              </button>
-            </div>
-          </section>
-
-          <div className="stage-stack" id="stage-area">
-            {shownStages.map((id) => (
-              <StagePanel
-                key={id}
-                stage={id}
-                inputs={inputs}
-                r={results}
-                graphInputs={graphInputs}
-                graphResults={graphResults}
-                comparison={comparison}
-                dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
-                dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}
-                onChange={patch}
-                onDryAirMassFlowChange={setDryAirMassFlow}
-                onSelectEliminator={selectEliminator}
-              />
-            ))}
-          </div>
+        <div className="tower-explorer">
+          <TowerGraphic r={results} selected={selectedStage} onSelect={goTo} />
         </div>
+        <StageToggles selected={selectedStage} onSelect={goTo} />
+        <TitleBlock r={results} onSelect={goTo} />
+      </aside>
 
+      <div className="content">
+        <div className="stage-stack" id="stage-area">
+          {shownStages.map((id) => (
+            <StagePanel
+              key={id}
+              stage={id}
+              inputs={inputs}
+              r={results}
+              graphInputs={graphInputs}
+              graphResults={graphResults}
+              comparison={comparison}
+              dryAirMassFlowMin={dryAirMassFlowAtVelocity(1)}
+              dryAirMassFlowMax={dryAirMassFlowAtVelocity(100)}
+              onChange={patch}
+              onDryAirMassFlowChange={setDryAirMassFlow}
+              onSelectEliminator={selectEliminator}
+            />
+          ))}
+        </div>
         <main className="main">
           <StageResults r={results} onSelect={goTo} />
         </main>
