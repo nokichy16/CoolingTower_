@@ -43,7 +43,7 @@ body { color: var(--ink); font-size: 14px; }
 
 .app {
   display: grid;
-  grid-template-columns: minmax(440px, 47fr) minmax(0, 53fr);
+  grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr);
   min-height: 100vh;
   background: var(--paper);
 }
@@ -221,12 +221,24 @@ body { color: var(--ink); font-size: 14px; }
 /* ---------- stage column ---------- */
 .content {
   display: grid;
-  gap: 18px;
+  gap: 30px;
   min-width: 0;
   align-content: start;
   padding: 16px max(22px, env(safe-area-inset-right, 0px)) 64px 22px;
 }
-.stage-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -16px -22px 0;
+  padding: 12px 22px 10px;
+  border-bottom: 1px solid var(--rule-strong);
+  background: rgba(230, 235, 239, 0.94);
+  backdrop-filter: blur(10px);
+}
 .stage-nav-item {
   display: inline-flex;
   align-items: center;
@@ -245,7 +257,8 @@ body { color: var(--ink); font-size: 14px; }
 .stage-nav-item.is-selected span { background: #fff; }
 
 /* ---------- stage ---------- */
-.stage { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.stage { display: grid; gap: 16px; min-width: 0; align-content: start; scroll-margin-top: 64px; }
+.stage + .stage { padding-top: 30px; border-top: 2px solid var(--ink); }
 .stage-head { display: flex; align-items: center; gap: 14px; }
 .stage-number {
   flex: 0 0 auto;
@@ -322,16 +335,23 @@ input[type='range']::-moz-range-thumb { border-color: var(--surface); background
 .all-values summary { color: var(--ink); font-size: 14px; font-weight: 700; cursor: pointer; }
 .all-values-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 14px; }
 
+/* ---------- wide screens: inputs and values beside the graphs ---------- */
+@media (min-width: 1500px) {
+  .stage-grid { grid-template-columns: minmax(360px, 5fr) minmax(0, 7fr); }
+}
+
 /* ---------- narrower screens ---------- */
 @media (max-width: 1100px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .sheet { position: static; height: auto; grid-template-rows: auto auto auto; gap: 10px; border-right: 0; border-bottom: 1px solid var(--rule-strong); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
   .tower-section { height: auto; max-height: 78vh; }
   .content { padding-left: max(18px, env(safe-area-inset-left, 0px)); }
+  .stage-nav { margin: -16px calc(-1 * max(22px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(18px, env(safe-area-inset-left, 0px))); padding-left: max(18px, env(safe-area-inset-left, 0px)); }
 }
 @media (max-width: 620px) {
   .sheet { padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
   .content { padding: 14px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+  .stage-nav { margin: -14px calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 10px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
   .brand h1 { font-size: 24px; }
   .title-block { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tb-cell:nth-child(3) { border-left: 0; }

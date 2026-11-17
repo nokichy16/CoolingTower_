@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
   compareEliminators,
   DEFAULT_INPUTS,
@@ -14,7 +14,6 @@ import { STAGE_META, type StageId } from './lib/stages'
 import TitleBlock from './components/TitleBlock'
 import TowerSection from './components/TowerSection'
 import StageWorkspace from './components/StageWorkspace'
-import ValueTable from './components/ValueTable'
 
 /** The stage where each warning is caused and can be fixed. */
 const ISSUE_STAGE: Record<SolveIssue['code'], StageId> = {
@@ -41,12 +40,12 @@ export default function App() {
   const results = useMemo(() => solveTower(inputs), [inputs])
   const blocks = useMemo(() => buildStageBlocks(results), [results])
 
-  // The comparison tables are shown on the eliminator and fan stages only.
-  const showsComparison = stage === 'droplets' || stage === 'fan'
-  const comparison = useMemo(
-    () => (showsComparison ? compareEliminators(inputs, SELECTIONS) : []),
-    [inputs, showsComparison],
-  )
+  // The graphs and the comparison tables (seven extra solves) use deferred
+  // copies: React draws the sliders and numbers first, then the graphs when
+  // the browser is free, so dragging a slider stays smooth.
+  const graphInputs = useDeferredValue(inputs)
+  const graphResults = useDeferredValue(results)
+  const comparison = useMemo(() => compareEliminators(graphInputs, SELECTIONS), [graphInputs])
 
   const patch = useCallback(
     (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p })),
@@ -77,6 +76,42 @@ export default function App() {
   const firstWarningStage = STAGE_IDS.find((id) => warningCounts[id] > 0)
   const isDefault = inputs === DEFAULT_INPUTS
 
+  // All stages are on one page. The stage in the middle of the screen is the
+  // current one; selecting a stage scrolls to it.
+  const scrollTarget = useRef<StageId | null>(null)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const id = entry.target.id.replace('stage-', '') as StageId
+          // While a requested scroll runs, ignore the stages it passes.
+          if (scrollTarget.current && scrollTarget.current !== id) continue
+          scrollTarget.current = null
+          setStage(id)
+        }
+      },
+      { rootMargin: '-35% 0px -60% 0px' },
+    )
+    for (const id of STAGE_IDS) {
+      const el = document.getElementById(`stage-${id}`)
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [])
+  const goTo = useCallback((id: StageId) => {
+    setStage(id)
+    scrollTarget.current = id
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document
+      .getElementById(`stage-${id}`)
+      ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    // Stop ignoring the observer if the scroll is cut short.
+    window.setTimeout(() => {
+      if (scrollTarget.current === id) scrollTarget.current = null
+    }, 1500)
+  }, [])
+
   return (
     <div className="app">
       <aside className="sheet">
@@ -87,7 +122,7 @@ export default function App() {
           </div>
           <div className="sheet-actions">
             {firstWarningStage && (
-              <button type="button" className="warn-chip" onClick={() => setStage(firstWarningStage)}>
+              <button type="button" className="warn-chip" onClick={() => goTo(firstWarningStage)}>
                 {results.issues.length} warning{results.issues.length > 1 ? 's' : ''}
               </button>
             )}
@@ -101,53 +136,45 @@ export default function App() {
             </button>
           </div>
         </header>
-        <TowerSection r={results} selected={stage} warnings={warningCounts} onSelect={setStage} />
-        <TitleBlock r={results} selected={stage} onSelect={setStage} />
+        <TowerSection r={results} selected={stage} warnings={warningCounts} onSelect={goTo} />
+        <TitleBlock r={results} selected={stage} onSelect={goTo} />
       </aside>
 
-      <div className="content">
+      <main className="content">
         <nav className="stage-nav" aria-label="Stages">
           {STAGE_IDS.map((id) => (
             <button
               type="button"
               key={id}
               className={`stage-nav-item${id === stage ? ' is-selected' : ''}`}
-              aria-current={id === stage ? 'step' : undefined}
-              onClick={() => setStage(id)}
+              aria-current={id === stage ? 'location' : undefined}
+              onClick={() => goTo(id)}
             >
               <span>{STAGE_LABEL[id]}</span>
               {STAGE_META[id].name}
             </button>
           ))}
         </nav>
-        <StageWorkspace
-          inputs={inputs}
-          r={results}
-          stage={stage}
-          label={STAGE_LABEL[stage]}
-          block={blocks.find((b) => b.id === stage) ?? blocks[0]}
-          issues={issuesByStage[stage]}
-          comparison={comparison}
-          dryAirMassFlowMin={massFlowAt(1)}
-          dryAirMassFlowMax={massFlowAt(100)}
-          onChange={patch}
-          onDryAirMassFlowChange={setDryAirMassFlow}
-          onSelectEliminator={selectEliminator}
-        />
-        <details className="all-values">
-          <summary>All calculated values, every stage</summary>
-          <div className="all-values-grid">
-            {blocks.map((b) => (
-              <section className="card" key={b.id}>
-                <h3 className="card-title">
-                  {STAGE_LABEL[b.id]} · {b.name}
-                </h3>
-                <ValueTable block={b} />
-              </section>
-            ))}
-          </div>
-        </details>
-      </div>
+        {STAGE_IDS.map((id) => (
+          <StageWorkspace
+            key={id}
+            inputs={inputs}
+            r={results}
+            stage={id}
+            label={STAGE_LABEL[id]}
+            block={blocks.find((b) => b.id === id) ?? blocks[0]}
+            issues={issuesByStage[id]}
+            comparison={comparison}
+            graphInputs={graphInputs}
+            graphResults={graphResults}
+            dryAirMassFlowMin={massFlowAt(1)}
+            dryAirMassFlowMax={massFlowAt(100)}
+            onChange={patch}
+            onDryAirMassFlowChange={setDryAirMassFlow}
+            onSelectEliminator={selectEliminator}
+          />
+        ))}
+      </main>
     </div>
   )
 }

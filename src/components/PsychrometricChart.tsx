@@ -9,7 +9,7 @@
  * plain markup underneath the plot, where they stay legible at any width.
  */
 
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -110,7 +110,7 @@ function ChartTooltip({ active, label, payload, chart }: TooltipProps) {
   )
 }
 
-export default function PsychrometricChart({ r }: { r: TowerResults }) {
+function PsychrometricChart({ r }: { r: TowerResults }) {
   const c = useMemo(() => buildPsychrometricChart(r), [r])
   const processPoints = c.rows.flatMap((row) => {
     const w = row[c.processKey]
@@ -349,3 +349,7 @@ export default function PsychrometricChart({ r }: { r: TowerResults }) {
     </section>
   )
 }
+
+// Skips re-rendering while its props are the same objects (see App: the
+// graphs get deferred results, so a slider drag does not wait for them).
+export default memo(PsychrometricChart)

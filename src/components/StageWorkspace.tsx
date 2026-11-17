@@ -30,6 +30,9 @@ interface StageWorkspaceProps {
   block: StageBlock
   issues: SolveIssue[]
   comparison: EliminatorComparisonRow[]
+  /** Deferred copies for the graphs and tables (may lag one frame). */
+  graphInputs: TowerInputs
+  graphResults: TowerResults
   dryAirMassFlowMin: number
   dryAirMassFlowMax: number
   onChange: (patch: Partial<TowerInputs>) => void
@@ -37,7 +40,7 @@ interface StageWorkspaceProps {
   onSelectEliminator: (id: SelectionId) => void
 }
 
-/** Inputs, graphs and calculated values for the selected stage. */
+/** Inputs, graphs and calculated values for one stage. */
 export default function StageWorkspace({
   inputs,
   r,
@@ -46,6 +49,8 @@ export default function StageWorkspace({
   block,
   issues,
   comparison,
+  graphInputs,
+  graphResults,
   dryAirMassFlowMin,
   dryAirMassFlowMax,
   onChange,
@@ -58,8 +63,8 @@ export default function StageWorkspace({
     onChange({ [key]: value } as Partial<TowerInputs>)
 
   const values = (
-    <section className="card" aria-labelledby="values-title">
-      <h3 className="card-title" id="values-title">
+    <section className="card" aria-labelledby={`values-${stage}`}>
+      <h3 className="card-title" id={`values-${stage}`}>
         Calculated values
       </h3>
       <ValueTable block={block} />
@@ -67,7 +72,11 @@ export default function StageWorkspace({
   )
 
   return (
-    <main className={`stage is-${meta.path}`} key={stage}>
+    <section
+      className={`stage is-${meta.path}`}
+      id={`stage-${stage}`}
+      aria-labelledby={`stage-title-${stage}`}
+    >
       <header className="stage-head">
         <span className="stage-number" aria-hidden="true">{label}</span>
         <div>
@@ -76,7 +85,7 @@ export default function StageWorkspace({
             {group.stages.length > 1 ? ` · ${group.name}` : ''} ·{' '}
             {meta.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
           </span>
-          <h2>{meta.name}</h2>
+          <h2 id={`stage-title-${stage}`}>{meta.name}</h2>
         </div>
       </header>
 
@@ -144,10 +153,10 @@ export default function StageWorkspace({
               </div>
               <div className="stage-col">
                 <div className="card">
-                  <EliminatorOutput inputs={inputs} droplets={r.droplets} />
+                  <EliminatorOutput inputs={graphInputs} droplets={graphResults.droplets} />
                 </div>
                 <div className="card">
-                  <EliminatorCount inputs={inputs} droplets={r.droplets} />
+                  <EliminatorCount inputs={graphInputs} droplets={graphResults.droplets} />
                 </div>
               </div>
             </div>
@@ -166,7 +175,7 @@ export default function StageWorkspace({
               </div>
               <div className="stage-col">
                 <div className="card">
-                  <FanChart r={r} inputs={inputs} />
+                  <FanChart r={graphResults} inputs={graphInputs} />
                 </div>
               </div>
             </div>
@@ -186,13 +195,13 @@ export default function StageWorkspace({
               </div>
               <div className="stage-col">
                 <div className="card">
-                  <PsychrometricChart r={r} />
+                  <PsychrometricChart r={graphResults} />
                 </div>
               </div>
             </div>
           </>
         )}
       </Suspense>
-    </main>
+    </section>
   )
 }

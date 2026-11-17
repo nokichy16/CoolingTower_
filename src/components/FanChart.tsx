@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -42,7 +42,7 @@ const STEPS = 120
  * eliminator is drawn bold. The legend filters the view: All, or one line
  * with its dot at the current velocity.
  */
-export default function FanChart({
+function FanChart({
   r,
   inputs,
 }: {
@@ -170,3 +170,7 @@ export default function FanChart({
     </section>
   )
 }
+
+// Skips re-rendering while its props are the same objects (see App: the
+// graphs get deferred results, so a slider drag does not wait for them).
+export default memo(FanChart)

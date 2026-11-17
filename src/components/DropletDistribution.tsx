@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   Bar,
   BarChart,
@@ -45,8 +46,6 @@ export default function DropletDistribution({
   onChange,
 }: DropletDistributionProps) {
   const p = distributionParams(inputs)
-  const bins = countHistogram(p, BIN_UM)
-  const xTicks = diameterTicks(p.dMaxUm)
 
   return (
     <section className="input-group is-wide" aria-labelledby="group-droplets">
@@ -150,48 +149,64 @@ export default function DropletDistribution({
           </dl>
         </div>
 
-        <div className="droplet-result">
-          <span className="droplet-chart-title">
-            Inlet: relative number of droplets per {BIN_UM} µm size class
-          </span>
-          <ResponsiveContainer width="100%" height={440}>
-            <BarChart
-              data={bins}
-              margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
-              barCategoryGap={0}
-            >
-              <CartesianGrid stroke={GRID_STROKE} strokeDasharray="0" />
-              <XAxis
-                dataKey="mid"
-                type="number"
-                domain={[0, p.dMaxUm]}
-                ticks={xTicks}
-                tick={AXIS_TICK}
-                stroke={AXIS_STROKE}
-                label={xLabel('Droplet diameter d  (µm)')}
-              />
-              <YAxis
-                domain={[0, 1]}
-                ticks={[0, 0.25, 0.5, 0.75, 1]}
-                tick={AXIS_TICK}
-                stroke={AXIS_STROKE}
-                width={60}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                formatter={(value: number) => [fmt(value, 3), 'Relative count']}
-                labelFormatter={(mid) =>
-                  `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(
-                    Number(mid) + BIN_UM / 2,
-                    0,
-                  )} µm`
-                }
-              />
-              <Bar dataKey="count" fill={SERIES.inlet} isAnimationActive={false} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <InletCountChart
+          dropletMean={inputs.dropletMean}
+          dropletSigma={inputs.dropletSigma}
+          dropletDMax={inputs.dropletDMax}
+        />
       </div>
     </section>
   )
 }
+
+/** Inlet count graph. Re-renders only when E, σ or d_max changes. */
+const InletCountChart = memo(function InletCountChart(
+  inputs: Pick<TowerInputs, 'dropletMean' | 'dropletSigma' | 'dropletDMax'>,
+) {
+  const p = distributionParams(inputs)
+  const bins = countHistogram(p, BIN_UM)
+  const xTicks = diameterTicks(p.dMaxUm)
+  return (
+    <div className="droplet-result">
+      <span className="droplet-chart-title">
+        Inlet: relative number of droplets per {BIN_UM} µm size class
+      </span>
+      <ResponsiveContainer width="100%" height={440}>
+        <BarChart
+          data={bins}
+          margin={{ top: 12, right: 14, bottom: 8, left: -6 }}
+          barCategoryGap={0}
+        >
+          <CartesianGrid stroke={GRID_STROKE} strokeDasharray="0" />
+          <XAxis
+            dataKey="mid"
+            type="number"
+            domain={[0, p.dMaxUm]}
+            ticks={xTicks}
+            tick={AXIS_TICK}
+            stroke={AXIS_STROKE}
+            label={xLabel('Droplet diameter d  (µm)')}
+          />
+          <YAxis
+            domain={[0, 1]}
+            ticks={[0, 0.25, 0.5, 0.75, 1]}
+            tick={AXIS_TICK}
+            stroke={AXIS_STROKE}
+            width={60}
+          />
+          <Tooltip
+            contentStyle={TOOLTIP_STYLE}
+            formatter={(value: number) => [fmt(value, 3), 'Relative count']}
+            labelFormatter={(mid) =>
+              `${fmt(Number(mid) - BIN_UM / 2, 0)}–${fmt(
+                Number(mid) + BIN_UM / 2,
+                0,
+              )} µm`
+            }
+          />
+          <Bar dataKey="count" fill={SERIES.inlet} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+})
