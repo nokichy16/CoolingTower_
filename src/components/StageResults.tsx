@@ -46,7 +46,7 @@ export default function StageResults({
   const blocks: StageBlock[] = [
     {
       id: 'plume',
-      index: '1',
+      index: '1A',
       name: 'Inlet · Plume & airflow',
       path: 'air',
       rows: [
@@ -67,7 +67,7 @@ export default function StageResults({
     },
     {
       id: 'drift',
-      index: '1',
+      index: '1B',
       name: 'Inlet · Drift droplets',
       path: 'liquid',
       rows: [

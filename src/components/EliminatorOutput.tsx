@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import type { TowerInputs, TowerResults } from '../lib/model'
 import { fmt, sig } from '../lib/format'
 import {
@@ -35,7 +35,7 @@ interface EliminatorOutputProps {
  *   captured(d) = inlet(d) − escaping(d) = ṁ_drift,in · Σ ε ΔF
  * Shown in kg/s.
  */
-export default function EliminatorOutput({
+function EliminatorOutput({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
@@ -105,3 +105,7 @@ export default function EliminatorOutput({
     </section>
   )
 }
+
+// Skips re-rendering while its props are the same objects (see App: the
+// graphs get deferred results, so a slider drag does not wait for them).
+export default memo(EliminatorOutput)

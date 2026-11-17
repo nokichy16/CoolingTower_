@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { distributionParams, type TowerInputs, type TowerResults } from '../lib/model'
 import { massBins } from '../lib/droplet-distribution'
 import { fmt, sig } from '../lib/format'
@@ -37,7 +37,7 @@ const BIN_UM = 5
  *   escaping mass in a class = (1 − ε(d_mid)) · inlet mass in the class
  *   count ∝ mass / d_mid³, scaled so the inlet peak is 1
  */
-export default function EliminatorCount({
+function EliminatorCount({
   inputs,
   droplets,
 }: EliminatorOutputProps) {
@@ -137,3 +137,7 @@ export default function EliminatorCount({
     </section>
   )
 }
+
+// Skips re-rendering while its props are the same objects (see App: the
+// graphs get deferred results, so a slider drag does not wait for them).
+export default memo(EliminatorCount)

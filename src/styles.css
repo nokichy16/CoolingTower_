@@ -1070,3 +1070,65 @@ input[type='range']::-moz-range-thumb {
 .eff-editor g[role="slider"]:focus rect:nth-child(2) { stroke: #252525; stroke-width: 1.5; }
 
 .stage-loading { margin: 24px 0; color: var(--muted, #6b675f); font-size: 14px; }
+
+/* ===== Navigation: five toggles; desktop shows every stage on one page ===== */
+@media (min-width: 1101px) {
+  .topbar { grid-template-columns: auto minmax(0, 1fr); }
+}
+.title-block {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-self: end;
+  width: min(100%, 880px);
+  border-left: 1px solid rgba(40, 39, 37, 0.32);
+}
+.tb-cell {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 2px 16px 3px;
+  border: 0;
+  border-right: 1px solid rgba(40, 39, 37, 0.32);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.tb-cell:hover { background: rgba(40, 39, 37, 0.06); }
+.tb-label { color: var(--text-dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-value { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.tb-value strong { font: 600 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.tb-value small { color: var(--text-faint); font-size: 12.5px; }
+.tb-detail { overflow: hidden; color: var(--text-faint); font: 12px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+.nav-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.nav-row .stage-tabs { margin: 0; }
+.stage-tab span { width: auto; min-width: 18px; padding: 0 4px; border-radius: 9px; }
+
+.stage-stack { display: grid; gap: 34px; min-width: 0; align-content: start; }
+.stage-panel { scroll-margin-top: 104px; }
+.stage-panel + .stage-panel { padding-top: 30px; border-top: 2px solid var(--text); }
+.stage-table { margin-bottom: 14px; }
+.stage-table .fan-table, .stage-table .eliminator-table { margin: 0; }
+
+@media (min-width: 921px) {
+  /* the tower and the toggles stay in view while the stages scroll */
+  .visual-workspace { position: sticky; top: 92px; align-self: start; }
+  .tower-graphic { max-height: calc(100vh - 220px); }
+  .tower-graphic svg { max-height: calc(100vh - 220px); }
+}
+@media (max-width: 1100px) {
+  .topbar { gap: 12px; }
+  .title-block { justify-self: stretch; width: 100%; border-left: 0; }
+  .tb-cell:first-child { padding-left: 0; }
+}
+@media (max-width: 920px) {
+  .topbar { position: static; }
+  .stage-panel { scroll-margin-top: 8px; }
+}
+@media (max-width: 620px) {
+  .title-block { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 8px; }
+  .tb-cell:nth-child(odd) { padding-left: 0; }
+  .tb-cell:nth-child(2n) { border-right: 0; }
+  .tb-value strong { font-size: 17px; }
+}

@@ -1,8 +1,11 @@
 import { lazy, Suspense } from 'react'
-import type { TowerInputs, TowerResults } from '../lib/model'
-import { groupOf, STAGE_GROUPS, STAGE_META, type StageId } from '../lib/stages'
+import type { EliminatorComparisonRow, TowerInputs, TowerResults } from '../lib/model'
+import type { SelectionId } from '../lib/eliminators'
+import { groupOf, STAGE_META, type StageId } from '../lib/stages'
 import Field from './Field'
 import CustomPerformanceEditor from './CustomPerformanceEditor'
+import EliminatorPicker from './EliminatorPicker'
+import FanTable from './FanTable'
 
 // The graphs pull in the charting library, so they load only when a stage
 // that shows one is opened. The first screen (plume inputs) has no graph.
@@ -12,95 +15,68 @@ const EliminatorCount = lazy(() => import('./EliminatorCount'))
 const FanChart = lazy(() => import('./FanChart'))
 const PsychrometricChart = lazy(() => import('./PsychrometricChart'))
 
-interface ControlsProps {
-  inputs: TowerInputs
-  r: TowerResults
-  dryAirMassFlow: number
-  dryAirMassFlowMin: number
-  dryAirMassFlowMax: number
-  selectedStage: StageId
-  onChange: (patch: Partial<TowerInputs>) => void
-  onDryAirMassFlowChange: (value: number) => void
-  onSelectStage: (id: StageId) => void
-  onReset: () => void
+/** Short stage labels used on the toggles: the inlet has two parts. */
+export const STAGE_LABEL: Record<StageId, string> = {
+  plume: '1A',
+  drift: '1B',
+  droplets: '2',
+  fan: '3',
+  recovery: '4',
 }
 
-export default function Controls({
+interface StagePanelProps {
+  stage: StageId
+  inputs: TowerInputs
+  r: TowerResults
+  /** Deferred copies for the graphs (they may lag one frame while dragging). */
+  graphInputs: TowerInputs
+  graphResults: TowerResults
+  comparison: EliminatorComparisonRow[]
+  dryAirMassFlowMin: number
+  dryAirMassFlowMax: number
+  onChange: (patch: Partial<TowerInputs>) => void
+  onDryAirMassFlowChange: (value: number) => void
+  onSelectEliminator: (id: SelectionId) => void
+}
+
+/** One stage: its heading, inputs, tables and graphs. */
+export default function StagePanel({
+  stage,
   inputs,
   r,
-  dryAirMassFlow,
+  graphInputs,
+  graphResults,
+  comparison,
   dryAirMassFlowMin,
   dryAirMassFlowMax,
-  selectedStage,
   onChange,
   onDryAirMassFlowChange,
-  onSelectStage,
-  onReset,
-}: ControlsProps) {
-  const droplets = r.droplets
-  const stage = STAGE_META[selectedStage]
-  const group = groupOf(selectedStage)
+  onSelectEliminator,
+}: StagePanelProps) {
+  const meta = STAGE_META[stage]
+  const group = groupOf(stage)
+  const dryAirMassFlow = r.plume.airMassFlow
   const set =
     (key: keyof TowerInputs) =>
     (value: number) =>
       onChange({ [key]: value } as Partial<TowerInputs>)
 
   return (
-    <aside className="controls">
+    <section className={`controls stage-panel is-${meta.path}`} id={`stage-${stage}`} aria-labelledby={`stage-title-${stage}`}>
       <div className="controls-head">
         <div>
           <span className="controls-kicker">
-            Stage {stage.index}
+            Stage {STAGE_LABEL[stage]}
             {group.stages.length > 1 ? ` · ${group.name}` : ''} ·{' '}
-            {stage.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
+            {meta.path === 'air' ? 'Air and vapour path' : 'Liquid drift path'}
           </span>
-          <h2>{stage.name}</h2>
+          <h2 id={`stage-title-${stage}`}>{meta.name}</h2>
         </div>
-        <button type="button" className="reset" onClick={onReset}>
-          Reset all
-        </button>
       </div>
 
-      <nav className="stage-tabs" aria-label="Stages">
-        {STAGE_GROUPS.map((g) => {
-          const on = g.key === group.key
-          return (
-            <button
-              type="button"
-              key={g.key}
-              className={`stage-tab is-${g.path}${on ? ' is-selected' : ''}`}
-              aria-pressed={on}
-              onClick={() => {
-                if (!on) onSelectStage(g.stages[0])
-              }}
-            >
-              <span>{g.index}</span>
-              {g.name}
-            </button>
-          )
-        })}
-      </nav>
-      {group.stages.length > 1 && (
-        <nav className="stage-subtabs" aria-label={`${group.name} sections`}>
-          {group.stages.map((id) => (
-            <button
-              type="button"
-              key={id}
-              className={`stage-subtab is-${STAGE_META[id].path}${
-                id === selectedStage ? ' is-selected' : ''
-              }`}
-              aria-pressed={id === selectedStage}
-              onClick={() => onSelectStage(id)}
-            >
-              {STAGE_META[id].name}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      <div className="stage-input-panel" key={selectedStage}>
+      <div className="stage-input-panel">
         <Suspense fallback={<p className="stage-loading" role="status">Loading graphs…</p>}>
-        {selectedStage === 'plume' && (
+        {stage === 'plume' && (
           <div className="inlet-layout">
             <section className="input-group" aria-labelledby="group-plume">
             <h3 className="input-group-title" id="group-plume">
@@ -181,32 +157,45 @@ export default function Controls({
           </div>
         )}
 
-        {selectedStage === 'drift' && (
+        {stage === 'drift' && (
           <DropletDistribution
             inputs={inputs}
-            droplets={droplets}
+            droplets={r.droplets}
             onChange={onChange}
           />
         )}
 
-        {selectedStage === 'droplets' && (
+        {stage === 'droplets' && (
           <>
+            <div className="stage-table">
+              <EliminatorPicker
+                inputs={inputs}
+                rows={comparison}
+                driftInlet={r.droplets.driftInlet}
+                onSelect={onSelectEliminator}
+              />
+            </div>
             {inputs.eliminatorId === 'custom' && (
               <CustomPerformanceEditor
                 inputs={inputs}
                 onChange={(next) => onChange({ customPerformance: next })}
               />
             )}
-            <EliminatorOutput inputs={inputs} droplets={droplets} />
-            <EliminatorCount inputs={inputs} droplets={droplets} />
+            <EliminatorOutput inputs={graphInputs} droplets={graphResults.droplets} />
+            <EliminatorCount inputs={graphInputs} droplets={graphResults.droplets} />
           </>
         )}
 
-        {selectedStage === 'fan' && (
-          <FanChart r={r} inputs={inputs} />
+        {stage === 'fan' && (
+          <>
+            <div className="stage-table">
+              <FanTable inputs={inputs} rows={comparison} onSelect={onSelectEliminator} />
+            </div>
+            <FanChart r={graphResults} inputs={graphInputs} />
+          </>
         )}
 
-        {selectedStage === 'recovery' && (
+        {stage === 'recovery' && (
           <>
             <Field
               label="Cooling below dew point"
@@ -230,12 +219,12 @@ export default function Controls({
               onChange={set('cyclesOfConcentration')}
             />
             <div className="stage-graph">
-              <PsychrometricChart r={r} />
+              <PsychrometricChart r={graphResults} />
             </div>
           </>
         )}
         </Suspense>
       </div>
-    </aside>
+    </section>
   )
 }
