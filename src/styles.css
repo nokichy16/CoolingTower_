@@ -1552,3 +1552,11 @@ html, body, .app { background: var(--bg); }
 .row-label .formula .katex { font-size: 1.08em; }
 .formula-note { color: var(--text-faint); font: 12px var(--sans); }
 .row-label .formula-text { color: var(--text-faint); font-size: 13px; }
+
+/* symbols in the outputs list, as maths notation */
+.sl-label .math-label .katex { font-size: 1.12em; color: inherit; }
+/* phone: two columns so a value never runs into the next one */
+@media (max-width: 920px) {
+  .sl-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
+}

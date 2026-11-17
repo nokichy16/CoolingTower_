@@ -1,8 +1,12 @@
+import { lazy, Suspense } from 'react'
 import type { TowerResults } from '../lib/model'
 import { STAGE_IDS, STAGE_META, type StageId } from '../lib/stages'
 import { STAGE_KEY_OUTPUTS, stageSubtitle, stageValues } from '../lib/stage-outputs'
 import ChangeValue from './ChangeValue'
 import { STAGE_LABEL } from './StagePanel'
+
+// KaTeX loads after the first paint; the plain label shows until then.
+const MathLabel = lazy(() => import('./MathLabel'))
 
 /**
  * Every stage's key outputs, always in view under the drawing. Numbers show
@@ -45,7 +49,15 @@ export default function StageList({
                 const v = values[k]
                 return (
                   <span className="sl-value" key={k}>
-                    <span className="sl-label">{v.label}</span>
+                    <span className="sl-label">
+                      {v.tex ? (
+                        <Suspense fallback={v.label}>
+                          <MathLabel tex={v.tex} text={v.label} />
+                        </Suspense>
+                      ) : (
+                        v.label
+                      )}
+                    </span>
                     <ChangeValue value={v.value} digits={v.digits} unit={v.unit} />
                   </span>
                 )
