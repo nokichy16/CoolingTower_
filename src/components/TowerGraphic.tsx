@@ -36,13 +36,18 @@ interface GraphicInfo {
 
 /** The tower is drawn this far down, so the recovery unit sits on top. */
 const DY = 96
+/** The tower body below the stack is drawn this much taller than it is wide. */
+const SY = 1.4
+/** A y position in the tower body after the vertical stretch. */
+const sy = (y: number) => TOP_Y + (y - TOP_Y) * SY
+const BODY = `translate(0 ${TOP_Y}) scale(1 ${SY}) translate(0 ${-TOP_Y})`
 
 const LABELS: ZoneLabel[] = [
   { id: 'recovery', anchor: [350, 40 - DY] },
   { id: 'fan', anchor: [320, 84] },
-  { id: 'droplets', anchor: [360, 134] },
-  { id: 'drift', anchor: [372, 172] },
-  { id: 'plume', anchor: [400, 250] },
+  { id: 'droplets', anchor: [360, sy(134)] },
+  { id: 'drift', anchor: [372, sy(172)] },
+  { id: 'plume', anchor: [400, sy(250)] },
 ]
 
 /** Stage numbers shown on the drawing; the drawing is the stage selector. */
@@ -59,9 +64,9 @@ const HOTZONES: Record<
   { x: number; y: number; width: number; height: number }
 > = {
   fan: { x: 118, y: 58, width: 326, height: 58 },
-  droplets: { x: 118, y: 116, width: 326, height: 38 },
-  drift: { x: 118, y: 154, width: 326, height: 44 },
-  plume: { x: 118, y: 198, width: 326, height: 166 },
+  droplets: { x: 118, y: sy(116), width: 326, height: 38 * SY },
+  drift: { x: 118, y: sy(154), width: 326, height: 44 * SY },
+  plume: { x: 118, y: sy(198), width: 326, height: 166 * SY },
   recovery: { x: 196, y: 2 - DY, width: 168, height: 96 },
 }
 
@@ -165,7 +170,7 @@ export default function TowerGraphic({
   const label = ({ id, anchor }: ZoneLabel) => {
     const info = graphicInfo(id)
     const isSelected = graphicZone === id
-    const labelX = 452
+    const labelX = 440
     const labelY = anchor[1]
     return (
       <g
@@ -190,20 +195,20 @@ export default function TowerGraphic({
         />
         <rect
           className="label-badge"
-          x={labelX - 4}
-          y={labelY - 9}
-          width={24}
-          height={16}
-          rx={8}
+          x={labelX - 6}
+          y={labelY - 11}
+          width={30}
+          height={20}
+          rx={10}
           style={{ fill: info.accent }}
         />
-        <text className="label-number" x={labelX + 8} y={labelY + 3} textAnchor="middle">
+        <text className="label-number" x={labelX + 9} y={labelY + 4} textAnchor="middle">
           {NUMBER[id]}
         </text>
-        <text className="label-name" x={labelX + 26} y={labelY - 2}>
+        <text className="label-name" x={labelX + 30} y={labelY - 3}>
           {info.name}
         </text>
-        <text className="label-value" x={labelX + 26} y={labelY + 10}>
+        <text className="label-value" x={labelX + 30} y={labelY + 13}>
           {info.reading}
         </text>
       </g>
@@ -213,7 +218,7 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="70 0 538 500"
+        viewBox="92 0 532 606"
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
@@ -235,6 +240,7 @@ export default function TowerGraphic({
         </g>
 
         <g transform={`translate(0 ${DY})`}>
+        <g className="tg-body" transform={BODY}>
         <path
           className="tower-shell"
           d={`M${TOP_L} ${TOP_Y} L${BOT_L} ${BOT_Y} H${BOT_R} L${TOP_R} ${TOP_Y}`}
@@ -247,6 +253,8 @@ export default function TowerGraphic({
             TOP_Y + 6
           } Z`}
         />
+
+        </g>
 
         <path
           className="tower-stack"
@@ -276,6 +284,7 @@ export default function TowerGraphic({
           <circle className="fan-hub" r="4" />
         </g>
 
+        <g className="tg-body" transform={BODY}>
         <g className="tg-drift" aria-hidden="true">
           <path
             d={`M${lx(124) + 6} 124 H${rx(124) - 6} L${
@@ -421,23 +430,6 @@ export default function TowerGraphic({
           </text>
         </g>
 
-        <g className="tg-pipe cold" aria-hidden="true">
-          <path
-            className="pipe-underlay"
-            d={`M${rx(380)} 380 H612`}
-          />
-          <path
-            className="pipe-flow"
-            d={`M${rx(380)} 380 H612`}
-          />
-          <text
-            className="pipe-label"
-            x="612"
-            y="372"
-            textAnchor="end"
-          >
-            COOLED WATER OUT
-          </text>
         </g>
 
         {LABELS.map(label)}

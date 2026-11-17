@@ -1075,7 +1075,7 @@ input[type='range']::-moz-range-thumb {
 /* ===== Side layout: tower and results fixed on the left, stages on the right ===== */
 .side-layout {
   display: grid;
-  grid-template-columns: minmax(380px, 33fr) minmax(0, 67fr);
+  grid-template-columns: minmax(340px, 28fr) minmax(0, 72fr);
   align-items: start;
 }
 .sheet {
@@ -1421,3 +1421,15 @@ button.sf-link:hover { border-color: var(--text); }
 @media (min-width: 921px) {
   .sheet .tower-graphic svg { max-height: calc(100vh - 380px); }
 }
+
+/* the stretched tower body keeps its line widths */
+.tg-body * { vector-effect: non-scaling-stroke; }
+@media (min-width: 921px) {
+  .sl-values { grid-template-columns: repeat(2, minmax(0, max-content)); }
+  .sheet .tower-graphic svg { max-height: calc(100vh - 360px); }
+}
+
+/* tower labels sized for the narrower panel (drawing units) */
+.tower-label .label-name { font-size: 16px; }
+.tower-label .label-value { font-size: 13px; }
+.tower-label .label-number { font-size: 12px; }
