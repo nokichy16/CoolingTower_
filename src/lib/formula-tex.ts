@@ -17,8 +17,8 @@ export const FORMULA_TEX: Record<string, string> = {
   'ṁ_da = ρV̇ / (1 + ω)': '\\dot m_{\\mathrm{da}} = \\dfrac{\\rho\\,\\dot V}{1 + \\omega}',
   'ṁ_drift,in = ṁ_circ·D_in / 100':
     '\\dot m_{\\mathrm{in}} = \\dfrac{\\dot m_{\\mathrm{circ}}\\,D_{\\mathrm{in}}}{100}',
-  'μ = ln E − σ²/2': '\\mu = \\ln E - \\dfrac{\\sigma^2}{2}',
-  'd_med = e^μ': 'd_{\\mathrm{med}} = e^{\\mu}',
+  'μ_ln = ln E − σ²/2': '\\mu_{\\ln} = \\ln E - \\dfrac{\\sigma^2}{2}',
+  'd_med = e^μ_ln': 'd_{\\mathrm{med}} = e^{\\mu_{\\ln}}',
   'Sutherland: μ = 1.458e-6·T^1.5 / (T + 110.4)':
     '\\mu = \\dfrac{1.458\\times10^{-6}\\,T^{1.5}}{T + 110.4}',
   'Re = ρuL / μ': '\\mathrm{Re} = \\dfrac{\\rho\\,u\\,L}{\\mu}',

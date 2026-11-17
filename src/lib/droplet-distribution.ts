@@ -3,8 +3,8 @@
  *
  * Inputs are the mass-weighted mean E and σ, the standard deviation of ln d:
  *
- *   μ = ln E − σ²/2,   d_med = e^μ,   d_min (1 % point) = e^(μ − 2.326σ)
- *   LN(d) = ½ [1 + erf((ln d − μ) / (√2·σ))]
+ *   μ_ln = ln E − σ²/2,   d_med = e^μ_ln,   d_min (1 % point) = e^(μ_ln − 2.326σ)
+ *   LN(d) = ½ [1 + erf((ln d − μ_ln) / (√2·σ))]
  *   F(d)  = LN(d) / LN(d_max)   for d < d_max,   F(d) = 1 for d ≥ d_max
  *
  * d_max only cuts the curve; it does not move μ or σ. The parameter object
@@ -230,7 +230,7 @@ export function efficiencySplit(
 /**
  * Log-normal (by mass) from its mean E and the standard deviation σ of ln d.
  * E, σ and d_min describe the curve before the cut; d_max only cuts it:
- *   μ = ln E − σ²/2,   d_med = e^μ,   d_min (1 % point) = e^(μ − 2.326σ)
+ *   μ_ln = ln E − σ²/2,   d_med = e^μ_ln,   d_min (1 % point) = e^(μ_ln − 2.326σ)
  */
 export function paramsFromMeanSigma(
   meanUm: number,

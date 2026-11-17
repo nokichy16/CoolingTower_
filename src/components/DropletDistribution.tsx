@@ -139,7 +139,7 @@ export default function DropletDistribution({
           />
           <dl className="droplet-derived">
             <div>
-              <dt>Median d_med = e^μ</dt>
+              <dt>Median d_med = e^μ_ln</dt>
               <dd>{fmt(p.dMedUm, 1)} µm</dd>
             </div>
             <div>
