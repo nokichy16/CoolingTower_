@@ -1075,7 +1075,7 @@ input[type='range']::-moz-range-thumb {
 /* ===== Side layout: tower and results fixed on the left, stages on the right ===== */
 .side-layout {
   display: grid;
-  grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr);
+  grid-template-columns: minmax(380px, 33fr) minmax(0, 67fr);
   align-items: start;
 }
 .sheet {
@@ -1410,4 +1410,8 @@ button.sf-link:hover { border-color: var(--text); }
   .stage-droplets .chart-box, .stage-fan .chart-box, .stage-recovery .process-chart .chart { align-self: stretch; margin-top: 4px; }
   .stage-droplets .chart-box, .stage-fan .chart-box { height: auto; min-height: 240px; }
   .stage-droplets .stage-graph, .stage-droplets .eliminator-output { grid-template-rows: minmax(34px, auto) minmax(0, 1fr); }
+}
+@media (min-width: 921px) {
+  .stage-droplets .stage-input-panel { column-gap: 12px; }
+  .sheet { gap: 10px; padding-right: 16px; }
 }
