@@ -1485,25 +1485,16 @@ html, body, .app { background: var(--bg); }
 .tower-label .label-value { display: none; }
 .tower-label .label-name { font-size: 17px; }
 
-/* white surfaces for the working area and the values */
-@media (min-width: 921px) {
-  .stage-panel .stage-input-panel {
-    padding: 16px 18px;
-    border: 1px solid var(--line-soft);
-    border-radius: 10px;
-    background: var(--surface);
-  }
-  .stage-panel .controls-head { border-bottom: 0; padding-bottom: 4px; }
-}
-@media (max-width: 920px) {
-  .stage-panel .stage-input-panel { padding: 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); }
-}
+/* one white workspace; groups split by spacing and headings, not boxes */
+.content { background: var(--surface); min-height: 100vh; }
+.stage-panel .stage-input-panel { padding: 0; border: 0; border-radius: 0; background: none; }
+.stage-panel .controls-head { border-bottom: 0; padding-bottom: 4px; }
 .content .main .stage-results {
-  margin-top: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: var(--surface);
+  margin-top: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
 /* stage kicker: quieter, not shouting */
@@ -1528,7 +1519,10 @@ html, body, .app { background: var(--bg); }
 
 /* values: open stage first, every stage behind "View all calculations" */
 .output-section-head { margin-bottom: 8px; }
-.output-section-head h2 { color: var(--text); font-size: 15px; letter-spacing: 0.02em; text-transform: none; }
+.output-section-head h2 { color: var(--text); font-size: 16px; letter-spacing: 0.02em; text-transform: none; }
+/* thin lines between value rows; the row under the pointer is tinted to follow it across */
+.stage-result-rows li { border-bottom: 1px solid var(--line-soft); }
+.stage-result-rows li:hover { background: rgba(30, 35, 40, 0.035); }
 .stage-result.is-current .stage-result-rows {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
