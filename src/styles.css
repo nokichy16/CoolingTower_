@@ -1554,3 +1554,13 @@ html, body, .app { background: var(--bg); }
   .sl-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
 }
+
+/* graph text in the LaTeX serif (Computer Modern), to match the formulas */
+.recharts-wrapper text,
+.recharts-text,
+.chart-legend-row {
+  font-family: KaTeX_Main, 'Latin Modern Roman', 'Times New Roman', serif;
+}
+.recharts-cartesian-axis-tick-value { fill: #1e2328; }
+.recharts-label { font-size: 15px; fill: #1e2328; }
+.chart-legend-row { font-size: 14px; }

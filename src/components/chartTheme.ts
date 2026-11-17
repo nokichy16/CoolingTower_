@@ -5,7 +5,7 @@ import type { SelectionId } from '../lib/eliminators'
 export const GRID_STROKE = '#dde1e5'
 export const AXIS_STROKE = '#7f8790'
 export const AXIS_TEXT = '#2b3138'
-export const AXIS_FONT_SIZE = 13
+export const AXIS_FONT_SIZE = 14.5
 
 export const AXIS_TICK = { fill: AXIS_TEXT, fontSize: AXIS_FONT_SIZE }
 
