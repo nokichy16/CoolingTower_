@@ -193,6 +193,8 @@ export default function TowerGraphic({
           r={2.4}
           style={{ fill: info.accent }}
         />
+        {/* a larger click target over the whole label */}
+        <rect x={labelX - 8} y={labelY - 16} width={176} height={36} fill="transparent" />
         <rect
           className="label-badge"
           x={labelX - 6}
