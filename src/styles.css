@@ -1461,3 +1461,103 @@ button.sf-link:hover { border-color: var(--text); }
   .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
   .cv { flex-wrap: wrap; }
 }
+
+/* ===== Clean contrast: separated surfaces, darker secondary text ===== */
+:root {
+  --bg: #f4f2ec;          /* warm off-white page */
+  --surface: #ffffff;     /* inputs, plots and values sit on white */
+  --sidebar: #e8e5dc;     /* navigation panel, one step darker */
+  --text: #1e2328;        /* charcoal */
+  --text-dim: #3c444d;
+  --text-faint: #58616b;  /* units and formulas: still readable */
+  --line-soft: rgba(30, 35, 40, 0.16);
+  --focus: #0f6b74;       /* deep teal: selection and focus only */
+}
+html, body, .app { background: var(--bg); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* sidebar reads as navigation */
+.sheet { background: var(--sidebar); border-right: 1px solid var(--line-soft); }
+.sheet .stage-list { border-top-color: var(--text); }
+.sl-row { border-bottom-color: var(--line-soft); }
+
+/* the tower shows names only; numbers live in the list under it */
+.tower-label .label-value { display: none; }
+.tower-label .label-name { font-size: 17px; }
+
+/* one white workspace; groups split by spacing and headings, not boxes */
+.content { background: var(--surface); min-height: 100vh; }
+.stage-panel .stage-input-panel { padding: 0; border: 0; border-radius: 0; background: none; }
+.stage-panel .controls-head { border-bottom: 0; padding-bottom: 4px; }
+.content .main .stage-results {
+  margin-top: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* stage kicker: quieter, not shouting */
+.controls-kicker { color: var(--text-dim); font-size: 12px; letter-spacing: 0.06em; }
+
+/* typed values look editable */
+.field-value-input {
+  padding: 2px 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.field-value-input:hover { border-color: var(--text-faint); }
+.field-value-input:focus { border-color: var(--focus); outline: none; box-shadow: 0 0 0 2px rgba(15, 107, 116, 0.18); }
+.field-unit { color: var(--text-dim); }
+
+/* graph titles a step stronger */
+.stage-panel .stage-graph > .input-group-title,
+.stage-panel .eliminator-output > .input-group-title,
+.stage-panel .process-chart > .input-group-title { font-size: 14.5px; font-weight: 700; color: var(--text); }
+.chart-legend-row { color: var(--text-dim); }
+
+/* values: open stage first, every stage behind "View all calculations" */
+.output-section-head { margin-bottom: 8px; }
+.output-section-head h2 { color: var(--text); font-size: 16px; letter-spacing: 0.02em; text-transform: none; }
+/* thin lines between value rows; the row under the pointer is tinted to follow it across */
+.stage-result-rows li { border-bottom: 1px solid var(--line-soft); }
+.stage-result-rows li:hover { background: rgba(30, 35, 40, 0.035); }
+.stage-result.is-current .stage-result-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  column-gap: 32px;
+}
+.row-label code { color: var(--text-faint); font-size: 13px; }
+.row-value strong { font-size: 14px; }
+.row-value small { color: var(--text-faint); font-size: 13px; }
+.stage-result-notes { color: var(--text-dim); }
+.all-calculations { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.all-calculations summary { color: var(--focus); font-weight: 600; cursor: pointer; }
+.all-calculations[open] summary { margin-bottom: 14px; }
+.stage-result-edit { color: var(--focus); }
+@media (min-width: 921px) {
+  /* line the values card up with the stage card above it */
+  .content .main { padding-left: 36px; }
+}
+
+/* formulas as mathematical notation */
+.row-label .formula { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 2px; color: var(--text-dim); }
+.row-label .formula .katex { font-size: 1.08em; }
+.formula-note { color: var(--text-faint); font: 12px var(--sans); }
+.row-label .formula-text { color: var(--text-faint); font-size: 13px; }
+
+/* symbols in the outputs list, as maths notation */
+.sl-label .math-label .katex { font-size: 1.12em; color: inherit; }
+/* phone: two columns so a value never runs into the next one */
+@media (max-width: 920px) {
+  .sl-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
+}
+
+/* graph text: same sans as the page (low stroke contrast reads cleanly at small sizes), darker */
+.recharts-wrapper text,
+.recharts-text,
+.chart-legend-row { font-family: var(--sans); }
+.recharts-cartesian-axis-tick-value { fill: #1e2328; }
+.recharts-label { font-size: 14px; fill: #1e2328; }
