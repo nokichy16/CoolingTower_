@@ -67,9 +67,9 @@ function EliminatorCount({
         Droplet count per 5 µm size class
       </h3>
       <div className="chart-legend-row">
-        <span><i style={{ background: SERIES.inletSoft }} />Inlet droplets</span>
-        <span><i style={{ background: SERIES.escaping }} />Escaping droplets</span>
-        <span><i className="is-dash is-dotted" style={{ color: SERIES.efficiency }} />Capture efficiency ε(d), right axis</span>
+        <span><i style={{ background: SERIES.inletSoft }} />Inlet</span>
+        <span><i style={{ background: SERIES.escaping }} />Escaping</span>
+        <span><i className="is-dash is-dotted" style={{ color: SERIES.efficiency }} />Capture ε(d), right axis</span>
       </div>
       <div className="chart-box">
       <ResponsiveContainer width="100%" height="100%">

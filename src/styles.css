@@ -1384,3 +1384,30 @@ button.sf-link:hover { border-color: var(--text); }
 /* the graph always fills its box, whatever sets the box size */
 .chart-box { position: relative; }
 .chart-box > .recharts-responsive-container { position: absolute; inset: 0; }
+
+/* ===== Desktop: titles share a line with what is under them ===== */
+@media (min-width: 921px) {
+  /* stage title and its kicker on one line */
+  .stage-panel .controls-head > div { display: flex; flex-direction: row-reverse; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 16px; }
+  .stage-panel .controls-head h2 { margin: 0; }
+
+  /* graph title and legend on one line, the graph under both */
+  .stage-droplets .eliminator-output, .stage-droplets .stage-graph,
+  .stage-fan .stage-graph, .stage-recovery .process-chart {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-auto-rows: auto;
+    column-gap: 14px;
+    align-items: center;
+  }
+  .stage-droplets .eliminator-output > *, .stage-droplets .stage-graph > *,
+  .stage-fan .stage-graph > *, .stage-recovery .process-chart > * { grid-column: 1 / -1; }
+  .stage-droplets .eliminator-output > .input-group-title, .stage-droplets .stage-graph > .input-group-title,
+  .stage-fan .stage-graph > .input-group-title, .stage-recovery .process-chart > .input-group-title { grid-column: 1; grid-row: 1; margin: 0; }
+  .stage-droplets .eliminator-output > .chart-legend-row, .stage-droplets .stage-graph > .chart-legend-row,
+  .stage-fan .stage-graph > .chart-legend-row, .stage-recovery .process-chart > .chart-legend-row { grid-column: 2; grid-row: 1; margin: 0; justify-content: flex-end; }
+  .stage-droplets .chart-box, .stage-fan .chart-box, .stage-recovery .process-chart .chart { align-self: stretch; margin-top: 4px; }
+  .stage-droplets .chart-box, .stage-fan .chart-box { height: auto; min-height: 240px; }
+  .stage-droplets .stage-graph, .stage-droplets .eliminator-output { grid-template-rows: minmax(34px, auto) minmax(0, 1fr); }
+}
