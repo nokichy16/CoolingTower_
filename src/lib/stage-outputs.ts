@@ -1,6 +1,5 @@
 /**
- * The values each stage hands on, and where they go. Used by the stage list
- * (key outputs per stage) and by the in / out strips on each stage.
+ * Key outputs of each stage, shown in the panel under the tower drawing.
  * Display data only: every number comes from `solveTower`.
  */
 import { distributionParams, type TowerResults } from './model'
@@ -57,45 +56,3 @@ export const STAGE_KEY_OUTPUTS: Record<StageId, string[]> = {
 /** A short text that names the selected eliminator in the stage list. */
 export const stageSubtitle = (id: StageId, r: TowerResults) =>
   id === 'droplets' ? `Eliminator ${selectionName(r.eliminator.spec.id)}` : ''
-
-export interface Link {
-  stage: StageId // the other stage
-  keys: string[]
-}
-
-/** Values that come into each stage from earlier stages. */
-export const STAGE_IN: Record<StageId, Link[]> = {
-  plume: [],
-  drift: [],
-  droplets: [
-    { stage: 'plume', keys: ['u', 'rho', 'mu'] },
-    { stage: 'drift', keys: ['min', 'dmed', 'dmax'] },
-  ],
-  fan: [
-    { stage: 'plume', keys: ['vdot', 'u', 'rho', 'mu'] },
-    { stage: 'droplets', keys: ['dp'] },
-  ],
-  recovery: [{ stage: 'plume', keys: ['tdew', 'omega4', 'h4', 'mda'] }],
-}
-
-/** Values each stage sends on, and where. */
-export const STAGE_OUT: Record<StageId, Link[]> = {
-  plume: [
-    { stage: 'droplets', keys: ['u', 'rho', 'mu'] },
-    { stage: 'fan', keys: ['vdot'] },
-    { stage: 'recovery', keys: ['tdew', 'omega4', 'h4', 'mda'] },
-  ],
-  drift: [{ stage: 'droplets', keys: ['min', 'dmed', 'dmax'] }],
-  droplets: [{ stage: 'fan', keys: ['dp'] }],
-  fan: [],
-  recovery: [],
-}
-
-/** Final results of a stage, shown at the end of its out strip. */
-export const STAGE_RESULTS: Record<StageId, string[]> = {
-  plume: [],
-  drift: [],
-  droplets: ['esc', 'mesc'],
-  fan: ['pair'],
-  recovery: ['mc', 'e', 'q'],
-}

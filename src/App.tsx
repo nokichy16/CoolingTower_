@@ -116,7 +116,6 @@ export default function App() {
               onChange={patch}
               onDryAirMassFlowChange={setDryAirMassFlow}
               onSelectEliminator={selectEliminator}
-              onSelectStage={goTo}
             />
           ))}
         </div>

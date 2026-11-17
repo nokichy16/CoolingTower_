@@ -1293,10 +1293,10 @@ button.sf-link:hover { border-color: var(--text); }
 
 /* chart heights follow the screen height, so each stage fits one screen */
 @media (min-width: 921px) {
-  .stage-drift .chart-box { height: clamp(280px, calc(100vh - 380px), 460px); }
-  .stage-droplets .chart-box { height: clamp(220px, calc(100vh - 650px), 360px); }
-  .stage-fan .chart-box { height: clamp(240px, calc(100vh - 590px), 420px); }
-  .stage-recovery .process-chart .chart-box { height: clamp(260px, calc(100vh - 470px), 460px); }
+  .stage-drift .chart-box { height: clamp(300px, calc(100vh - 300px), 600px); }
+  .stage-droplets .chart-box { height: clamp(240px, calc(100vh - 530px), 480px); }
+  .stage-fan .chart-box { height: clamp(260px, calc(100vh - 460px), 560px); }
+  .stage-recovery .process-chart .chart-box { height: clamp(280px, calc(100vh - 330px), 640px); }
   .stage-fan .card-note { display: none; }
   .stage-table .fan-table { padding-top: 0; border-top: 0; }
   .stage-flow.is-in + .stage-input-panel > .stage-table:first-child > * { margin-top: 0; }
@@ -1311,3 +1311,14 @@ button.sf-link:hover { border-color: var(--text); }
 .tower-label .label-name { font-family: var(--head); font-weight: 600; font-size: 12.5px; }
 .tower-label.is-selected .label-name { font-weight: 700; }
 @media (max-width: 520px) { .brand h1 { font-size: 20px; } }
+
+/* no rules between the parts of a stage: spacing separates them */
+.stage-panel .stage-input-panel,
+.stage-panel .input-group.is-wide,
+.stage-panel .eliminator-output,
+.stage-panel .stage-graph,
+.stage-panel .fan-table,
+.stage-panel .eliminator-table { border-top: 0; }
+.stage-panel .stage-input-panel { padding-top: 0; }
+.stage-panel .controls-head { padding-bottom: 10px; border-bottom: 2px solid var(--text); }
+.stage-fan .stage-table { margin-top: 10px; }

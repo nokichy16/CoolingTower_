@@ -6,7 +6,6 @@ import Field from './Field'
 import CustomPerformanceEditor from './CustomPerformanceEditor'
 import EliminatorPicker from './EliminatorPicker'
 import FanTable from './FanTable'
-import StageFlow from './StageFlow'
 
 // The graphs pull in the charting library, so they load only when a stage
 // that shows one is opened. The first screen (plume inputs) has no graph.
@@ -38,7 +37,6 @@ interface StagePanelProps {
   onChange: (patch: Partial<TowerInputs>) => void
   onDryAirMassFlowChange: (value: number) => void
   onSelectEliminator: (id: SelectionId) => void
-  onSelectStage: (id: StageId) => void
 }
 
 /** One stage: its heading, inputs, tables and graphs. */
@@ -54,7 +52,6 @@ export default function StagePanel({
   onChange,
   onDryAirMassFlowChange,
   onSelectEliminator,
-  onSelectStage,
 }: StagePanelProps) {
   const meta = STAGE_META[stage]
   const group = groupOf(stage)
@@ -76,7 +73,6 @@ export default function StagePanel({
           <h2 id={`stage-title-${stage}`}>{meta.name}</h2>
         </div>
       </div>
-      <StageFlow stage={stage} direction="in" r={r} onSelect={onSelectStage} />
 
       <div className="stage-input-panel">
         <Suspense fallback={<p className="stage-loading" role="status">Loading graphs…</p>}>
@@ -192,10 +188,10 @@ export default function StagePanel({
 
         {stage === 'fan' && (
           <>
+            <FanChart r={graphResults} inputs={graphInputs} />
             <div className="stage-table">
               <FanTable inputs={inputs} rows={comparison} onSelect={onSelectEliminator} />
             </div>
-            <FanChart r={graphResults} inputs={graphInputs} />
           </>
         )}
 
@@ -229,7 +225,6 @@ export default function StagePanel({
         )}
         </Suspense>
       </div>
-      <StageFlow stage={stage} direction="out" r={r} onSelect={onSelectStage} />
     </section>
   )
 }
