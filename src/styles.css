@@ -1433,3 +1433,31 @@ button.sf-link:hover { border-color: var(--text); }
 .tower-label .label-name { font-size: 16px; }
 .tower-label .label-value { font-size: 13px; }
 .tower-label .label-number { font-size: 12px; }
+
+/* fan table: "All on graph" switch beside the title */
+.fan-table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.fan-table-head .input-group-title { margin: 0; }
+.show-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.show-all:hover { border-color: var(--text); }
+.show-all-track { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--line); transition: background 0.15s; }
+.show-all-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.show-all.is-on .show-all-track { background: var(--text); }
+.show-all.is-on .show-all-track::after { left: 14px; }
+@media (prefers-reduced-motion: reduce) { .show-all-track, .show-all-track::after { transition: none; } }
+/* outputs panel: a value and its change marker wrap inside the panel */
+@media (min-width: 921px) {
+  .sl-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
+  .cv { flex-wrap: wrap; }
+}

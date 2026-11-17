@@ -6,22 +6,39 @@ import { selectOnKey } from './selectOnKey'
 
 /**
  * All eliminators at the current inputs: the full model is run once per
- * eliminator with only the eliminator changed. Select a row to use it.
+ * eliminator with only the eliminator changed. Select a row to use it and
+ * to show its line alone on the fan graph; "All on graph" shows every line.
  */
 export default function FanTable({
   inputs,
   rows,
+  showAll,
+  onShowAll,
   onSelect,
 }: {
   inputs: TowerInputs
   rows: EliminatorComparisonRow[]
+  /** whether the fan graph shows every eliminator */
+  showAll: boolean
+  onShowAll: (all: boolean) => void
   onSelect: (id: SelectionId) => void
 }) {
   return (
     <section className="fan-table" aria-labelledby="fan-table-title">
-      <h3 className="input-group-title" id="fan-table-title">
-        All eliminators at u = {fmt(inputs.plumeVelocity, 1)} m/s
-      </h3>
+      <div className="fan-table-head">
+        <h3 className="input-group-title" id="fan-table-title">
+          All eliminators at u = {fmt(inputs.plumeVelocity, 1)} m/s
+        </h3>
+        <button
+          type="button"
+          className={`show-all${showAll ? ' is-on' : ''}`}
+          aria-pressed={showAll}
+          onClick={() => onShowAll(!showAll)}
+        >
+          <span className="show-all-track" aria-hidden="true" />
+          All on graph
+        </button>
+      </div>
       <table>
         <thead>
           <tr>

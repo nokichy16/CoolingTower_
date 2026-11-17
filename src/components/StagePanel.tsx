@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { EliminatorComparisonRow, TowerInputs, TowerResults } from '../lib/model'
 import type { SelectionId } from '../lib/eliminators'
 import { groupOf, STAGE_META, type StageId } from '../lib/stages'
@@ -54,6 +54,8 @@ export default function StagePanel({
   onSelectEliminator,
 }: StagePanelProps) {
   const meta = STAGE_META[stage]
+  // Fan graph: every eliminator, or the selected one alone.
+  const [fanShowAll, setFanShowAll] = useState(true)
   const group = groupOf(stage)
   const dryAirMassFlow = r.plume.airMassFlow
   const set =
@@ -188,9 +190,18 @@ export default function StagePanel({
 
         {stage === 'fan' && (
           <>
-            <FanChart r={graphResults} inputs={graphInputs} />
+            <FanChart r={graphResults} inputs={graphInputs} showAll={fanShowAll} />
             <div className="stage-table">
-              <FanTable inputs={inputs} rows={comparison} onSelect={onSelectEliminator} />
+              <FanTable
+                inputs={inputs}
+                rows={comparison}
+                showAll={fanShowAll}
+                onShowAll={setFanShowAll}
+                onSelect={(id) => {
+                  onSelectEliminator(id)
+                  setFanShowAll(false)
+                }}
+              />
             </div>
           </>
         )}

@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -39,20 +39,23 @@ const STEPS = 120
 /**
  * Ideal fan air power against face velocity for all Ruiz eliminators A–F,
  * P = A·u·Δp with Δp = Kp(Re)·½ρu², at the current plume state. The selected
- * eliminator is drawn bold. The legend filters the view: All, or one line
- * with its dot at the current velocity.
+ * eliminator is drawn bold. The table under the graph is its legend and
+ * filter: "All" shows every line, a selected row shows that line alone.
  */
 function FanChart({
   r,
   inputs,
+  showAll,
 }: {
   r: TowerResults
   inputs: TowerInputs
+  /** true: every eliminator; false: the selected eliminator only */
+  showAll: boolean
 }) {
-  const [view, setView] = useState<'all' | SelectionId>('all')
   const { rho, t, flowArea, velocity } = r.plume
   const customDp = customPressureDrop(inputs.customPerformance)
   const selected = r.eliminator.spec.id
+  const view: 'all' | SelectionId = showAll ? 'all' : selected
   const shown = view === 'all' ? IDS : [view]
   const dotId = view === 'all' ? selected : view
   // Axis covers 0.5–6 m/s, extended to include the current velocity.
@@ -85,30 +88,6 @@ function FanChart({
       <h3 className="input-group-title" id="fan-chart-title">
         Ideal fan air power{view === 'all' ? ', eliminators A–F and custom' : ` · ${selectionName(view)}`}
       </h3>
-      <div className="chart-legend-row" role="radiogroup" aria-label="Show">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={view === 'all'}
-          className={`legend-pick${view === 'all' ? ' is-selected' : ''}`}
-          onClick={() => setView('all')}
-        >
-          All
-        </button>
-        {IDS.map((id) => (
-          <button
-            type="button"
-            role="radio"
-            aria-checked={view === id}
-            key={id}
-            className={`legend-pick${view === id ? ' is-selected' : ''}`}
-            onClick={() => setView(id)}
-          >
-            <i style={{ background: ELIMINATOR_COLORS[id] }} />
-            {selectionName(id)} · {resolveSpec(id).type}
-          </button>
-        ))}
-      </div>
       <div className="chart-box">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 14, right: 18, bottom: 8, left: 0 }}>
