@@ -1415,3 +1415,9 @@ button.sf-link:hover { border-color: var(--text); }
   .stage-droplets .stage-input-panel { column-gap: 12px; }
   .sheet { gap: 10px; padding-right: 16px; }
 }
+
+/* recovery unit on top of the stack */
+.rec-hood { fill: color-mix(in srgb, var(--blue) 5%, transparent); stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.7; }
+@media (min-width: 921px) {
+  .sheet .tower-graphic svg { max-height: calc(100vh - 380px); }
+}

@@ -23,7 +23,7 @@ const rx = (y: number) =>
 type GraphicZoneId = StageId
 
 interface ZoneLabel {
-  id: Exclude<GraphicZoneId, 'recovery'>
+  id: GraphicZoneId
   anchor: [number, number]
 }
 
@@ -34,7 +34,11 @@ interface GraphicInfo {
   accent: string
 }
 
+/** The tower is drawn this far down, so the recovery unit sits on top. */
+const DY = 96
+
 const LABELS: ZoneLabel[] = [
+  { id: 'recovery', anchor: [350, 40 - DY] },
   { id: 'fan', anchor: [320, 84] },
   { id: 'droplets', anchor: [360, 134] },
   { id: 'drift', anchor: [372, 172] },
@@ -58,7 +62,7 @@ const HOTZONES: Record<
   droplets: { x: 118, y: 116, width: 326, height: 38 },
   drift: { x: 118, y: 154, width: 326, height: 44 },
   plume: { x: 118, y: 198, width: 326, height: 166 },
-  recovery: { x: 55, y: 4, width: 112, height: 124 },
+  recovery: { x: 196, y: 2 - DY, width: 168, height: 96 },
 }
 
 export default function TowerGraphic({
@@ -209,7 +213,7 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="55 0 545 405"
+        viewBox="70 0 538 500"
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
@@ -219,6 +223,18 @@ export default function TowerGraphic({
           1B drift droplets, 2 drift eliminator, 3 fan, 4 recovery.
         </desc>
 
+        <g
+          className={`tg-recovery${r.recovery.feasible ? '' : ' is-idle'}`}
+          transform={`translate(0 ${DY})`}
+        >
+          {/* hood from the fan stack up to the condenser */}
+          <path className="rec-hood" d="M200 56 L226 -6 H334 L360 56" />
+          <rect className="rec-shell" x="210" y="-88" width="140" height="82" rx="9" />
+          <path className="rec-coil" d="M228 -70 H332 M228 -56 H332 M228 -42 H332" />
+          <path className="rec-drop" d="M280 -36 C272 -24 274 -16 280 -12 C286 -16 288 -24 280 -36Z" />
+        </g>
+
+        <g transform={`translate(0 ${DY})`}>
         <path
           className="tower-shell"
           d={`M${TOP_L} ${TOP_Y} L${BOT_L} ${BOT_Y} H${BOT_R} L${TOP_R} ${TOP_Y}`}
@@ -237,36 +253,6 @@ export default function TowerGraphic({
           d="M205 112 C201 92 201 78 196 60 H364 C359 78 359 92 355 112"
         />
         <ellipse className="stack-rim" cx="280" cy="60" rx="84" ry="10" />
-
-        <g
-          className={`tg-recovery${
-            r.recovery.feasible ? '' : ' is-idle'
-          }`}
-        >
-          <path className="rec-duct" d="M196 40 C181 40 170 38 160 44" />
-          <rect
-            className="rec-shell"
-            x="56"
-            y="8"
-            width="104"
-            height="86"
-            rx="9"
-          />
-          <path
-            className="rec-coil"
-            d="M72 28 H144 M72 42 H144 M72 56 H144"
-          />
-          <path
-            className="rec-drop"
-            d="M108 60 C98 74 100 84 108 88 C116 84 118 74 108 60Z"
-          />
-          <text className="rec-label" x="108" y="108" textAnchor="middle">
-            4 · RECOVERY
-          </text>
-          <text className="rec-value" x="108" y="121" textAnchor="middle">
-            {graphicInfo('recovery').reading}
-          </text>
-        </g>
 
         <g className="tower-plume" aria-hidden="true">
           <path d="M258 54 C250 34 268 24 262 6" />
@@ -460,6 +446,7 @@ export default function TowerGraphic({
         {zone('drift')}
         {zone('plume')}
         {zone('recovery')}
+        </g>
       </svg>
     </div>
   )
