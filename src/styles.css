@@ -13,9 +13,9 @@
   --amber: #ff9f45;
   --droplet: #c9b568;
   --danger: #ff6b6b;
-  --head: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --sans: 'Barlow', system-ui, sans-serif;
-  --mono: 'Roboto Mono', ui-monospace, monospace;
+  --head: 'IBM Plex Sans', system-ui, sans-serif;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
   color: var(--text);
   background: var(--bg);
   font-family: var(--sans);
@@ -1302,11 +1302,12 @@ button.sf-link:hover { border-color: var(--text); }
   .stage-flow.is-in + .stage-input-panel > .stage-table:first-child > * { margin-top: 0; }
 }
 
-/* ===== Fonts: Barlow Condensed headings, Barlow text, Roboto Mono numbers ===== */
-.brand h1 { font-family: var(--head); font-weight: 700; font-size: 30px; letter-spacing: 0; line-height: 0.92; }
-.controls-head h2 { font-family: var(--head); font-weight: 700; font-size: 26px; letter-spacing: 0.005em; }
-.input-group-title, .stage-result-head strong, .output-section-head h2 { font-family: var(--head); font-weight: 600; font-size: 19px; letter-spacing: 0.01em; }
-.sl-name { font-family: var(--head); font-weight: 600; font-size: 16.5px; letter-spacing: 0.01em; }
-.tower-label .label-name { font-family: var(--head); font-weight: 600; font-size: 14px; }
+/* ===== Fonts: IBM Plex Sans for text and headings, IBM Plex Mono for numbers ===== */
+.brand h1 { font-family: var(--head); font-weight: 700; font-size: 24px; letter-spacing: -0.03em; line-height: 0.95; }
+.controls-head h2 { font-family: var(--head); font-weight: 700; font-size: 21px; letter-spacing: -0.02em; }
+.input-group-title, .stage-result-head strong { font-family: var(--head); font-weight: 600; font-size: 15.5px; letter-spacing: -0.005em; }
+.output-section-head h2 { font-family: var(--head); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; }
+.sl-name { font-family: var(--head); font-weight: 600; font-size: 14px; }
+.tower-label .label-name { font-family: var(--head); font-weight: 600; font-size: 12.5px; }
 .tower-label.is-selected .label-name { font-weight: 700; }
-@media (max-width: 520px) { .brand h1 { font-size: 25px; } }
+@media (max-width: 520px) { .brand h1 { font-size: 20px; } }
