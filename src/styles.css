@@ -1555,12 +1555,9 @@ html, body, .app { background: var(--bg); }
   .sl-value { flex-wrap: wrap; min-width: 0; white-space: normal; }
 }
 
-/* graph text in the LaTeX serif (Computer Modern), to match the formulas */
+/* graph text: same sans as the page (low stroke contrast reads cleanly at small sizes), darker */
 .recharts-wrapper text,
 .recharts-text,
-.chart-legend-row {
-  font-family: KaTeX_Main, 'Latin Modern Roman', 'Times New Roman', serif;
-}
+.chart-legend-row { font-family: var(--sans); }
 .recharts-cartesian-axis-tick-value { fill: #1e2328; }
-.recharts-label { font-size: 15px; fill: #1e2328; }
-.chart-legend-row { font-size: 14px; }
+.recharts-label { font-size: 14px; fill: #1e2328; }
