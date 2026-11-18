@@ -1561,3 +1561,8 @@ html, body, .app { background: var(--bg); }
 .chart-legend-row { font-family: var(--sans); }
 .recharts-cartesian-axis-tick-value { fill: #1e2328; }
 .recharts-label { font-size: 14px; fill: #1e2328; }
+
+/* long values (the custom ε list) wrap inside their own column instead of running over the label */
+.row-value { white-space: normal; text-align: right; flex: 0 1 auto; }
+.row-value small { white-space: nowrap; }
+.row-label { flex: 1 1 auto; }
