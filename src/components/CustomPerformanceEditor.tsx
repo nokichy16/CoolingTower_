@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { CUSTOM_SIZES_UM, type CustomPerformance } from '../lib/eliminators'
 import type { TowerInputs } from '../lib/model'
 import Field from './Field'
@@ -22,6 +22,11 @@ export default function CustomPerformanceEditor({
   const value = inputs.customPerformance
   const svgRef = useRef<SVGSVGElement>(null)
   const dragIndex = useRef<number | null>(null)
+  // A drag sends many pointer events in one frame. Each accepted value runs a
+  // solve and redraws both stage-2 graphs, so the editor keeps only the last
+  // value of the frame and sends that one.
+  const frame = useRef<number | null>(null)
+  const pending = useRef<{ index: number; pct: number } | null>(null)
 
   const plotW = W - PAD.left - PAD.right
   const plotH = H - PAD.top - PAD.bottom
@@ -35,6 +40,34 @@ export default function CustomPerformanceEditor({
     next[i] = Math.round(Math.min(100, Math.max(0, pct)))
     if (next[i] !== value.efficiencyPct[i]) onChange({ ...value, efficiencyPct: next })
   }
+  /** Send the value that the drag kept for this frame. */
+  const sendPending = () => {
+    frame.current = null
+    const next = pending.current
+    pending.current = null
+    if (next) setEff(next.index, next.pct)
+  }
+  /** Keep the newest value of the frame, and send it once per frame. */
+  const queueEff = (i: number, pct: number) => {
+    pending.current = { index: i, pct }
+    if (frame.current === null) frame.current = requestAnimationFrame(sendPending)
+  }
+  /** Send the last value at once, so the end of a drag is never lost. */
+  const flushPending = () => {
+    if (frame.current !== null) {
+      cancelAnimationFrame(frame.current)
+      frame.current = null
+    }
+    const next = pending.current
+    pending.current = null
+    if (next) setEff(next.index, next.pct)
+  }
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current)
+    },
+    [],
+  )
   const pctFromEvent = (e: React.PointerEvent) => {
     const svg = svgRef.current
     if (!svg) return 0
@@ -78,12 +111,14 @@ export default function CustomPerformanceEditor({
           setEff(i, pctFromEvent(e))
         }}
         onPointerMove={(e) => {
-          if (dragIndex.current !== null) setEff(dragIndex.current, pctFromEvent(e))
+          if (dragIndex.current !== null) queueEff(dragIndex.current, pctFromEvent(e))
         }}
         onPointerUp={() => {
+          flushPending()
           dragIndex.current = null
         }}
         onPointerCancel={() => {
+          flushPending()
           dragIndex.current = null
         }}
       >
