@@ -5,6 +5,7 @@ import {
   dryAirMassFlowFromVelocity,
   solveTower,
   velocityFromDryAirMassFlow,
+  type EliminatorComparisonRow,
   type SolveIssue,
   type TowerInputs,
 } from './lib/model'
@@ -14,6 +15,9 @@ import StagePanel from './components/StagePanel'
 import StageList from './components/StageList'
 import TowerGraphic from './components/TowerGraphic'
 import StageResults from './components/StageResults'
+
+/** Stable empty result for the stages that show no comparison. */
+const NO_COMPARISON: EliminatorComparisonRow[] = []
 
 /** The stage where each warning is caused and can be fixed. */
 const ISSUE_STAGE: Record<SolveIssue['code'], StageId> = {
@@ -35,7 +39,19 @@ export default function App() {
   // the browser is free, so dragging a slider stays smooth.
   const graphInputs = useDeferredValue(inputs)
   const graphResults = useDeferredValue(results)
-  const comparison = useMemo(() => compareEliminators(graphInputs, SELECTIONS), [graphInputs])
+  // Only two places show the comparison: the fan table, and the A-F table on
+  // stage 2. The Custom switch replaces that table with the editor, so the
+  // seven solves are not needed while the custom bars are dragged. The gate
+  // reads the live eliminator, not the deferred one, so the table is never
+  // empty for a frame after Custom is switched off. Which eliminator is
+  // selected does not change the rows: compareEliminators sets its own.
+  const showsComparison =
+    selectedStage === 'fan' ||
+    (selectedStage === 'droplets' && inputs.eliminatorId !== 'custom')
+  const comparison = useMemo(
+    () => (showsComparison ? compareEliminators(graphInputs, SELECTIONS) : NO_COMPARISON),
+    [graphInputs, showsComparison],
+  )
 
   const patch = useCallback(
     (p: Partial<TowerInputs>) => setInputs((prev) => ({ ...prev, ...p })),
