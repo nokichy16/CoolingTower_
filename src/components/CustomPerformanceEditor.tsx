@@ -51,10 +51,7 @@ export default function CustomPerformanceEditor({
   }
 
   return (
-    <section className="custom-eliminator" aria-labelledby="custom-perf-title">
-      <h3 className="input-group-title" id="custom-perf-title">
-        Custom performance
-      </h3>
+    <section className="custom-eliminator" aria-label="Custom performance">
       <Field
         label="Pressure drop"
         sym="Δp"

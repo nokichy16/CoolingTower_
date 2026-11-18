@@ -1566,3 +1566,17 @@ html, body, .app { background: var(--bg); }
 .row-value { white-space: normal; text-align: right; flex: 0 1 auto; }
 .row-value small { white-space: nowrap; }
 .row-label { flex: 1 1 auto; }
+
+/* custom eliminator: Δp on the left, the ε(d) bars on the right at about their drawn size (no blow-up) */
+.eff-editor { max-width: 640px; }
+@media (min-width: 921px) {
+  .custom-eliminator {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 640px);
+    column-gap: 36px;
+    align-items: start;
+  }
+  .custom-eliminator > .field { grid-column: 1; grid-row: 1 / 3; }
+  .custom-eliminator > .field-label { grid-column: 2; grid-row: 1; }
+  .custom-eliminator > .eff-editor { grid-column: 2; grid-row: 2; }
+}
