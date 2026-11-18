@@ -60,7 +60,8 @@ current local working copy.
 - Keep stage names, order and colours in `src/lib/stages.ts`.
 - Keep shared graph colours and axis styles in
   `src/components/chartTheme.ts`.
-- Keep input controls in `src/components/Controls.tsx`.
+- Keep the slider-plus-number input in `src/components/Field.tsx` and each
+  stage's inputs and graphs in `src/components/StagePanel.tsx`.
 - Keep the psychrometric chart calculation and rendering separated between
   `src/lib/psychrometric-chart.ts` and
   `src/components/PsychrometricChart.tsx`.

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import type { EliminatorComparisonRow, TowerInputs, TowerResults } from '../lib/model'
 import type { SelectionId } from '../lib/eliminators'
 import { groupOf, STAGE_META, type StageId } from '../lib/stages'
@@ -56,6 +56,9 @@ export default function StagePanel({
   const meta = STAGE_META[stage]
   // Fan graph: every eliminator, or the selected one alone.
   const [fanShowAll, setFanShowAll] = useState(true)
+  // the tested eliminator to return to when Custom is switched off
+  const lastTested = useRef<SelectionId>(inputs.eliminatorId === 'custom' ? 'A' : inputs.eliminatorId)
+  if (inputs.eliminatorId !== 'custom') lastTested.current = inputs.eliminatorId
   const group = groupOf(stage)
   const dryAirMassFlow = r.plume.airMassFlow
   const set =
@@ -177,14 +180,14 @@ export default function StagePanel({
                 rows={comparison}
                 driftInlet={r.droplets.driftInlet}
                 onSelect={onSelectEliminator}
-              />
+                onCustom={(on) => onSelectEliminator(on ? 'custom' : lastTested.current)}
+              >
+                <CustomPerformanceEditor
+                  inputs={inputs}
+                  onChange={(next) => onChange({ customPerformance: next })}
+                />
+              </EliminatorPicker>
             </div>
-            {inputs.eliminatorId === 'custom' && (
-              <CustomPerformanceEditor
-                inputs={inputs}
-                onChange={(next) => onChange({ customPerformance: next })}
-              />
-            )}
           </>
         )}
 

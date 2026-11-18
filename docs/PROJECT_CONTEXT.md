@@ -276,6 +276,12 @@ discard it, revise it, or approve it.
 | 2026-10-18 | PR #6, #7 | Larger text and graphs; eliminator picker as one selectable list. | Deployed history |
 | 2026-10-21 | PR #8 | Single log-normal inlet; sharp d50 cut replaced by the grade-efficiency integral. | Deployed |
 | 2026-10-22 | Tidy-up | Removed unused CalculationSequence and KPI code; updated this file. | See git log |
+| 2026-10-28 | PR #10–#12 | Inlet stage grouping plume & airflow with drift droplets; fan chart and all-eliminator table; eliminator selection and drift outputs in one table; d50 and Ruiz 2013 points removed. | Deployed |
+| 2026-11-04 | PR #13 | Inlet set by mass mean E and σ of ln d (editing d_min solves for σ); custom eliminator from the Ruiz correlations; fan legend filter. | Deployed |
+| 2026-11-10 | PR #14, #15 | Custom performance eliminator (draggable ε bars); cumulative inlet/captured/escaping drift in kg/s plus count bars; d_min/d_max slider fix. | Deployed |
+| 2026-11-17 | PR #16–#18 | Faster first load (lazy charts, deferred values); first design restored with side layout on desktop, one stage at a time, tower drawing selects stages, recovery on top; fan table is the graph filter. | Deployed |
+| 2026-11-17 | PR #19 | Clean-contrast look (one white workspace, no panel borders); formulas and output symbols in KaTeX; droplet log mean renamed μ_ln; IBM Plex bundled with the site. | Deployed |
+| 2026-11-18 | Branch `fix-long-values` | Long result values wrap instead of overlapping; Custom eliminator is a switch that replaces the A–F table; text floor 13 px (tables 14 px), darker greys, larger tower labels. | Merge when approved |
 
 Earlier commit `a8a119e` contained a cycles-derived water balance. That model is
 historical and is not part of the current direct-plume boundary. If a future
@@ -381,9 +387,9 @@ water.
 
 ## Windows handoff
 
-Clone the repository on Windows and open the cloned folder as the local Codex
-project. Codex should read `AGENTS.md` automatically, and this file will provide
-the durable project history.
+Clone the repository on Windows and open the cloned folder in Claude Code (or
+Codex). Claude Code reads `CLAUDE.md`, which imports `AGENTS.md`; Codex reads
+`AGENTS.md` directly. This file provides the durable project history.
 
 Do not rely on local chat memory as the only project record. Update this file
 when a model direction is approved, a major feature is completed, or the live

@@ -1,10 +1,10 @@
 import type { EliminatorComparisonRow, TowerInputs } from '../lib/model'
 import {
-  customPressureDrop,
   selectionName,
   type EliminatorId,
   type SelectionId,
 } from '../lib/eliminators'
+import type { ReactNode } from 'react'
 import { fmt, sig } from '../lib/format'
 import { selectOnKey } from './selectOnKey'
 
@@ -20,29 +20,48 @@ const ELIMINATOR_GEOMETRY: Record<EliminatorId, string> = {
 /**
  * Eliminator selection and comparison in one table. Each row is the full
  * model at the current inputs with only the eliminator changed; click a row
- * to select that eliminator.
+ * to select that eliminator. The Custom switch replaces the table with the
+ * custom performance editor (children).
  */
 export default function EliminatorPicker({
   inputs,
   rows,
   driftInlet,
   onSelect,
+  onCustom,
+  children,
 }: {
   inputs: TowerInputs
   rows: EliminatorComparisonRow[]
   driftInlet: number
   onSelect: (id: SelectionId) => void
+  onCustom: (on: boolean) => void
+  children?: ReactNode
 }) {
+  const custom = inputs.eliminatorId === 'custom'
   return (
     <section className="eliminator-table" aria-labelledby="eliminator-table-title">
-      <h3 className="input-group-title" id="eliminator-table-title">
-        Eliminator A–F or custom
-      </h3>
+      <div className="fan-table-head">
+        <h3 className="input-group-title" id="eliminator-table-title">
+          {custom ? 'Custom eliminator' : 'Eliminator A–F'}
+        </h3>
+        <button
+          type="button"
+          className={`show-all${custom ? ' is-on' : ''}`}
+          aria-pressed={custom}
+          onClick={() => onCustom(!custom)}
+        >
+          <span className="show-all-track" aria-hidden="true" />
+          Custom
+        </button>
+      </div>
       <p className="eliminator-picker-note">
-        Drift entering: <strong>{sig(driftInlet, 3)} kg/s</strong> (same for
-        all). Select a row. Letters identify tested Ruiz configurations, not
-        rankings.
+        Drift entering: <strong>{sig(driftInlet, 3)} kg/s</strong>
+        {custom
+          ? '. Set Δp, then drag the bars to set ε for each droplet size.'
+          : ' (same for all). Select a row. Letters identify tested Ruiz configurations, not rankings.'}
       </p>
+      {custom ? children : (
       <table>
         <thead>
           <tr>
@@ -53,7 +72,7 @@ export default function EliminatorPicker({
           </tr>
         </thead>
         <tbody role="radiogroup" aria-label="Eliminator">
-          {rows.map((row) => {
+          {rows.filter((row) => row.id !== 'custom').map((row) => {
             const on = row.id === inputs.eliminatorId
             return (
               <tr
@@ -70,14 +89,10 @@ export default function EliminatorPicker({
                   <span className="picker-dot" aria-hidden="true" />
                   <span className="elim-name">
                     <strong>
-                      {selectionName(row.id)}{row.id === 'custom' ? ' · performance' : ` · ${row.type}`}
+                      {selectionName(row.id)} · {row.type}
                     </strong>
-                    <small
-                      title={row.id === 'custom' ? undefined : ELIMINATOR_GEOMETRY[row.id as EliminatorId]}
-                    >
-                      {row.id === 'custom'
-                        ? `Δp ${Number(customPressureDrop(inputs.customPerformance).toFixed(1))} Pa · ε set by size`
-                        : ELIMINATOR_GEOMETRY[row.id as EliminatorId]}
+                    <small title={ELIMINATOR_GEOMETRY[row.id as EliminatorId]}>
+                      {ELIMINATOR_GEOMETRY[row.id as EliminatorId]}
                     </small>
                   </span>
                   </div>
@@ -90,6 +105,7 @@ export default function EliminatorPicker({
           })}
         </tbody>
       </table>
+      )}
     </section>
   )
 }
