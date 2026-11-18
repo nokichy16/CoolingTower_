@@ -36,10 +36,14 @@ The app does not force the plume to saturation. It calculates humidity ratio,
 enthalpy, moist-air density and dew point from the selected state. Flow area and
 velocity set the volumetric flow through the assessed tower.
 
-Liquid-droplet performance is controlled separately:
+Liquid drift is controlled separately:
 
-- Ruiz tested eliminator A–F
-- theoretical minimum and maximum droplet sizes
+- circulating-water mass flow `ṁ_circ`
+- drift rate at the eliminator inlet `D_in`, an assumption
+- mass-weighted mean droplet diameter `E` and the standard deviation `σ` of
+  `ln d`; editing the smallest size `d_min` (the 1 % point) solves for `σ`
+- largest droplet size `d_max`, which cuts the distribution
+- Ruiz tested eliminator A–F, or Custom, which sets Δp and ε(d) directly
 
 The eliminator spans the selected plume flow area and inherits the after-fill
 velocity. Its Reynolds-dependent correlation calculates eliminator pressure
@@ -133,8 +137,9 @@ B = E / (CoC - 1)  when the evaporation rate E is known
 
 The app reports blowdown as a percentage of the known evaporation rate. It
 does not add evaporation, recirculation, makeup-water, conductivity or
-water-temperature inputs. No liquid-drift mass flow is calculated because
-circulating-water flow is not an input to the current model.
+water-temperature inputs. The liquid-drift mass flow is calculated separately,
+in the drift stage above, from circulating-water flow and the assumed inlet
+drift rate. It is not part of this ratio.
 
 ### Psychrometric process chart
 
@@ -150,9 +155,22 @@ condenses.
 - `src/lib/psychrometrics.ts` — moist-air state, saturation and dew-point functions
 - `src/lib/psychrometric-chart.ts` — chart curves, enthalpy lines and process path
 - `src/lib/eliminators.ts` — Ruiz A–F geometries, correlations and support checks
+- `src/lib/droplet-distribution.ts` — log-normal inlet distribution and the grade-efficiency split
 - `src/lib/model.ts` — direct plume, droplet and recovery calculations
-- `src/lib/stages.ts` — values shown in the stage summaries
-- `src/components/Controls.tsx` — bounded plume, droplet and recovery inputs
+- `src/lib/stages.ts` — stage identity: name, path, colour, order
+- `src/lib/stage-outputs.ts` — the values shown in the stage summaries
+- `src/lib/formula-tex.ts` — TeX for the formulas in the values table
+- `src/components/StagePanel.tsx` — bounded plume, droplet and recovery inputs, one stage at a time
+- `src/components/StageList.tsx` — key outputs of every stage
+- `src/components/StageResults.tsx` — every calculated value with its formula
+- `src/components/DropletDistribution.tsx` — drift inputs and the inlet count graph
+- `src/components/EliminatorOutput.tsx` — cumulative drift mass below `d`
+- `src/components/EliminatorCount.tsx` — droplet counts per size class with ε(d)
+- `src/components/EliminatorPicker.tsx` — eliminator selection, comparison and the Custom switch
+- `src/components/CustomPerformanceEditor.tsx` — the custom Δp and ε bars
+- `src/components/FanChart.tsx`, `src/components/FanTable.tsx` — ideal air power against velocity, and all eliminators at the selected velocity
 - `src/components/TowerGraphic.tsx` — preserved cooling-tower cutaway
 - `src/components/PsychrometricChart.tsx` — interactive psychrometric process graph
-- `src/components/ResultPanel.tsx` — recovery and cooling results
+
+`docs/CODE_MAP.md` has the full file map, a flow diagram, the step-by-step
+physics with sources, and the known inconsistencies.

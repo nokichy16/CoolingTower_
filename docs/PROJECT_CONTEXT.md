@@ -1,6 +1,6 @@
 # Plume Water-Recovery Webapp: Project Context and History
 
-Last updated: 2026-10-22
+Last updated: 2026-11-18
 
 ## Why this file exists
 
@@ -107,18 +107,21 @@ m_captured = m_drift,in * (1 - eta_esc)
 ```
 
 The integral is evaluated over 600 equal size classes with eps at each class
-midpoint. The outlet curve is the running integral divided by eta_esc. The
-d50 cutoff and the Ruiz 2013 comparison points were removed from the app
-(Oct 2026); neither is used in the drift result.
+midpoint. The escaping curve is the running sum of (1 - eps) dF, kept on the
+inlet basis and not rescaled. The d50 cutoff and the Ruiz 2013 comparison
+points were removed from the app (Oct 2026); neither is used in the drift
+result.
 
 Custom performance (Nov 2026): a seventh option with no geometry. The user
 sets the pressure drop (Pa, same at every velocity) and the collection
 efficiency at 5, 10, 20, 30, 50, 75, 100, 150, 200 and 300 um; eps is
 interpolated linearly in ln d and held constant outside that range. Fan air
-power uses P = V_dot * dp. "Start from A-F" copies a tested design's dp and
-eps at the current conditions. The eliminator graph shows cumulative drift
-below d for the inlet, captured and escaping parts on one basis (no
-rescaling, so captured + escaping = inlet), in kg/s or % of inlet.
+power uses P = V_dot * dp. Custom is a switch (PR #20): turning it on replaces
+the A-F table with the Δp field and the eps bars, and turning it off returns
+to the last tested eliminator. There is no "start from A-F" copy. The
+eliminator graph shows cumulative drift below d for the inlet, captured and
+escaping parts on one basis (no rescaling, so captured + escaping = inlet),
+in kg/s.
 
 Approved assumptions and limits (user decisions, Oct 2026):
 
@@ -211,7 +214,8 @@ This is the approved current source direction.
 ### Previous published model at `c1ab59b`
 
 That earlier deployed model prescribed dry-air mass flow and plume velocity. It
-moist volumetric flow from dry-air mass flow and then reports an implied area:
+derived moist volumetric flow from dry-air mass flow and then reported an
+implied area:
 
 ```text
 V_dot = m_a * (1 + omega4) / rho4
@@ -281,7 +285,8 @@ discard it, revise it, or approve it.
 | 2026-11-10 | PR #14, #15 | Custom performance eliminator (draggable ε bars); cumulative inlet/captured/escaping drift in kg/s plus count bars; d_min/d_max slider fix. | Deployed |
 | 2026-11-17 | PR #16–#18 | Faster first load (lazy charts, deferred values); first design restored with side layout on desktop, one stage at a time, tower drawing selects stages, recovery on top; fan table is the graph filter. | Deployed |
 | 2026-11-17 | PR #19 | Clean-contrast look (one white workspace, no panel borders); formulas and output symbols in KaTeX; droplet log mean renamed μ_ln; IBM Plex bundled with the site. | Deployed |
-| 2026-11-18 | Branch `fix-long-values` | Long result values wrap instead of overlapping; Custom eliminator is a switch that replaces the A–F table; text floor 13 px (tables 14 px), darker greys, larger tower labels. | Merge when approved |
+| 2026-11-18 | PR #20 (`19f783f`) | Long result values wrap instead of overlapping; Custom eliminator is a switch that replaces the A–F table; text floor 13 px (tables 14 px), darker greys, larger tower labels; added `CLAUDE.md`. | Deployed |
+| 2026-11-18 | Branch `fix-doc-errors` | Added `docs/CODE_MAP.md` (file map, physics map, consistency findings) and corrected the documentation errors it found in `README.md` and this file. | Merge when approved |
 
 Earlier commit `a8a119e` contained a cycles-derived water balance. That model is
 historical and is not part of the current direct-plume boundary. If a future
@@ -309,23 +314,45 @@ asking the user to specify cycles independently.
 - `src/lib/droplet-distribution.ts`: log-normal inlet distribution, count
   histogram, mass quantiles, Sauter mean, and the grade-efficiency split.
 - `src/lib/model.ts`: input types, model assembly, calculated results, warnings,
-  and defaults.
-- `src/lib/stages.ts`: values displayed at the plume, eliminator, fan, and
-  recovery stations.
-- `src/components/Controls.tsx`: stage tabs, user inputs, eliminator picker.
+  and defaults. The only place results are produced.
+- `src/lib/stages.ts`: stage identity only — id, name, air or liquid path,
+  accent colour, grouping and order. No values.
+- `src/lib/stage-outputs.ts`: the key output of each stage for the list under
+  the drawing (label, TeX symbol, value, unit, digits). Display data only.
+- `src/lib/formula-tex.ts`: the TeX for each formula string in the
+  calculated-values table.
+- `src/lib/format.ts`: fixed-decimal and significant-figure formatting.
+- `src/components/StagePanel.tsx`: one open stage — its inputs, graphs and
+  tables. Was `Controls.tsx` until PR #20.
+- `src/components/StageList.tsx`: every stage's key outputs under the drawing.
 - `src/components/DropletDistribution.tsx`: drift inputs and inlet count graph.
-- `src/components/EliminatorOutput.tsx`: inlet/outlet cumulative graph, eps(d)
-  and drift flows.
+- `src/components/EliminatorOutput.tsx`: cumulative drift mass below d in kg/s
+  for the inlet, captured and escaping parts.
+- `src/components/EliminatorCount.tsx`: droplet count per 5 um class, inlet and
+  escaping, with eps(d) on the right axis.
+- `src/components/EliminatorPicker.tsx`: A-F selection and drift comparison in
+  one table, plus the Custom switch.
+- `src/components/CustomPerformanceEditor.tsx`: the custom Δp field and the
+  draggable eps bars.
 - `src/components/FanChart.tsx`: ideal fan air power against face velocity.
-- `src/components/StageResults.tsx`: "All calculated values", every input and
+- `src/components/FanTable.tsx`: Kp, Δp, air power and escaping fraction for
+  every eliminator; also the fan graph's legend and filter.
+- `src/components/StageResults.tsx`: "Calculated values", every input and
   calculated value with its formula, by stage.
 - `src/components/PsychrometricChart.tsx`: chart presentation.
 - `src/components/TowerGraphic.tsx`: cooling-tower cutaway visual.
-- `docs/build_webapp_documentation.py`: generator for the local Word
-  documentation artifact. Its statements must be checked against the chosen
-  model before regeneration.
+- `src/components/Field.tsx`: the slider-plus-number input.
+- `src/components/Formula.tsx`, `src/components/MathLabel.tsx`: KaTeX rendering
+  of a formula string and of a short symbol.
+- `src/components/ChangeValue.tsx`: a number plus how much it changed.
+- `src/components/chartTheme.ts`: shared graph colours and axis styles.
+- `src/components/selectOnKey.ts`: Enter and Space handling for table rows that
+  act as radio buttons.
+- `docs/CODE_MAP.md`: file map, flow diagram, step-by-step physics map with
+  sources, and the consistency findings (Nov 2026).
 
-`src/lib/drift-source.ts` existed only in the historical uncommitted experiment.
+`src/lib/drift-source.ts` and `docs/build_webapp_documentation.py` existed only
+in the historical uncommitted experiment.
 
 ## Important limitations and factual boundaries
 
