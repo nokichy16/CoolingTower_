@@ -194,20 +194,20 @@ export default function TowerGraphic({
           style={{ fill: info.accent }}
         />
         {/* a larger click target over the whole label */}
-        <rect x={labelX - 8} y={labelY - 16} width={176} height={36} fill="transparent" />
+        <rect x={labelX - 8} y={labelY - 18} width={230} height={40} fill="transparent" />
         <rect
           className="label-badge"
           x={labelX - 6}
-          y={labelY - 11}
-          width={30}
-          height={20}
-          rx={10}
+          y={labelY - 12}
+          width={36}
+          height={24}
+          rx={12}
           style={{ fill: info.accent }}
         />
-        <text className="label-number" x={labelX + 9} y={labelY + 4} textAnchor="middle">
+        <text className="label-number" x={labelX + 12} y={labelY + 5} textAnchor="middle">
           {NUMBER[id]}
         </text>
-        <text className="label-name" x={labelX + 30} y={labelY - 3}>
+        <text className="label-name" x={labelX + 38} y={labelY + 6}>
           {info.name}
         </text>
         <text className="label-value" x={labelX + 30} y={labelY + 13}>
@@ -220,7 +220,7 @@ export default function TowerGraphic({
   return (
     <div className="tower-graphic" style={style}>
       <svg
-        viewBox="92 0 532 606"
+        viewBox="92 0 580 606"
         role="img"
         aria-labelledby="tower-title tower-desc"
       >
