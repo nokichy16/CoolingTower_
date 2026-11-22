@@ -1592,3 +1592,16 @@ html, body, .app { background: var(--bg); }
   .stage-table { min-width: 0; max-width: 100%; overflow-x: auto; }
 }
 .reset { white-space: nowrap; }
+
+/* TEST: low-density desktop screens (1 device pixel per CSS pixel) draw thin
+   strokes with few pixels, so text looks light and soft. Heavier weight and
+   darker greys there only; phones and high-density screens are unchanged. */
+@media (min-width: 921px) and (max-resolution: 1.5dppx) {
+  :root { --text: #15191d; --text-dim: #2b3137; --text-faint: #3f464e; }
+  body { font-weight: 500; }
+  .row-label, .sl-name, .eliminator-table .elim-name strong { font-weight: 600; }
+  .stage-result-rows, .sl-values, .eliminator-table tbody, .fan-table tbody,
+  .field-label, .eliminator-picker-note, .card-note { font-weight: 500; }
+  .recharts-cartesian-axis-tick-value, .recharts-label, .recharts-legend-item-text { font-weight: 500; }
+  .katex { -webkit-text-stroke: 0.3px currentColor; }
+}
