@@ -1592,3 +1592,17 @@ html, body, .app { background: var(--bg); }
   .stage-table { min-width: 0; max-width: 100%; overflow-x: auto; }
 }
 .reset { white-space: nowrap; }
+
+/* ===== Desktop readability: heavier body stroke on low-density screens =====
+   At 1 device pixel per CSS pixel a 13 px stem is thinner than one pixel, so
+   antialiasing greys its edges and the text reads lighter than its colour.
+   Measured on this font against white, the average inked pixel reaches
+   2.19:1 at weight 400 and 2.53:1 at weight 500. Medium is bundled for every
+   subset imported in main.tsx, and :root sets font-synthesis: none, so this
+   is the real IBM Plex Medium and not a faked stroke. High-density screens
+   draw the stem with enough pixels already, so they stay at 400. */
+@media (max-resolution: 1.5dppx), (-webkit-max-device-pixel-ratio: 1.5) {
+  :root { font-weight: 500; }
+  /* The mono readouts are the densest text and gain least (+6 %). */
+  .fan-table .num, .eliminator-table .num { font-weight: 400; }
+}
