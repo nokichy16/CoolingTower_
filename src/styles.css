@@ -1606,3 +1606,37 @@ html, body, .app { background: var(--bg); }
   /* The mono readouts are the densest text and gain least (+6 %). */
   .fan-table .num, .eliminator-table .num { font-weight: 400; }
 }
+
+/* ===== Scenario menu: Save CSV, Load CSV, Reset all =====
+   The menu and the message float over the page, so the head keeps one line
+   and the tower drawing keeps its space. */
+.scenario-file { position: relative; flex: none; }
+.scenario-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 150px;
+  display: grid; padding: 4px; background: var(--surface); border: 1px solid var(--line-soft);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(30, 35, 40, 0.16);
+}
+.scenario-menu button {
+  font: inherit; font-size: 14px; text-align: left; padding: 8px 10px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--text); cursor: pointer;
+}
+.scenario-menu button:hover { background: rgba(30, 35, 40, 0.07); }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.scenario-status-slot { position: absolute; top: calc(100% + 6px); right: 0; z-index: 29; }
+.scenario-status {
+  position: relative; width: max-content; max-width: min(320px, calc(100vw - 32px));
+  padding: 8px 30px 8px 10px; font-size: 13px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--line-soft); border-radius: 8px; box-shadow: 0 8px 24px rgba(30, 35, 40, 0.16);
+  overflow-wrap: anywhere;
+}
+.scenario-status.is-error { border-color: #b42318; font-weight: 600; }
+.scenario-notes { margin: 4px 0 0; padding-left: 18px; font-weight: 400; color: var(--text-dim); }
+.scenario-close {
+  position: absolute; top: 2px; right: 4px; border: 0; background: transparent;
+  font-size: 18px; line-height: 1; padding: 4px; cursor: pointer; color: var(--text-dim);
+}
+.scenario-notes-more { margin-top: 4px; }
+.scenario-notes-more summary { cursor: pointer; color: var(--text-dim); }
