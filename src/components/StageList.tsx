@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react'
 import type { TowerResults } from '../lib/model'
 import { STAGE_IDS, STAGE_META, type StageId } from '../lib/stages'
+import { fmt } from '../lib/format'
 import { STAGE_KEY_OUTPUTS, stageSubtitle, stageValues } from '../lib/stage-outputs'
-import ChangeValue from './ChangeValue'
 import { STAGE_LABEL } from './StagePanel'
 
 // KaTeX loads after the first paint; the plain label shows until then.
@@ -58,7 +58,10 @@ export default function StageList({
                         v.label
                       )}
                     </span>
-                    <ChangeValue value={v.value} digits={v.digits} unit={v.unit} />
+                    <span className="cv">
+                      <strong>{Number.isFinite(v.value) ? fmt(v.value, v.digits) : '—'}</strong>
+                      {v.unit && <small>{v.unit}</small>}
+                    </span>
                   </span>
                 )
               })}
