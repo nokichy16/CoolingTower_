@@ -15,6 +15,7 @@ import StagePanel from './components/StagePanel'
 import StageList from './components/StageList'
 import TowerGraphic from './components/TowerGraphic'
 import StageResults from './components/StageResults'
+import ScenarioFile from './components/ScenarioFile'
 
 /** Stable empty result for the stages that show no comparison. */
 const NO_COMPARISON: EliminatorComparisonRow[] = []
@@ -100,9 +101,11 @@ export default function App() {
           <div className="brand">
             <h1>Plume Water Recovery</h1>
           </div>
-          <button type="button" className="reset" onClick={reset}>
-            Reset all
-          </button>
+          <ScenarioFile results={results} onLoad={setInputs}>
+            <button type="button" className="reset" onClick={reset}>
+              Reset all
+            </button>
+          </ScenarioFile>
         </div>
         {firstWarning && (
           <div className="header-warning" role="alert">

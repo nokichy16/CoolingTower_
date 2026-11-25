@@ -1,0 +1,39 @@
+﻿Quantity,Value
+Plume temperature T₄ (°C),40
+Relative humidity RH₄ (%),95
+Pressure P (Pa),101300
+Flow area A (m²),46.55
+Velocity u₄ (m/s),3
+Circulating water ṁ_circ (kg/s),150
+Inlet drift rate D_in (%),0.2
+Mean diameter E (µm),40.8
+σ of ln d,0.555
+Largest droplet d_max (µm),300
+Eliminator,A
+Cooling below dew point ΔT_dew (°C),10
+Cycles of concentration CoC,6
+Saturation pressure (Pa),7375
+Vapour pressure (Pa),7006
+Humidity ratio ω₄ (kg/kg da),0.04621
+Dew point (°C),39.0
+Enthalpy h₄ (kJ/kg da),159.3
+Density ρ (kg/m³),1.097
+Volume flow V̇ (m³/s),139.6
+Dry-air mass flow ṁ_da (kg/s),146.5
+Drift entering (kg/s),0.3
+Median d_med (µm),35.0
+"Smallest d_min, 1 % point (µm)",9.6
+Reynolds number,8630
+Loss coefficient Kp,5.48
+Pressure drop Δp (Pa),27.1
+Mass escaping (%),50.9
+Drift escaping (kg/s),0.153
+Drift captured (kg/s),0.147
+Ideal air power (kW),3.78
+Outlet T₅ (°C),29.0
+Humidity condensed Δω (kg/kg da),0.02058
+Enthalpy removed Δh (kJ/kg da),64.5
+Water recovered (kg/s),3.015
+Cooling duty (kW),9455
+Energy per kilogram (kJ/kg),3136
+Blowdown / evaporation (%),20.0

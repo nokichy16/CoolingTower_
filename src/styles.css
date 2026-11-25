@@ -1606,3 +1606,24 @@ html, body, .app { background: var(--bg); }
   /* The mono readouts are the densest text and gain least (+6 %). */
   .fan-table .num, .eliminator-table .num { font-weight: 400; }
 }
+
+/* ===== Scenario file: Save CSV / Load CSV ===== */
+.sheet-head { flex-wrap: wrap; }
+.scenario-file { display: grid; gap: 6px; justify-items: end; min-width: 0; }
+.scenario-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.scenario-buttons .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.scenario-status { font-size: 13px; color: var(--text-dim); overflow-wrap: anywhere; text-align: right; }
+.scenario-status:empty { display: none; }
+.scenario-status.is-error { color: var(--text); font-weight: 600; }
+.scenario-notes { margin: 4px 0 0; padding-left: 18px; text-align: left; }
