@@ -101,11 +101,7 @@ export default function App() {
           <div className="brand">
             <h1>Plume Water Recovery</h1>
           </div>
-          <ScenarioFile results={results} onLoad={setInputs}>
-            <button type="button" className="reset" onClick={reset}>
-              Reset all
-            </button>
-          </ScenarioFile>
+          <ScenarioFile results={results} onLoad={setInputs} onReset={reset} />
         </div>
         {firstWarning && (
           <div className="header-warning" role="alert">

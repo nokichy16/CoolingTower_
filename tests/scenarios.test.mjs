@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import { DEFAULT_INPUTS, solveTower } from '../src/lib/model.ts'
-import { parseScenarioCsv, scenarioToCsv } from '../src/lib/scenarios.ts'
+import { labelKey, parseScenarioCsv, scenarioToCsv } from '../src/lib/scenarios.ts'
 
 const fixture = readFileSync(new URL('./fixtures/scenario-default.csv', import.meta.url), 'utf8')
 const baseCsv = scenarioToCsv(solveTower(DEFAULT_INPUTS))
@@ -118,4 +118,31 @@ test('a number that is not finite is written as an empty field', () => {
   const r = solveTower({ ...DEFAULT_INPUTS, plumeVelocity: 0 })
   const csv = scenarioToCsv(r)
   assert.ok(!/NaN|Infinity/.test(csv))
+})
+
+test('every row label has its own key, inputs and results together', () => {
+  const custom = scenarioToCsv(solveTower(customInputs))
+  const labels = custom.replace(/^﻿/, '').trim().split('\r\n').slice(1).map((l) => l.match(/^("(?:[^"]|"")*"|[^,]*)/)[1].replace(/^"|"$/g, ''))
+  const keys = labels.map(labelKey)
+  assert.equal(new Set(keys).size, keys.length)
+  assert.ok(keys.every((k) => k.length > 2))
+})
+
+test('a file Excel saved in the Windows code page still loads', () => {
+  // Characters outside that code page (₄, ṁ, Δ, σ, ε) become "?", and µ, °, ² can be lost on the way back.
+  const mangled = scenarioToCsv(solveTower(customInputs)).replace(/^﻿/, '').replace(/[^\x00-\x7F]/g, '?')
+  const parsed = parseScenarioCsv(mangled)
+  assert.deepEqual(parsed.inputs, customInputs)
+  assert.deepEqual(parsed.notes, [])
+})
+
+test('a semicolon file with decimal commas loads', () => {
+  const text = baseCsv.replace(/^﻿/, '').split('\r\n').map((l) => {
+    const [label, value] = [l.slice(0, l.lastIndexOf(',')), l.slice(l.lastIndexOf(',') + 1)]
+    return l ? `${label.replace(/^"|"$/g, '')};${value.replace('.', ',')}` : l
+  }).join('\r\n')
+  const parsed = parseScenarioCsv(text)
+  assert.equal(parsed.inputs.inletDriftRate, 0.2)
+  assert.equal(parsed.inputs.flowArea, 46.55)
+  assert.deepEqual(parsed.inputs, DEFAULT_INPUTS)
 })

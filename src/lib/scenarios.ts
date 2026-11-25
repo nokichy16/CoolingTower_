@@ -39,7 +39,9 @@ function numberRow(
     customOnly,
     text: (i) => String(get(i)),
     apply: (i, text) => {
-      const v = text.trim() === '' ? NaN : Number(text)
+      // A spreadsheet set to a decimal comma saves 0.2 as "0,2".
+      const t = text.trim()
+      const v = t === '' ? NaN : Number(/^-?\d+,\d+$/.test(t) ? t.replace(',', '.') : t)
       if (!Number.isFinite(v)) return false
       set(i, v)
       return true
@@ -115,6 +117,13 @@ const RESULT_ROWS: Array<[label: string, text: (r: TowerResults) => string]> = [
   ['Blowdown / evaporation (%)', (r) => fixed(100 * r.waterBalance.blowdownToEvaporationRatio, 1)],
 ]
 
+/**
+ * Label key for reading: lower-case ASCII letters and digits only. A file that
+ * Excel saved in the Windows code page turns ₄, µ, ṁ, Δ and σ into "?"; the
+ * key ignores them, so such a file still loads.
+ */
+export const labelKey = (label: string) => label.toLowerCase().replace(/[^a-z0-9]/g, '')
+
 function quote(field: string): string {
   return /[",\r\n]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field
 }
@@ -171,11 +180,11 @@ export function parseScenarioCsv(text: string): { inputs: TowerInputs; notes: st
   const values = new Map<string, string>()
   for (const row of splitCsv(clean, delimiter)) {
     if (row.length < 2) continue
-    const label = row[0].trim()
-    if (!values.has(label)) values.set(label, row[1])
+    const key = labelKey(row[0])
+    if (!values.has(key)) values.set(key, row[1])
   }
 
-  if (!INPUT_ROWS.some((row) => values.has(row.label))) {
+  if (!INPUT_ROWS.some((row) => values.has(labelKey(row.label)))) {
     throw new Error('No input rows found. Use a file saved with "Save CSV".')
   }
 
@@ -193,7 +202,7 @@ export function parseScenarioCsv(text: string): { inputs: TowerInputs; notes: st
   )
   for (const row of ordered) {
     if (row.customOnly && inputs.eliminatorId !== 'custom') continue
-    const raw = values.get(row.label)
+    const raw = values.get(labelKey(row.label))
     if (raw === undefined) {
       notes.push(`Not in the file, default used: ${row.label}`)
     } else if (!row.apply(inputs, raw)) {
